@@ -2,7 +2,7 @@ from pathlib import Path
 
 from flask import Flask, render_template
 
-from call_graph import generate_call_graph
+from ragdaemon.call_graph import generate_call_graph
 
 
 app = Flask(__name__)
@@ -24,5 +24,5 @@ def home():
     return render_template('index.html', nodes=nodes, links=links, metadata=metadata)
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+def main():
+    app.run(host="localhost", port=5001, debug=True)
