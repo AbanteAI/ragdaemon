@@ -1,6 +1,7 @@
 import ast
 import subprocess
 from pathlib import Path
+from math import sqrt
 
 import networkx as nx
 
@@ -16,9 +17,9 @@ def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     G_reversed = G.reverse()
     pr = nx.pagerank(G_reversed)
     for node in G.nodes:
-        G.nodes[node]['y'] = pr[node] * 10
+        G.nodes[node]['y'] = pr[node]
 
-    # Scale to y[0, 1] and x, z[-1, 1]
+    # Scale to y[0, 2] and x, z[-1, 1]
     y = nx.get_node_attributes(G, 'y')
     y_min, y_max = min(y.values()), max(y.values())
     x = nx.get_node_attributes(G, 'x')
@@ -26,7 +27,9 @@ def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     z = nx.get_node_attributes(G, 'z')
     z_min, z_max = min(z.values()), max(z.values())
     for node in G.nodes:
-        G.nodes[node]['y'] = (y[node] - y_min) / (y_max - y_min)
+        # normalize y with sqrt, but remove n
+        corrected_y = max(0, y[node] - y_min)
+        G.nodes[node]['y'] = 2 * sqrt(corrected_y / (y_max - y_min))
         G.nodes[node]['x'] = 2 * (x[node] - x_min) / (x_max - x_min) - 1
         G.nodes[node]['z'] = 2 * (z[node] - z_min) / (z_max - z_min) - 1
 
@@ -67,14 +70,10 @@ def generate_call_graph(directory: Path) -> nx.MultiDiGraph:
         ["git", "ls-files"], cwd=directory, capture_output=True, text=True
     ).stdout.splitlines()
     paths = [Path(p) for p in paths if p.endswith(".py")]
-    print(f"Found {len(paths)} python files in {directory}:")
     for path in paths:
         print(path)
     print()
 
     G = generate_ast_call_graph(paths)
-    print(f"Generated graph with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
-
     G = add_coordiantes_to_graph(G)
-    print("Added coordinates to graph")
     return G
