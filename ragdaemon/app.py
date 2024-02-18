@@ -11,7 +11,9 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     # Generate the call graph
-    codebase = Path("multifile_calculator")
+    codebase = Path.cwd()
+    if not (codebase / '.git').exists():
+        raise ValueError('Not a git repository')
     graph = generate_call_graph(codebase)
 
     # Serialize and send to frontend
