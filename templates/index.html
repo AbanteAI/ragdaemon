@@ -8,6 +8,13 @@
     <!-- Include Three.js from a CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.125.2/build/three.min.js"></script>
     
+    <!-- Variables from backend -->
+    <script>
+        var nodes = {{ nodes | tojson }};
+        var links = {{ links | tojson }};
+        var metadata = {{ metadata | tojson }};
+    </script>
+
     <!-- Reference your external JavaScript file -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
