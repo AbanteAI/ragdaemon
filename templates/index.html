@@ -7,15 +7,21 @@
 <body>
     <!-- Include Three.js from a CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.125.2/build/three.min.js"></script>
+
+    <!-- Include OrbitControls.js from Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three/examples/js/controls/OrbitControls.js"></script>
     
     <!-- Variables from backend -->
     <script>
+        // [{id: 'function_name', x: 0.1, y: 0.2, z: 0.3}, ...]
         var nodes = {{ nodes | tojson }};
+        // [{key: 0, source: 'function_name', target: 'function_name'}, ...]
         var links = {{ links | tojson }};
+        // { num_nodes: 6, num_links: 5 }
         var metadata = {{ metadata | tojson }};
     </script>
 
-    <!-- Reference your external JavaScript file -->
+    <!-- Frontend script -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
