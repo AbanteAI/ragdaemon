@@ -22,6 +22,28 @@ nodes.forEach(node => {
     const sphere = new THREE.Mesh(geometry, material);
     sphere.position.set(node.x, node.y, node.z);
     scene.add(sphere);
+    
+    // Function to create a 3D text label
+    function create3DTextLabel(text, position) {
+        const loader = new THREE.FontLoader();
+        font_url = 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json';
+        // Load a font
+        loader.load(font_url, font => {
+            const textGeometry = new THREE.TextGeometry(text, {
+                font: font,
+                size: 0.05, // Reduced size by 50%
+                height: 0.01,
+                curveSegments: 12,
+                bevelEnabled: false,
+            });
+            const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            textMesh.position.set(position.x, position.y + 0.1, position.z); // Centered horizontally and twice as close
+            textMesh.geometry.center(); // Center the text geometry
+            scene.add(textMesh);
+        });
+    }
+    create3DTextLabel(node.id, {x: node.x, y: node.y, z: node.z});
 });
 // Render links as arrows
 links.forEach(link => {
