@@ -16,12 +16,13 @@ camera.position.set(0, 0.7, 2.5);
 
 // Render nodes based on coordinates
 SCALE = Math.sqrt(1 / nodes.length);
-node_radius = SCALE / 10
+node_radius = SCALE / 5; // Increased radius for better click detection
 nodes.forEach(node => {
     const geometry = new THREE.SphereGeometry(node_radius, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: "white" });
     const sphere = new THREE.Mesh(geometry, material);
     sphere.position.set(node.x, node.y, node.z);
+    sphere.userData = {text: node.id};
     scene.add(sphere);
     
     // Function to create a 3D text label
@@ -81,3 +82,30 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }, false);
+
+// Raycaster for mouse interaction
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+raycaster.far = camera.far * 10; // Set the raycaster's maximum distance to the camera's far plane
+raycaster.params.Mesh.threshold = node_radius * 10; // Set threshold to the radius of the spheres
+
+function onMouseClick(event) {
+    // Calculate mouse position in normalized device coordinates
+    // (-1 to +1) for both components
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update the picking ray with the camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Calculate objects intersecting the picking ray
+    const nodes = scene.children.filter(child => child.userData && child.userData.text);
+    const intersects = raycaster.intersectObjects(nodes)
+    for (let i = 0; i < intersects.length; i++) {
+        console.log(intersects[i].object.userData.text);
+        break; // Assuming we only want to log the first object that was clicked
+    }
+}
+
+// Add event listener for mouse clicks
+window.addEventListener('click', onMouseClick, false);
