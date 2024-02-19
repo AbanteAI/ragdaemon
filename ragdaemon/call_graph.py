@@ -1,11 +1,9 @@
-import ast
 import subprocess
 from pathlib import Path
 from math import sqrt
 
 import networkx as nx
-
-from ragdaemon.treesitter.parser import generate_treesitter_call_graph
+from ragdaemon.treesitter import generate_treesitter_call_graph
 
 
 def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
@@ -38,45 +36,17 @@ def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     return G
 
 
-def generate_ast_call_graph(G: nx.MultiDiGraph, paths: list[Path]) -> nx.MultiDiGraph:
-    class CallGraphVisitor(ast.NodeVisitor):
-        def __init__(self, graph):
-            self.graph = graph
-            self.current = None
-
-        def visit_FunctionDef(self, node):
-            self.current = node.name
-            self.generic_visit(node)
-            self.current = None
-
-        def visit_Call(self, node):
-            if isinstance(node.func, ast.Name):
-                _from, _to = self.current, node.func.id
-                if _from and _to:
-                    self.graph.add_edge(_from, _to)
-            self.generic_visit(node)
-
-    for file_path in paths:
-        with open(file_path, "r") as file:
-            tree = ast.parse(file.read(), filename=file_path.name)
-        visitor = CallGraphVisitor(G)
-        visitor.visit(tree)
-    
-    return G
-
 def generate_call_graph(directory: Path) -> nx.MultiDiGraph:
     
     # Get a list of paths in git project
+    if not (directory / '.git').exists():
+        raise ValueError('Not a git repository')
     paths = subprocess.run(
         ["git", "ls-files"], cwd=directory, capture_output=True, text=True
     ).stdout.splitlines()
-    paths = [Path(p) for p in paths if p.endswith(".py")]
-    for path in paths:
-        print(path)
-    print()
+    paths = [Path(p) for p in paths]
 
     G = nx.MultiDiGraph()
-    #G = generate_ast_call_graph(G, paths)
     G = generate_treesitter_call_graph(G, paths)
     G = add_coordiantes_to_graph(G)
     return G

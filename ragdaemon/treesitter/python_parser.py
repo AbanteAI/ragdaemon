@@ -3,8 +3,6 @@ from pathlib import Path
 import networkx as nx
 from tree_sitter import Language, Node, Parser
 
-from ragdaemon.treesitter.build_treesitter import build_treesitter
-
 
 def _clean_text(node: Node) -> str:
     """Return a cleaned version of the node's text."""
@@ -23,6 +21,7 @@ def parse_node(G: nx.MultiDiGraph, node: Node, path_str: str, namespace: dict) -
 
     # Imports: Load into namespace
     if node_type in ("import_statement", "import_from_statement"):
+        # Parsing the raw string is actually simpler than using the tree
         import_text = _clean_text(node)
         _module, _target = import_text.split("import")
         if _module:
@@ -130,21 +129,4 @@ def parse_python_files(G: nx.MultiDiGraph, paths: list[Path]) -> nx.MultiDiGraph
     for graph in subgraphs:
         G = nx.compose(G, graph)
 
-    return G
-
-
-def generate_treesitter_call_graph(G: nx.MultiDiGraph, paths: list[Path]) -> nx.MultiDiGraph:
-    """Load paths into a call graph using treesitter."""
-    if not (Path(__file__).parent / "ts-lang.so").exists():
-        print(f"Building treesitter...")
-        build_treesitter(cleanup=True)
-
-    python_paths = [path for path in paths if path.suffix == ".py"]
-    if python_paths:
-        G = parse_python_files(G, python_paths)
-
-    unsupported_extensions = {path.suffix for path in paths if path.suffix != ".py"}
-    if unsupported_extensions:
-        print(f"Unsupported file extensions: {unsupported_extensions}")
-    
     return G

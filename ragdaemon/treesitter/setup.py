@@ -8,7 +8,7 @@ TEMP_DIR = Path(__file__).parent / "grammars"
 
 LANGUAGES = {
     "python": "https://github.com/tree-sitter/tree-sitter-python",
-    "javascript": "https://github.com/tree-sitter/tree-sitter-javascript",
+    # "javascript": "https://github.com/tree-sitter/tree-sitter-javascript",
 }
 
 
