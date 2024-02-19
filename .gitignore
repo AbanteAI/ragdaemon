@@ -1,3 +1,4 @@
 .*
 venv
 **/*__pycache__
+ragdaemon/treesitter/ts-lang.so

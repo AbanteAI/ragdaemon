@@ -16,7 +16,7 @@ camera.position.set(0, 0.7, 2.5);
 
 // Render nodes based on coordinates
 SCALE = Math.sqrt(1 / nodes.length);
-node_radius = SCALE / 5
+node_radius = SCALE / 10
 nodes.forEach(node => {
     const geometry = new THREE.SphereGeometry(node_radius, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: "white" });
@@ -32,8 +32,8 @@ nodes.forEach(node => {
         loader.load(font_url, font => {
             const textGeometry = new THREE.TextGeometry(text, {
                 font: font,
-                size: SCALE / 5, // Reduced size by 50%
-                height: SCALE / 10,
+                size: SCALE / 5,
+                height: 0,
                 curveSegments: 12,
                 bevelEnabled: false,
             });

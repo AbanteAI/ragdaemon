@@ -7,4 +7,5 @@ MarkupSafe==2.1.5
 networkx==3.2.1
 numpy==1.26.4
 scipy==1.12.0
+tree-sitter==0.20.4
 Werkzeug==3.0.1

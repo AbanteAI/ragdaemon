@@ -5,6 +5,8 @@ from math import sqrt
 
 import networkx as nx
 
+from ragdaemon.treesitter.parser import generate_treesitter_call_graph
+
 
 def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     # Add x, y coordiantes with spring layout
@@ -36,7 +38,7 @@ def add_coordiantes_to_graph(G: nx.MultiDiGraph) -> nx.MultiDiGraph:
     return G
 
 
-def generate_ast_call_graph(paths: list[Path]) -> nx.MultiDiGraph:
+def generate_ast_call_graph(G: nx.MultiDiGraph, paths: list[Path]) -> nx.MultiDiGraph:
     class CallGraphVisitor(ast.NodeVisitor):
         def __init__(self, graph):
             self.graph = graph
@@ -54,7 +56,6 @@ def generate_ast_call_graph(paths: list[Path]) -> nx.MultiDiGraph:
                     self.graph.add_edge(_from, _to)
             self.generic_visit(node)
 
-    G = nx.MultiDiGraph()
     for file_path in paths:
         with open(file_path, "r") as file:
             tree = ast.parse(file.read(), filename=file_path.name)
@@ -74,6 +75,8 @@ def generate_call_graph(directory: Path) -> nx.MultiDiGraph:
         print(path)
     print()
 
-    G = generate_ast_call_graph(paths)
+    G = nx.MultiDiGraph()
+    #G = generate_ast_call_graph(G, paths)
+    G = generate_treesitter_call_graph(G, paths)
     G = add_coordiantes_to_graph(G)
     return G
