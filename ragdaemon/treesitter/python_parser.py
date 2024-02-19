@@ -19,67 +19,72 @@ def parse_node(G: nx.MultiDiGraph, node: Node, path_str: str, namespace: dict) -
     """Add relevant parts of a node (recursively) to the graph and namespace."""
     node_type = node.type
 
-    # Imports: Load into namespace
-    if node_type in ("import_statement", "import_from_statement"):
-        # Parsing the raw string is actually simpler than using the tree
-        import_text = _clean_text(node)
-        _module, _target = import_text.split("import")
-        if _module:
-            _module = _module.replace("from", "").strip()
-        else:
-            _module = ""
-        for target in _target.split(","):
-            target = target.strip()
-            alias = target
-            if " as " in alias:
-                target, alias = alias.split(" as ")
+    try:
+
+        # Imports: Load into namespace
+        if node_type in ("import_statement", "import_from_statement"):
+            # Parsing the raw string is actually simpler than using the tree
+            import_text = _clean_text(node)
+            _module, _target = import_text.split("import")
             if _module:
-                target = _module + ":" + target
-            namespace[alias] = target
-            
-    # Classes: Add nodes, pass path_str:<class_name> to children
-    elif node_type == "class_definition":
-        class_name = _clean_field(node, "name")
-        node_name = f"{path_str}:{class_name}"
-        G.add_node(node_name, type="class")
-        namespace[class_name] = node_name
-        for child in node.children:
-            G = parse_node(G, child, node_name, namespace)
-
-    # Functions: Add nodes, pass path_str.<function_name> to children
-    elif node_type == "function_definition":
-        function_name = _clean_field(node, "name")
-        node_name = f"{path_str}:{function_name}"
-        G.add_node(node_name, type="function")
-        namespace[function_name] = node_name
-        for child in node.children:
-            G = parse_node(G, child, node_name, namespace.copy())
-
-    # Calls: Add edges, use path_str and the function name
-    elif node_type == "call":
-        from_node = path_str
-        to_node = _clean_field(node, "function")
-        if "." in to_node: # methods
-            splits = to_node.split(".")
-            to_node = splits[-1]
-            caller = ".".join(splits[:-1])
-            if caller in namespace:
-                to_node = f"{namespace[caller]}:{to_node}"
+                _module = _module.replace("from", "").strip()
             else:
-                # TODO: Match based on variable type (namespace)
-                pass
-        if to_node in namespace:
-            to_node = namespace[to_node]
-        else:
-            # TODO: Label built-in functions
-            pass
-        G.add_edge(from_node, to_node)
-        for child in node.children:
-            G = parse_node(G, child, path_str, namespace)
+                _module = ""
+            for target in _target.split(","):
+                target = target.strip()
+                alias = target
+                if " as " in alias:
+                    target, alias = alias.split(" as ")
+                if _module:
+                    target = _module + ":" + target
+                namespace[alias] = target
+                
+        # Classes: Add nodes, pass path_str:<class_name> to children
+        elif node_type == "class_definition":
+            class_name = _clean_field(node, "name")
+            node_name = f"{path_str}:{class_name}"
+            G.add_node(node_name, type="class")
+            namespace[class_name] = node_name
+            for child in node.children:
+                G = parse_node(G, child, node_name, namespace)
 
-    elif node.children:
-        for child in node.children:
-            G = parse_node(G, child, path_str, namespace)    
+        # Functions: Add nodes, pass path_str.<function_name> to children
+        elif node_type == "function_definition":
+            function_name = _clean_field(node, "name")
+            node_name = f"{path_str}:{function_name}"
+            G.add_node(node_name, type="function")
+            namespace[function_name] = node_name
+            for child in node.children:
+                G = parse_node(G, child, node_name, namespace.copy())
+
+        # Calls: Add edges, use path_str and the function name
+        elif node_type == "call":
+            from_node = path_str
+            to_node = _clean_field(node, "function")
+            if "." in to_node: # methods
+                splits = to_node.split(".")
+                to_node = splits[-1]
+                caller = ".".join(splits[:-1])
+                if caller in namespace:
+                    to_node = f"{namespace[caller]}:{to_node}"
+                else:
+                    # TODO: Match based on variable type (namespace)
+                    pass
+            if to_node in namespace:
+                to_node = namespace[to_node]
+            else:
+                # TODO: Label built-in functions
+                pass
+            G.add_edge(from_node, to_node)
+            for child in node.children:
+                G = parse_node(G, child, path_str, namespace)
+
+        elif node.children:
+            for child in node.children:
+                G = parse_node(G, child, path_str, namespace)    
+
+    except Exception as e:
+        print(f"Error parsing node {node_type} at {path_str}: {e}")
     
     return G
 
@@ -88,7 +93,10 @@ def parse_python_file(parser: Parser, path: Path) -> nx.MultiDiGraph:
     """Return a new call graph from a Python file."""
     G = nx.MultiDiGraph()
 
-    path_str = ".".join(path.with_suffix("").parts)
+    # Convert the absolute path to a relative path from the project root directory
+    project_root = Path.cwd()
+    relative_path = path if not path.is_absolute() else path.relative_to(project_root)
+    path_str = ".".join(relative_path.with_suffix("").parts)
     namespace = {}  # {alias: target}
 
     source_code = path.read_text()
@@ -101,7 +109,8 @@ def parse_python_file(parser: Parser, path: Path) -> nx.MultiDiGraph:
             break
 
     # Resolve namespace
-    for node in G.nodes:
+    all_nodes = list(G.nodes)
+    for node in all_nodes:
         if node in namespace:
             G.add_node(namespace[node], **G.nodes[node])
             for _from, _, data in G.in_edges(node, data=True):
