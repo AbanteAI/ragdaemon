@@ -6,6 +6,13 @@
 </head>
 <body>
     <style>
+        #scene-container {
+            width: 66.67%;
+            height: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
         #control-panel {
             position: fixed;
             right: 0;
@@ -17,17 +24,24 @@
             z-index: 10; /* Ensure the control-panel is above other content */
             padding: 8px;
         }
-        #scene-container {
-            width: 66.67%;
-            height: 100%;
-            position: fixed;
-            left: 0;
-            top: 0;
+        #button-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+        }
+        #selected-node-display {
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #d3d3d3;
+            border-radius: 4px;
+            background-color: #fff;
         }
     </style>
     <div id="scene-container"></div>
     <div id="control-panel">
-        <!-- Control elements will be added here -->
+        <h1 id="header"></h1>
+        <div id="button-container"></div>
+        <div id="selected-node-display"></div>
     </div>
     <!-- Include Three.js from a CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.125.2/build/three.min.js"></script>

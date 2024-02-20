@@ -50,14 +50,31 @@ const addNode = (node) => {
                 edge.userData.setSelected(selected);
                 nodesToUpdate.add(edge.userData.source);
                 nodesToUpdate.add(edge.userData.target);
+            } else {
+                edge.userData.setSelected(false);
             }
         });
         const nodes = scene.children.filter(child => child.userData.type === "node");
-        nodes.forEach(node => {
-            if (nodesToUpdate.has(node.userData.id)) {
-                node.userData.setSelected(selected);
+        nodes.forEach(_node => {
+            if (nodesToUpdate.has(_node.userData.id)) {
+                _node.userData.setSelected(selected);
+            } else {
+                _node.userData.setSelected(false);
             }
         });
+
+        // Update controlPanel
+        const selectedNodeDisplay = document.getElementById('selected-node-display');
+        if (selected) {
+            selectedNodeDisplay.style.display = "block";
+            const name = node.id.split(/\.|:/).pop();
+            selectedNodeDisplay.innerHTML = `<h3>${name}</h3>\n`
+            Object.entries(node).forEach(([key, value]) => {
+                selectedNodeDisplay.innerHTML += `<li>${key}: ${value}</li>`
+            })
+        } else {
+            selectedNodeDisplay.style.display = "none";
+        }
     };
 }
 

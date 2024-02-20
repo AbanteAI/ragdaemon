@@ -18,7 +18,7 @@ def _clean_field(node: Node, field: str) -> str:
     return _clean_text(_field) if _field else ""
 
 
-def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict) -> nx.MultiDiGraph:
+def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict, import_libs: dict = {}) -> nx.MultiDiGraph:
     """Add relevant parts of a node (recursively) to the graph and namespace."""
     node_type = node.type
 
@@ -38,11 +38,11 @@ def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict) 
                 spec = importlib.util.find_spec(_target)
             if spec:
                 if "site-packages" in spec.origin:
-                    import_type = "package"  # "numpy"
+                    library = "package"  # "numpy"
                 elif "lib/python" in spec.origin:
-                    import_type = "stdlib"  # "os"
+                    library = "stdlib"  # "os"
                 else:
-                    import_type = "local"  # "src.operations"
+                    library = "module"  # "src.operations"
                     relative_path = Path(spec.origin).relative_to(Path.cwd())
                     _module = ".".join(relative_path.with_suffix("").parts)
                 for target in _target.split(","):
@@ -53,24 +53,25 @@ def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict) 
                     if _module:
                         target = _module + ":" + target
                     namespace[alias] = target
+                    import_libs[target] = library
                 
         # Classes: Add nodes, pass parent_id:<class_name> to children
         elif node_type == "class_definition":
             class_name = _clean_field(node, "name")
             node_name = f"{parent_id}:{class_name}"
-            G.add_node(node_name, type="class")
+            G.add_node(node_name, type="class", library="module")
             namespace[class_name] = node_name
             for child in node.children:
-                G = parse_node(G, child, node_name, namespace)
+                G = parse_node(G, child, node_name, namespace, import_libs)
 
         # Functions: Add nodes, pass parent_id.<function_name> to children
         elif node_type == "function_definition":
             function_name = _clean_field(node, "name")
             node_name = f"{parent_id}:{function_name}"
-            G.add_node(node_name, type="function")
+            G.add_node(node_name, type="function", library="module")
             namespace[function_name] = node_name
             for child in node.children:
-                G = parse_node(G, child, node_name, namespace.copy())
+                G = parse_node(G, child, node_name, namespace.copy(), import_libs)
 
         # Calls: Add edges, use parent_id and the function name
         elif node_type == "call":
@@ -87,16 +88,16 @@ def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict) 
                     pass
             if to_node in namespace:
                 to_node = namespace[to_node]
-            else:
-                # TODO: Label built-in functions
-                pass
+            if to_node not in G.nodes:
+                library = import_libs.get(to_node, "builtin")
+                G.add_node(to_node, type="function", library=library)
             G.add_edge(from_node, to_node)
             for child in node.children:
-                G = parse_node(G, child, parent_id, namespace)
+                G = parse_node(G, child, parent_id, namespace, import_libs)
 
         elif node.children:
             for child in node.children:
-                G = parse_node(G, child, parent_id, namespace)    
+                G = parse_node(G, child, parent_id, namespace, import_libs)    
 
     except Exception as e:
         print(f"Error parsing node {node_type} at {parent_id}: {e}")
