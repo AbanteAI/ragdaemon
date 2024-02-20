@@ -99,6 +99,9 @@ def parse_python_file(parser: Parser, path: Path) -> nx.MultiDiGraph:
     path_str = ".".join(relative_path.with_suffix("").parts)
     namespace = {}  # {alias: target}
 
+    G.add_node(path_str, type="file")
+    namespace[path_str] = path_str
+
     source_code = path.read_text()
     tree = parser.parse(bytes(source_code, "utf8"))
     cursor = tree.walk()
@@ -110,13 +113,17 @@ def parse_python_file(parser: Parser, path: Path) -> nx.MultiDiGraph:
 
     # Resolve namespace
     all_nodes = list(G.nodes)
+    all_edges = list(G.edges(data=True))
     for node in all_nodes:
         if node in namespace:
             G.add_node(namespace[node], **G.nodes[node])
-            for _from, _, data in G.in_edges(node, data=True):
-                G.add_edge(_from, namespace[node], **data)
-            for _, _to, data in G.out_edges(node, data=True):
-                G.add_edge(namespace[node], _to, **data)
+            for _from, _to, data in all_edges[:]:
+                if _from == node:
+                    G.add_edge(_from, namespace[node], **data)
+                    all_edges.remove((_from, _to, data))
+                if _to == node:
+                    G.add_edge(namespace[node], _to, **data)
+                    all_edges.remove((_from, _to, data))
             G.remove_node(node)
     return G
 

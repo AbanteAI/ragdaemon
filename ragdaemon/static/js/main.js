@@ -1,72 +1,24 @@
-console.log("nodes: ", nodes);
-console.log("links: ", links);
-console.log("metadata: ", metadata)
+import scene from './three/scene.js';
+import camera from './three/camera.js';
+import renderer from './three/renderer.js';
+import controls from './three/controls.js';
+import raycaster from './three/raycaster.js';
+import addNode from './three/node.js';
+import addLink from './three/link.js';
 
-// Scene setup
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+// Global variables
+// console.log("nodes: ", nodes);
+// console.log("edges: ", edges);
+// console.log("metadata: ", metadata)
+// console.log("SCALE: ", SCALE)
+// console.log("NODE_RADIUS: ", NODE_RADIUS)
 
-// Initialize OrbitControls
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.7, 0);
-camera.position.set(0, 0.7, 2.5);
-
-// Render nodes based on coordinates
-SCALE = Math.sqrt(1 / nodes.length);
-node_radius = SCALE / 5; // Increased radius for better click detection
 nodes.forEach(node => {
-    const geometry = new THREE.SphereGeometry(node_radius, 32, 32);
-    const material = new THREE.MeshBasicMaterial({ color: "white" });
-    const sphere = new THREE.Mesh(geometry, material);
-    sphere.position.set(node.x, node.y, node.z);
-    sphere.userData = {text: node.id};
-    scene.add(sphere);
-    
-    // Function to create a 3D text label
-    function create3DTextLabel(text, position) {
-        const loader = new THREE.FontLoader();
-        font_url = 'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json';
-        // Load a font
-        loader.load(font_url, font => {
-            const textGeometry = new THREE.TextGeometry(text, {
-                font: font,
-                size: SCALE / 5,
-                height: 0,
-                curveSegments: 12,
-                bevelEnabled: false,
-            });
-            const textMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-            textMesh.position.set(position.x, position.y + (2 * node_radius), position.z); // Centered horizontally and twice as close
-            textMesh.geometry.center(); // Center the text geometry
-            scene.add(textMesh);
-        });
-    }
-    create3DTextLabel(node.id, {x: node.x, y: node.y, z: node.z});
-});
-// Render links as arrows
-links.forEach(link => {
-    const sourceNode = nodes.find(node => node.id === link.source);
-    const targetNode = nodes.find(node => node.id === link.target);
-
-    if (sourceNode && targetNode) {
-        const dir = new THREE.Vector3(targetNode.x - sourceNode.x, targetNode.y - sourceNode.y, targetNode.z - sourceNode.z);
-        const length = dir.length() - node_radius;
-        dir.normalize();
-        const arrowHelper = new THREE.ArrowHelper(
-            dir, 
-            new THREE.Vector3(sourceNode.x, sourceNode.y, sourceNode.z), 
-            length, 
-            "lime", 
-            SCALE / 5, 
-            SCALE / 5,
-        );
-        scene.add(arrowHelper);
-    }
-});
+    addNode(node);
+})
+edges.forEach(link => {
+    addLink(link);
+})
 
 // Animation loop
 function animate() {
@@ -82,30 +34,3 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }, false);
-
-// Raycaster for mouse interaction
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-raycaster.far = camera.far * 10; // Set the raycaster's maximum distance to the camera's far plane
-raycaster.params.Mesh.threshold = node_radius * 10; // Set threshold to the radius of the spheres
-
-function onMouseClick(event) {
-    // Calculate mouse position in normalized device coordinates
-    // (-1 to +1) for both components
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
-
-    // Update the picking ray with the camera and mouse position
-    raycaster.setFromCamera(mouse, camera);
-
-    // Calculate objects intersecting the picking ray
-    const nodes = scene.children.filter(child => child.userData && child.userData.text);
-    const intersects = raycaster.intersectObjects(nodes)
-    for (let i = 0; i < intersects.length; i++) {
-        console.log(intersects[i].object.userData.text);
-        break; // Assuming we only want to log the first object that was clicked
-    }
-}
-
-// Add event listener for mouse clicks
-window.addEventListener('click', onMouseClick, false);
