@@ -1,3 +1,6 @@
+import importlib
+import importlib.util
+import sys
 from pathlib import Path
 
 import networkx as nx
@@ -15,7 +18,7 @@ def _clean_field(node: Node, field: str) -> str:
     return _clean_text(_field) if _field else ""
 
 
-def parse_node(G: nx.MultiDiGraph, node: Node, path_str: str, namespace: dict) -> nx.MultiDiGraph:
+def parse_node(G: nx.MultiDiGraph, node: Node, parent_id: str, namespace: dict) -> nx.MultiDiGraph:
     """Add relevant parts of a node (recursively) to the graph and namespace."""
     node_type = node.type
 
@@ -25,41 +28,53 @@ def parse_node(G: nx.MultiDiGraph, node: Node, path_str: str, namespace: dict) -
         if node_type in ("import_statement", "import_from_statement"):
             # Parsing the raw string is actually simpler than using the tree
             import_text = _clean_text(node)
+            spec = None
             _module, _target = import_text.split("import")
             if _module:
                 _module = _module.replace("from", "").strip()
+                spec = importlib.util.find_spec(_module)
             else:
                 _module = ""
-            for target in _target.split(","):
-                target = target.strip()
-                alias = target
-                if " as " in alias:
-                    target, alias = alias.split(" as ")
-                if _module:
-                    target = _module + ":" + target
-                namespace[alias] = target
+                spec = importlib.util.find_spec(_target)
+            if spec:
+                if "site-packages" in spec.origin:
+                    import_type = "package"  # "numpy"
+                elif "lib/python" in spec.origin:
+                    import_type = "stdlib"  # "os"
+                else:
+                    import_type = "local"  # "src.operations"
+                    relative_path = Path(spec.origin).relative_to(Path.cwd())
+                    _module = ".".join(relative_path.with_suffix("").parts)
+                for target in _target.split(","):
+                    target = target.strip()
+                    alias = target
+                    if " as " in alias:
+                        target, alias = alias.split(" as ")
+                    if _module:
+                        target = _module + ":" + target
+                    namespace[alias] = target
                 
-        # Classes: Add nodes, pass path_str:<class_name> to children
+        # Classes: Add nodes, pass parent_id:<class_name> to children
         elif node_type == "class_definition":
             class_name = _clean_field(node, "name")
-            node_name = f"{path_str}:{class_name}"
+            node_name = f"{parent_id}:{class_name}"
             G.add_node(node_name, type="class")
             namespace[class_name] = node_name
             for child in node.children:
                 G = parse_node(G, child, node_name, namespace)
 
-        # Functions: Add nodes, pass path_str.<function_name> to children
+        # Functions: Add nodes, pass parent_id.<function_name> to children
         elif node_type == "function_definition":
             function_name = _clean_field(node, "name")
-            node_name = f"{path_str}:{function_name}"
+            node_name = f"{parent_id}:{function_name}"
             G.add_node(node_name, type="function")
             namespace[function_name] = node_name
             for child in node.children:
                 G = parse_node(G, child, node_name, namespace.copy())
 
-        # Calls: Add edges, use path_str and the function name
+        # Calls: Add edges, use parent_id and the function name
         elif node_type == "call":
-            from_node = path_str
+            from_node = parent_id
             to_node = _clean_field(node, "function")
             if "." in to_node: # methods
                 splits = to_node.split(".")
@@ -77,14 +92,14 @@ def parse_node(G: nx.MultiDiGraph, node: Node, path_str: str, namespace: dict) -
                 pass
             G.add_edge(from_node, to_node)
             for child in node.children:
-                G = parse_node(G, child, path_str, namespace)
+                G = parse_node(G, child, parent_id, namespace)
 
         elif node.children:
             for child in node.children:
-                G = parse_node(G, child, path_str, namespace)    
+                G = parse_node(G, child, parent_id, namespace)    
 
     except Exception as e:
-        print(f"Error parsing node {node_type} at {path_str}: {e}")
+        print(f"Error parsing node {node_type} at {parent_id}: {e}")
     
     return G
 
@@ -96,18 +111,18 @@ def parse_python_file(parser: Parser, path: Path) -> nx.MultiDiGraph:
     # Convert the absolute path to a relative path from the project root directory
     project_root = Path.cwd()
     relative_path = path if not path.is_absolute() else path.relative_to(project_root)
-    path_str = ".".join(relative_path.with_suffix("").parts)
+    path_id = ".".join(relative_path.with_suffix("").parts)
     namespace = {}  # {alias: target}
 
-    G.add_node(path_str, type="file")
-    namespace[path_str] = path_str
+    G.add_node(path_id, type="file")
+    namespace[path_id] = path_id
 
     source_code = path.read_text()
     tree = parser.parse(bytes(source_code, "utf8"))
     cursor = tree.walk()
     cursor.goto_first_child()
     while True:
-        G = parse_node(G, cursor.node, path_str, namespace)
+        G = parse_node(G, cursor.node, path_id, namespace)
         if not cursor.goto_next_sibling():
             break
 
