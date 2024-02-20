@@ -6,36 +6,50 @@ import raycaster from './three/raycaster.js';
 import addNode from './three/node.js';
 import addEdge from './three/edge.js';
 
-// Global variables
-// console.log("nodes: ", nodes);
-// console.log("edges: ", edges);
-// console.log("metadata: ", metadata)
-// console.log("SCALE: ", SCALE)
-// console.log("NODE_RADIUS: ", NODE_RADIUS)
+import startControlPanel from './controlPanel.js';
 
-nodes.forEach(node => {
-    addNode(node);
-})
-edges.forEach(edge => {
-    addEdge(edge);
-})
+/*
 
-// Animation loop
-function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-    controls.update();
+Global variables
+================
+nodes       array[object]
+edges       array[object]
+metadata    object
+SCALE       float
+NODE_RADIUS float
+*/
+
+
+const initialize = () => {
+    // Load the graph
+    nodes.forEach(node => {
+        addNode(node);
+    })
+    edges.forEach(edge => {
+        addEdge(edge);
+    })
+    // Select root node (highest y)
+    const rootNode = nodes.reduce((acc, node) => node.y > acc.y ? node : acc);
+    const rootSphere = scene.children.find(child => child.userData.id === rootNode.id);
+    rootSphere.userData.handleClick();
+    // Main animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+        controls.update();
+    }
+    animate();
+    
+    // Handle window resize
+    const sceneContainer = document.getElementById('scene-container');
+    const resize = () => {
+        camera.aspect = sceneContainer.clientWidth / sceneContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    startControlPanel();
 }
-animate();
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-}, false);
-
-// Initialize with root node (highest y-coordinate) selected
-const rootNode = nodes.reduce((acc, node) => node.y > acc.y ? node : acc);
-const rootSphere = scene.children.find(child => child.userData.id === rootNode.id);
-rootSphere.userData.handleClick();
+initialize();

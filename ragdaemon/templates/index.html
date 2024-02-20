@@ -5,6 +5,30 @@
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 </head>
 <body>
+    <style>
+        #control-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 33.33%;
+            height: 100%;
+            background-color: #f3f3f3; /* Light grey background */
+            overflow-y: auto; /* Enable vertical scrolling */
+            z-index: 10; /* Ensure the control-panel is above other content */
+            padding: 8px;
+        }
+        #scene-container {
+            width: 66.67%;
+            height: 100%;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
+    </style>
+    <div id="scene-container"></div>
+    <div id="control-panel">
+        <!-- Control elements will be added here -->
+    </div>
     <!-- Include Three.js from a CDN -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.125.2/build/three.min.js"></script>
 

@@ -50,3 +50,12 @@ def generate_call_graph(directory: Path) -> nx.MultiDiGraph:
     G = generate_treesitter_call_graph(G, paths)
     G = add_coordiantes_to_graph(G)
     return G
+
+
+_call_graph = None
+def get_call_graph(directory: Path) -> nx.MultiDiGraph:
+    global _call_graph
+    if _call_graph is None:
+        # TODO: Load and update
+        _call_graph = generate_call_graph(directory)
+    return _call_graph

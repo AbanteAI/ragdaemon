@@ -1,7 +1,8 @@
 import camera from './camera.js';
 import renderer from './renderer.js';
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const container = document.getElementById('scene-container');
+const controls = new THREE.OrbitControls(camera, container);
 
 controls.target.set(0, 0.7, 0);
 
