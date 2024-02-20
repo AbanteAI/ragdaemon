@@ -34,3 +34,8 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }, false);
+
+// Initialize with root node (highest y-coordinate) selected
+const rootNode = nodes.reduce((acc, node) => node.y > acc.y ? node : acc);
+const rootSphere = scene.children.find(child => child.userData.id === rootNode.id);
+rootSphere.userData.handleClick();
