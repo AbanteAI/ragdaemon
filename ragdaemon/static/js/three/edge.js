@@ -1,8 +1,8 @@
 import scene from './scene.js';
 
-const addLink = (link) => {
-    const sourceNode = nodes.find(node => node.id === link.source);
-    const targetNode = nodes.find(node => node.id === link.target);
+const addEdge = (edge) => {
+    const sourceNode = nodes.find(node => node.id === edge.source);
+    const targetNode = nodes.find(node => node.id === edge.target);
     
     if (sourceNode && targetNode) {
         const dir = new THREE.Vector3(targetNode.x - sourceNode.x, targetNode.y - sourceNode.y, targetNode.z - sourceNode.z);
@@ -12,12 +12,16 @@ const addLink = (link) => {
             dir, 
             new THREE.Vector3(sourceNode.x, sourceNode.y, sourceNode.z), 
             length, 
-            "lime", 
+            "white", 
             SCALE / 5, 
             SCALE / 5,
         );
+        arrowHelper.userData = {type: "edge", source: edge.source, target: edge.target, selected: false};        
         scene.add(arrowHelper);
+        arrowHelper.userData.setSelected = (selected) => {
+            arrowHelper.setColor(selected ? "lime" : "white");
+        }
     }
 }
 
-export default addLink;
+export default addEdge;

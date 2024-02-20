@@ -4,7 +4,7 @@ import renderer from './three/renderer.js';
 import controls from './three/controls.js';
 import raycaster from './three/raycaster.js';
 import addNode from './three/node.js';
-import addLink from './three/link.js';
+import addEdge from './three/edge.js';
 
 // Global variables
 // console.log("nodes: ", nodes);
@@ -16,8 +16,8 @@ import addLink from './three/link.js';
 nodes.forEach(node => {
     addNode(node);
 })
-edges.forEach(link => {
-    addLink(link);
+edges.forEach(edge => {
+    addEdge(edge);
 })
 
 // Animation loop

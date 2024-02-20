@@ -16,11 +16,12 @@ function onMouseClick(event) {
     raycaster.setFromCamera(mouse, camera);
 
     // Calculate objects intersecting the picking ray
-    const clickables = scene.children.filter(child => child.userData && child.userData.text);
+    // Filter objects by those that have a toggleSelected method
+    const clickables = scene.children.filter(child => child.userData.handleClick);
     const intersects = raycaster.intersectObjects(clickables)
     for (let i = 0; i < intersects.length; i++) {
-        console.log(intersects[i].object.userData.text);
-        break; // Assuming we only want to log the first object that was clicked
+        intersects[i].object.userData.handleClick();
+        break
     }
 }
 
