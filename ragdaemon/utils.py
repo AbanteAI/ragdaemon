@@ -5,6 +5,14 @@ from pathlib import Path
 from typing import Set
 
 
+IGNORE_PATTERNS = [
+    ".*",
+    "node_modules",
+    "venv",
+    "__pycache__",
+]
+
+
 # Adapted from mentat.get_non_gitignored_files / is_file_text_encoded
 def get_active_files(cwd: Path, visited: set[Path] = set()) -> Set[Path]:
     # All non-ignored and untracked files
@@ -34,9 +42,17 @@ def get_active_files(cwd: Path, visited: set[Path] = set()) -> Set[Path]:
             )
         else:
             file_paths.add(path)
+    # Ignore patterns
+    valid_files = set()
+    for file in file_paths:
+        if not any(
+            file.match(pattern) or file.parts[0] == pattern
+            for pattern in IGNORE_PATTERNS
+        ):
+            valid_files.add(file)
     # Only text files
     text_files: Set[Path] = set()
-    for file in file_paths:
+    for file in valid_files:
         try:
             with open(cwd / file, "r") as f:
                 f.read()

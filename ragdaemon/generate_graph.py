@@ -2,7 +2,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from litellm import completion
+from litellm import acompletion
 import networkx as nx
 
 from ragdaemon.utils import get_active_files, get_file_checksum
@@ -91,7 +91,7 @@ class RDGraph(nx.MultiDiGraph):
             ]
         }, indent=4)
 
-def get_pseudo_call_graph_for_file(
+async def get_pseudo_call_graph_for_file(
     file: Path, graph: RDGraph, cwd: Path, graph_cache: dict = {}
 ) -> RDGraph:
     file_lines = (cwd / file).read_text().splitlines()
@@ -102,11 +102,11 @@ def get_pseudo_call_graph_for_file(
         {"role": "user", "content": f"FILE:\n{file_message}"},
     ]
     checksum = get_file_checksum(cwd / file)
-    # TODO: Also check some graph dependencies, e.g. parents' checksums
     if checksum not in graph_cache:
+        # TODO: Add retry loop
         graph_message = graph._render_graph_message()
         messages.insert(1, {"role": "user", "content": f"WORKING GRAPH:\n{graph_message}"})
-        response = completion(
+        response = await acompletion(
             model="gpt-4-turbo-preview",
             messages=messages,
             response_format={ "type": "json_object" },
@@ -114,9 +114,11 @@ def get_pseudo_call_graph_for_file(
         new_nodes_and_edges = json.loads(response["choices"][0]["message"]["content"])
         # Add unique ID and path string for new nodes
         for node in new_nodes_and_edges["nodes"]:
-            line_id = f":{node['start_line']}-{node['end_line']}"
-            node["path"] = f"{file}:{line_id}"
-            node["checksum"] = f"{checksum}:{line_id}"
+            _start, _end = node.get("start_line"), node.get("end_line")
+            if not _start or not _end:
+                continue  # TODO: Handle
+            node["path"] = f"{file}:{_start}-{_end}"
+            node["checksum"] = f"{checksum}:{_start}-{_end}"
         # Add a node for the file itself
         new_nodes_and_edges["nodes"].append({
             "id": f"{file}", 
@@ -152,11 +154,13 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
         )
     
     # Parse all files with LLM
-    semaphore = asyncio.Semaphore(10)
+    semaphore = asyncio.Semaphore(20)
     async def _get_pseudo_call_graph_for_file(file: Path):
         async with semaphore:
-            new_graph = get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
+            new_graph = await get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
             for node in new_graph["nodes"]:
+                if not all(k in node for k in ("id", "type", "path", "checksum")):
+                    continue 
                 graph.add_node(
                     node_for_adding=node["id"],
                     type=node["type"],
@@ -172,7 +176,8 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
                     key=None,
                     type=edge["type"],
                 )
-    await asyncio.gather(*[_get_pseudo_call_graph_for_file(file) for file in text_files])
+    tasks = [_get_pseudo_call_graph_for_file(file) for file in text_files]
+    await asyncio.gather(*tasks)
 
     with open(graph_cache_path, "w") as f:
         f.write(json.dumps(graph_cache, indent=4))
