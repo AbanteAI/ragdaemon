@@ -4,6 +4,7 @@ from pathlib import Path
 
 from litellm import acompletion
 import networkx as nx
+from tqdm.asyncio import tqdm
 
 from ragdaemon.utils import get_active_files, get_file_checksum
 
@@ -177,7 +178,7 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
                     type=edge["type"],
                 )
     tasks = [_get_pseudo_call_graph_for_file(file) for file in text_files]
-    await asyncio.gather(*tasks)
+    await tqdm.gather(*tasks, desc="Processing files", unit="file")
 
     with open(graph_cache_path, "w") as f:
         f.write(json.dumps(graph_cache, indent=4))
