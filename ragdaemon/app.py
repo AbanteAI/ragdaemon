@@ -2,15 +2,16 @@ from pathlib import Path
 
 from flask import Flask, render_template
 
-from ragdaemon.call_graph import get_call_graph
+from ragdaemon.generate_graph import generate_pseudo_call_graph
+from ragdaemon.position_nodes import add_coordiantes_to_graph
 
 
 app = Flask(__name__)
 
 
 # Initialize it
-graph = get_call_graph(Path.cwd()) 
- 
+graph = generate_pseudo_call_graph(Path.cwd()) 
+graph = add_coordiantes_to_graph(graph)
 
 @app.route('/')
 def home():

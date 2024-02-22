@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-from typing import Any
 
 from litellm import completion
 import networkx as nx
@@ -142,6 +141,8 @@ def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
     if graph_cache_path.exists():
         with open(graph_cache_path, "r") as f:
             graph_cache = json.load(f)
+    else:
+        graph_cache_path.parent.mkdir(exist_ok=True)
     # Add all text files' names to the graph for context
     for file in text_files:
         graph.add_node(
