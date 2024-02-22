@@ -28,4 +28,4 @@ classifiers = [
 Homepage = "https://github.com/AbanteAI/ragdaemon"
 
 [project.scripts]
-ragdaemon = "ragdaemon.app:main"
+ragdaemon = "ragdaemon.__main__:run"

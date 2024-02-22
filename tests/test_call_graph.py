@@ -17,14 +17,15 @@ def change_cwd_to_sample():
     os.chdir(prev_cwd)
 
 
-def test_parse_python_files(change_cwd_to_sample):
+@pytest.mark.asyncio
+async def test_parse_python_files(change_cwd_to_sample):
 
     # Initialize the parser and the graph
     G = nx.MultiDiGraph()
     sample_dir = Path(__file__).parent / "sample"
     
     # Parse the files and generate the graph
-    G = generate_pseudo_call_graph(sample_dir)
+    G = await generate_pseudo_call_graph(sample_dir)
 
     assert len(G) > 0, "The graph should not be empty."
 

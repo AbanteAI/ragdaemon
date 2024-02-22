@@ -1,3 +1,4 @@
+import asyncio
 import json
 from pathlib import Path
 
@@ -90,7 +91,6 @@ class RDGraph(nx.MultiDiGraph):
             ]
         }, indent=4)
 
-
 def get_pseudo_call_graph_for_file(
     file: Path, graph: RDGraph, cwd: Path, graph_cache: dict = {}
 ) -> RDGraph:
@@ -126,11 +126,12 @@ def get_pseudo_call_graph_for_file(
             "path": f"{file}",
             "checksum": checksum
         })
+        # TODO: Do encapsulate nodes manually
         graph_cache[checksum] = new_nodes_and_edges
     return graph_cache[checksum]
 
 
-def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
+async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
     """Return a call graph of the whole codebase"""
     graph = RDGraph()
     text_files = get_active_files(cwd)
@@ -149,43 +150,39 @@ def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
             node_for_adding=f"{file}",
             type="file"
         )
-    # TODO: Parallelize this
-    for file in text_files:
-        new_graph = get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
-        for node in new_graph["nodes"]:
-            graph.add_node(
-                node_for_adding=node["id"],
-                type=node["type"],
-                start_line=node.get("start_line"),
-                end_line=node.get("end_line"),
-                path=node["path"],
-                checksum=node["checksum"],
-            )
-        for edge in new_graph["edges"]:
-            graph.add_edge(
-                u_for_edge=edge["source"],
-                v_for_edge=edge["target"],
-                key=None,
-                type=edge["type"],
-            )
+    
+    # Parse all files with LLM
+    semaphore = asyncio.Semaphore(10)
+    async def _get_pseudo_call_graph_for_file(file: Path):
+        async with semaphore:
+            new_graph = get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
+            for node in new_graph["nodes"]:
+                graph.add_node(
+                    node_for_adding=node["id"],
+                    type=node["type"],
+                    start_line=node.get("start_line"),
+                    end_line=node.get("end_line"),
+                    path=node["path"],
+                    checksum=node["checksum"],
+                )
+            for edge in new_graph["edges"]:
+                graph.add_edge(
+                    u_for_edge=edge["source"],
+                    v_for_edge=edge["target"],
+                    key=None,
+                    type=edge["type"],
+                )
+    await asyncio.gather(*[_get_pseudo_call_graph_for_file(file) for file in text_files])
+
     with open(graph_cache_path, "w") as f:
         f.write(json.dumps(graph_cache, indent=4))
 
     # TODO: Conflict resolution, require at least one valid edge per node
-    for edge in graph.edges:
+    _edges = list(graph.edges)
+    for edge in _edges:
         missing = next((node for node in edge if node not in graph.nodes), None)
         if missing:  # Incorrect guesses
             graph.remove_edge(*edge)
-            graph.remove_node(missing)
+            if missing in graph.nodes:
+                graph.remove_node(missing)
     return graph
-
-
-if __name__ == "__main__":
-    path = Path.home() / "flask-three"
-    graph_path = path / ".ragdaemon" / "graph.json"
-    graph_path.parent.mkdir(exist_ok=True)
-    graph = generate_pseudo_call_graph(path)
-    # Save the graph using networkx's JSON format
-    data = nx.readwrite.json_graph.node_link_data(graph)
-    with open(graph_path, "w") as f:
-        json.dump(data, f, indent=4)

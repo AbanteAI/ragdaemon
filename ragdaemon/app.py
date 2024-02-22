@@ -1,9 +1,11 @@
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from starlette.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+import networkx as nx
+from starlette.templating import Jinja2Templates
 import uvicorn
 
 from ragdaemon.generate_graph import generate_pseudo_call_graph
@@ -16,9 +18,20 @@ app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
 templates = Jinja2Templates(directory=app_dir / "templates")
 
 
-# Initialize it
-graph = generate_pseudo_call_graph(Path.cwd()) 
-graph = add_coordiantes_to_graph(graph)
+# Generate when the server starts
+graph = None
+@app.on_event("startup")
+async def startup_event():
+    global graph
+    graph = await generate_pseudo_call_graph(Path.cwd())
+    graph = add_coordiantes_to_graph(graph)
+    
+    graph_path = Path.cwd() / ".ragdaemon" / "graph.json"
+    graph_path.parent.mkdir(exist_ok=True)
+    data = nx.readwrite.json_graph.node_link_data(graph)
+    with open(graph_path, "w") as f:
+        json.dump(data, f, indent=4)
+
 
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
@@ -36,6 +49,8 @@ async def home(request: Request):
     )
 
 
-def main():
+async def main():
     """Starts the uvicorn server programmatically."""
-    uvicorn.run("ragdaemon.app:app", host="localhost", port=5001, log_level="info")
+    config = uvicorn.Config(app="ragdaemon.app:app", host="localhost", port=5001, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
