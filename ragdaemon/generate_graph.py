@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from litellm import completion
+import networkx as nx
 
 from ragdaemon.utils import get_active_files, get_file_checksum
 
@@ -13,16 +14,15 @@ You'll review one FILE, along with your WORKING GRAPH, and return a list of new 
 
 NODES represent functions, classes, and files.
 NODE ATTRIBUTES:
-- name: path, optionally followed by colon and dot-joined call stack, e.g. "app.py:home.render"
+- id: path, optionally followed by colon and dot-joined call stack, e.g. "app.py:home.render"
 - type: "file" | "function" | "class" | "method"
 - start_line: <int> | null
 - end_line: <int> | null  # INCLUSIVE indexing
-(- path: <str> will be inserted for you)
 
 EDGES represent calls, encapsulation, or imports.
 EDGE ATTRIBUTES:
-- from: <node.name>
-- to: <node.name>
+- source: <node.id>
+- target: <node.id>
 - type: "import" | "encapsulates" | "call"
 
 Procedure for parsing FILE:
@@ -38,12 +38,12 @@ EXAMPLE:
 WORKING GRAPH:
 {
     "nodes": [
-        {"name": "app.py", "path": "app.py", "type": "file"},
-        {"name": "README.md", "type": "file"},
-        {"name": "requirements".txt", "type": "file"},
-        {"name": "static/favicon.ico", "type": "file"},
-        {"name": "static/js/main.js", "type": "file"},
-        {"name": "templates/index.html", "type": "file"}
+        {"id": "app.py", "path": "app.py", "type": "file"},
+        {"id": "README.md", "type": "file"},
+        {"id": "requirements".txt", "type": "file"},
+        {"id": "static/favicon.ico", "type": "file"},
+        {"id": "static/js/main.js", "type": "file"},
+        {"id": "templates/index.html", "type": "file"}
     ],
     "edges": []
 }
@@ -65,20 +65,36 @@ app.py
 RESPONSE:
 {
     "nodes": [
-        {"name": "app.py:home", "start_line": 5, "end_line": 7, "type": "function"}
+        {"id": "app.py:home", "start_line": 5, "end_line": 7, "type": "function"}
     ],
     "edges": [
-        {"from": "requirements.txt", "to": "app.py", "type": "import"},
-        {"from": "app.py", "to": "app.py:home", "type": "encapsulate"},
-        {"from": "app.py:home", "to": "templates/index.html", "type": "call"}
+        {"source": "requirements.txt", "target": "app.py", "type": "import"},
+        {"source": "app.py", "target": "app.py:home", "type": "encapsulate"},
+        {"source": "app.py:home", "target": "templates/index.html", "type": "call"}
     ]
 }
 --------------------------------------------------------------------------------"""
 
 
+class RDGraph(nx.MultiDiGraph):
+    def _render_graph_message(self) -> str:
+        """Convert the graph to a JSON string with only llm-friendly attributes."""
+        node_fields = ("start_line", "end_line", "type")
+        return json.dumps({
+            "nodes": [
+                {'id': node, **{k: v for k, v in data.items() if k in node_fields}}
+                for node, data in self.nodes(data=True)
+            ],
+            "edges": [
+                {'source': source, 'target': target, **data} 
+                for source, target, data in self.edges(data=True)
+            ]
+        }, indent=4)
+
+
 def get_pseudo_call_graph_for_file(
-    file: Path, graph: dict[str, Any], cwd: Path, graph_cache: dict = {}
-) -> dict[str, Any]:
+    file: Path, graph: RDGraph, cwd: Path, graph_cache: dict = {}
+) -> RDGraph:
     file_lines = (cwd / file).read_text().splitlines()
     numbered_lines = "\n".join(f"{i+1}:{line}" for i, line in enumerate(file_lines))
     file_message = (f"{file}\n{numbered_lines}")
@@ -89,36 +105,35 @@ def get_pseudo_call_graph_for_file(
     checksum = get_file_checksum(cwd / file)
     # TODO: Also check some graph dependencies, e.g. parents' checksums
     if checksum not in graph_cache:
-        clean_graph = {
-            "nodes": [
-                {k: v for k, v in node.items() if k not in ("id", "path")} 
-                for node in graph["nodes"]
-            ],
-            "edges": graph["edges"]
-        }
-        graph_message = json.dumps(clean_graph, indent=4)
+        graph_message = graph._render_graph_message()
         messages.insert(1, {"role": "user", "content": f"WORKING GRAPH:\n{graph_message}"})
         response = completion(
             model="gpt-4-turbo-preview",
             messages=messages,
             response_format={ "type": "json_object" },
         )
-        new_graph = json.loads(response["choices"][0]["message"]["content"])
+        new_nodes_and_edges = json.loads(response["choices"][0]["message"]["content"])
         # Add unique ID and path string for new nodes
-        for node in new_graph["nodes"]:
-            if node["type"] == "file":
-                node["id"] = checksum
-                node["path"] = f"{file}"
-            else:
-                node["id"] = f"{checksum}:{node['start_line']}:{node['end_line']}"
-                node["path"] = f"{file}:{node['start_line']}-{node['end_line']}"
-        graph_cache[checksum] = new_graph
+        for node in new_nodes_and_edges["nodes"]:
+            line_id = f":{node['start_line']}-{node['end_line']}"
+            node["path"] = f"{file}:{line_id}"
+            node["checksum"] = f"{checksum}:{line_id}"
+        # Add a node for the file itself
+        new_nodes_and_edges["nodes"].append({
+            "id": f"{file}", 
+            "type": "file", 
+            "start_line": None,
+            "end_line": None,
+            "path": f"{file}",
+            "checksum": checksum
+        })
+        graph_cache[checksum] = new_nodes_and_edges
     return graph_cache[checksum]
 
 
-def generate_pseudo_call_graph(cwd: Path) -> dict[str, Any]:
+def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
     """Return a call graph of the whole codebase"""
-    graph = {"nodes": [], "edges": []}
+    graph = RDGraph()
     text_files = get_active_files(cwd)
     
     # Build the active graph
@@ -127,21 +142,40 @@ def generate_pseudo_call_graph(cwd: Path) -> dict[str, Any]:
     if graph_cache_path.exists():
         with open(graph_cache_path, "r") as f:
             graph_cache = json.load(f)
+    # Add all text files' names to the graph for context
+    for file in text_files:
+        graph.add_node(
+            node_for_adding=f"{file}",
+            type="file"
+        )
     # TODO: Parallelize this
     for file in text_files:
         new_graph = get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
-        graph["nodes"].extend(new_graph["nodes"])
-        graph["edges"].extend(new_graph["edges"])
+        for node in new_graph["nodes"]:
+            graph.add_node(
+                node_for_adding=node["id"],
+                type=node["type"],
+                start_line=node.get("start_line"),
+                end_line=node.get("end_line"),
+                path=node["path"],
+                checksum=node["checksum"],
+            )
+        for edge in new_graph["edges"]:
+            graph.add_edge(
+                u_for_edge=edge["source"],
+                v_for_edge=edge["target"],
+                key=None,
+                type=edge["type"],
+            )
     with open(graph_cache_path, "w") as f:
         f.write(json.dumps(graph_cache, indent=4))
 
-    # Ignore conflicts (edges to incorrectly-guessed nodes)
-    # TODO: Better error correction: resolve conflicts, require <=1 edge per node
-    all_nodes = {node["name"] for node in graph["nodes"]}
-    graph["edges"] = [
-        edge for edge in graph["edges"] 
-        if edge["to"] in all_nodes and edge["from"] in all_nodes
-    ]
+    # TODO: Conflict resolution, require at least one valid edge per node
+    for edge in graph.edges:
+        missing = next((node for node in edge if node not in graph.nodes), None)
+        if missing:  # Incorrect guesses
+            graph.remove_edge(*edge)
+            graph.remove_node(missing)
     return graph
 
 
@@ -150,6 +184,7 @@ if __name__ == "__main__":
     graph_path = path / ".ragdaemon" / "graph.json"
     graph_path.parent.mkdir(exist_ok=True)
     graph = generate_pseudo_call_graph(path)
+    # Save the graph using networkx's JSON format
+    data = nx.readwrite.json_graph.node_link_data(graph)
     with open(graph_path, "w") as f:
-        f.write(json.dumps(graph, indent=4))
-    
+        json.dump(data, f, indent=4)
