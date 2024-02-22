@@ -7,6 +7,7 @@ import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.utils import get_active_files, get_file_checksum
+from ragdaemon.database import get_db, save_db
 
 
 prompt = """\
@@ -93,7 +94,7 @@ class RDGraph(nx.MultiDiGraph):
         }, indent=4)
 
 async def get_pseudo_call_graph_for_file(
-    file: Path, graph: RDGraph, cwd: Path, graph_cache: dict = {}
+    file: Path, graph: RDGraph, cwd: Path
 ) -> RDGraph:
     file_lines = (cwd / file).read_text().splitlines()
     numbered_lines = "\n".join(f"{i+1}:{line}" for i, line in enumerate(file_lines))
@@ -103,7 +104,7 @@ async def get_pseudo_call_graph_for_file(
         {"role": "user", "content": f"FILE:\n{file_message}"},
     ]
     checksum = get_file_checksum(cwd / file)
-    if checksum not in graph_cache:
+    if not get_db().exists(checksum):
         # TODO: Add retry loop
         graph_message = graph._render_graph_message()
         messages.insert(1, {"role": "user", "content": f"WORKING GRAPH:\n{graph_message}"})
@@ -130,8 +131,8 @@ async def get_pseudo_call_graph_for_file(
             "checksum": checksum
         })
         # TODO: Do encapsulate nodes manually
-        graph_cache[checksum] = new_nodes_and_edges
-    return graph_cache[checksum]
+        get_db().set(checksum, new_nodes_and_edges)
+    return get_db().get(checksum)
 
 
 async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
@@ -139,14 +140,6 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
     graph = RDGraph()
     text_files = get_active_files(cwd)
     
-    # Build the active graph
-    graph_cache = {}  # {file_checksum: {nodes: [], edges: []}}
-    graph_cache_path = cwd / ".ragdaemon" / "graph_cache.json"
-    if graph_cache_path.exists():
-        with open(graph_cache_path, "r") as f:
-            graph_cache = json.load(f)
-    else:
-        graph_cache_path.parent.mkdir(exist_ok=True)
     # Add all text files' names to the graph for context
     for file in text_files:
         graph.add_node(
@@ -158,7 +151,7 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
     semaphore = asyncio.Semaphore(20)
     async def _get_pseudo_call_graph_for_file(file: Path):
         async with semaphore:
-            new_graph = await get_pseudo_call_graph_for_file(Path(file), graph, cwd, graph_cache)
+            new_graph = await get_pseudo_call_graph_for_file(Path(file), graph, cwd)
             for node in new_graph["nodes"]:
                 if not all(k in node for k in ("id", "type", "path", "checksum")):
                     continue 
@@ -178,10 +171,9 @@ async def generate_pseudo_call_graph(cwd: Path) -> RDGraph:
                     type=edge["type"],
                 )
     tasks = [_get_pseudo_call_graph_for_file(file) for file in text_files]
-    await tqdm.gather(*tasks, desc="Processing files", unit="file")
+    await tqdm.gather(*tasks, desc="Generating File Graph", unit="file")
 
-    with open(graph_cache_path, "w") as f:
-        f.write(json.dumps(graph_cache, indent=4))
+    save_db()
 
     # TODO: Conflict resolution, require at least one valid edge per node
     _edges = list(graph.edges)
