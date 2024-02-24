@@ -23,7 +23,11 @@ NODE_RADIUS float
 const initialize = () => {
     // Load the graph
     nodes.forEach(node => {
-        addNode(node);
+        if (node.layout?.hierarchy) {
+            addNode(node);
+        } else {
+            console.error(`Node ${node.id} does not have a hierarchy layout`);
+        }
     })
     edges.forEach(edge => {
         addEdge(edge);

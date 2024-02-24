@@ -62,16 +62,18 @@ def get_active_files(cwd: Path, visited: set[Path] = set()) -> Set[Path]:
     return text_files
 
 
+def hash_str(string: str) -> str:
+    """Return the MD5 hash of the input string."""
+    return hashlib.md5(string.encode()).hexdigest()
+
+
 checksum_cache = {}
 def get_file_checksum(file: Path) -> str:
-    """Calculate or retrieve the checksum of "<filename>:<file>".
-    
-    NOTE: FILE GRAPHS are cached by their CHECKSUM (.ragdaemon/graph_cache.json)
-    and CHECKSUMS are cached by their FILENAME and LAST_MODIFIED (per session, below).
-    """
+    """Calculate or retrieve the checksum of "<filename>:<file>"."""
     last_modified = file.stat().st_mtime
     identifier = f"{file}:{last_modified}"
     if identifier not in checksum_cache:
-        return hashlib.md5(file.read_bytes()).hexdigest()
+        with open(file, "r") as f:
+            checksum_cache[identifier] = hash_str(str(file) + f.read())
     return checksum_cache[identifier]
 

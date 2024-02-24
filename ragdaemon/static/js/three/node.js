@@ -20,7 +20,8 @@ const addNode = (node) => {
     const geometry = new THREE.SphereGeometry(NODE_RADIUS, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: "lightgray" });
     const sphere = new THREE.Mesh(geometry, material);
-    sphere.position.set(node.x, node.y, node.z);
+    const node_pos = node.layout.hierarchy;
+    sphere.position.set(node_pos.x, node_pos.y, node_pos.z);
     sphere.userData = {type: "node", id: node.id};
     scene.add(sphere);
     

@@ -5,12 +5,14 @@ const addEdge = (edge) => {
     const targetNode = nodes.find(node => node.id === edge.target);
     
     if (sourceNode && targetNode) {
-        const dir = new THREE.Vector3(targetNode.x - sourceNode.x, targetNode.y - sourceNode.y, targetNode.z - sourceNode.z);
+        const sourcePos = sourceNode.layout?.hierarchy;
+        const targetPos = targetNode.layout?.hierarchy;
+        const dir = new THREE.Vector3(targetPos.x - sourcePos.x, targetPos.y - sourcePos.y, targetPos.z - sourcePos.z);
         const length = dir.length() - NODE_RADIUS;
         dir.normalize();
         const arrowHelper = new THREE.ArrowHelper(
             dir, 
-            new THREE.Vector3(sourceNode.x, sourceNode.y, sourceNode.z), 
+            new THREE.Vector3(sourcePos.x, sourcePos.y, sourcePos.z), 
             length, 
             "white", 
             SCALE / 5, 

@@ -31,26 +31,30 @@ class Daemon:
         else:
             self.graph = nx.MultiDiGraph()
 
+        # Build a graph of active files
+        self.graph = Hierarchy(cwd, config.get(Hierarchy.name, {})).annotate(self.graph)
+
+        # Add 3d force-directed layout of file structure
+        self.graph = LayoutHierarchy(cwd, config.get(LayoutHierarchy.name, {})).annotate(self.graph)
+
+        self.save()
+
         # Iteratively build graph by adding annotations to the graph object.
         # Save the graph to disk after each annotation.
         self.pipeline = [
-            # Build a graph of active files
-            Hierarchy(cwd, config.get(Hierarchy.name), {}),        
             
-            # Add 3d force-directed layout of file structure
-            LayoutHierarchy(cwd, config.get(LayoutHierarchy.name), {}),
             
-            # Convert files into chunks w/ calls, add to graph
-            Chunker(cwd, config.get(Chunker.name), {}),
+            # # Convert files into chunks w/ calls, add to graph
+            # Chunker(cwd, config.get(Chunker.name, {})),
             
-            # Add 3d force-directed layout of call graph
-            LayoutCallgraph(cwd, config.get(LayoutCallgraph.name), {}),
+            # # Add 3d force-directed layout of call graph
+            # LayoutCallgraph(cwd, config.get(LayoutCallgraph.name, {})),
             
-            # Generate text summary of each node in context
-            Summarizer(cwd, config.get(Summarizer.name), {}),
+            # # Generate text summary of each node in context
+            # Summarizer(cwd, config.get(Summarizer.name, {})),
             
-            # Add tsne of embedded summaries
-            LayoutTSNE(cwd, config.get(LayoutTSNE.name), {}),
+            # # Add tsne of embedded summaries
+            # LayoutTSNE(cwd, config.get(LayoutTSNE.name, {})),
         ]
 
     def save(self):
@@ -66,13 +70,14 @@ class Daemon:
                 self.up_to_date = await self._worker()
             except Exception as e:
                 self.error = e
+                print(f"Error: {e}")
                 break
 
-    async def _worker(self):
+    async def _worker(self) -> bool:
         """Perform one iterative update to self.graph, then save it."""
         for annotator in self.pipeline:
             if not annotator.is_complete(self.graph):
-                result = await annotator.annotate(self.graph, self.cwd)
+                result = await annotator.annotate(self.graph)
                 if isinstance(result, nx.MultiDiGraph):
                     self.graph = result
                     self.save()

@@ -8,8 +8,7 @@ import networkx as nx
 from starlette.templating import Jinja2Templates
 import uvicorn
 
-from ragdaemon.generate_graph import generate_pseudo_call_graph
-from ragdaemon.position_nodes import add_coordiantes_to_graph
+from ragdaemon.daemon import Daemon
 
 
 app = FastAPI()
@@ -19,26 +18,19 @@ templates = Jinja2Templates(directory=app_dir / "templates")
 
 
 # Generate when the server starts
-graph = None
-@app.on_event("startup")
-async def startup_event():
-    global graph
-    graph = await generate_pseudo_call_graph(Path.cwd())
-    graph = add_coordiantes_to_graph(graph)
-    
-    graph_path = Path.cwd() / ".ragdaemon" / "graph.json"
-    graph_path.parent.mkdir(exist_ok=True)
-    data = nx.readwrite.json_graph.node_link_data(graph)
-    with open(graph_path, "w") as f:
-        json.dump(data, f, indent=4)
+daemon = Daemon(Path.cwd())
+# @app.on_event("startup")
+# async def startup_event():
+#     global daemon
+#     await daemon.refresh()
 
 
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
-
+    await daemon.refresh()
     # Serialize and send to frontend
-    nodes = [{'id': node, **data} for node, data in graph.nodes(data=True)]
-    edges = [{'source': source, 'target': target, **data} for source, target, data in graph.edges(data=True)]
+    nodes = [{'id': node, **data} for node, data in daemon.graph.nodes(data=True)]
+    edges = [{'source': source, 'target': target, **data} for source, target, data in daemon.graph.edges(data=True)]
     metadata = {
         'num_nodes': len(nodes),
         'num_edges': len(edges)

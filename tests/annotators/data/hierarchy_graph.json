@@ -1,0 +1,82 @@
+{
+    "directed": true,
+    "multigraph": true,
+    "graph": {
+        "files_checksum": "39333fc87b5e0d7571f10813e5c2b31a"
+    },
+    "nodes": [
+        {
+            "path": ".",
+            "type": "directory",
+            "id": "ROOT"
+        },
+        {
+            "id": "main.py",
+            "path": "main.py",
+            "checksum": "41522b0631768a3e8f14ca04f59e6e78"
+        },
+        {
+            "id": "src/__init__.py",
+            "path": "src/__init__.py",
+            "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+        },
+        {
+            "path": "src",
+            "type": "directory",
+            "id": "src"
+        },
+        {
+            "id": "README.md",
+            "path": "README.md",
+            "checksum": "3e40e1600008765726c0b0a53d9da838"
+        },
+        {
+            "id": "src/interface.py",
+            "path": "src/interface.py",
+            "checksum": "d6aaac578e3e945f60278135899115cb"
+        },
+        {
+            "id": "src/operations.py",
+            "path": "src/operations.py",
+            "checksum": "52d4dc8051f5058dc479a89a12820252"
+        }
+    ],
+    "links": [
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": "main.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": "src",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": "README.md",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "src",
+            "target": "src/__init__.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "src",
+            "target": "src/interface.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "src",
+            "target": "src/operations.py",
+            "key": 0
+        }
+    ]
+}
