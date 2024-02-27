@@ -19,15 +19,15 @@ templates = Jinja2Templates(directory=app_dir / "templates")
 
 # Generate when the server starts
 daemon = Daemon(Path.cwd())
-# @app.on_event("startup")
-# async def startup_event():
-#     global daemon
-#     await daemon.refresh()
+@app.on_event("startup")
+async def startup_event():
+    global daemon
+    await daemon.refresh()
 
 
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
-    await daemon.refresh()
+
     # Serialize and send to frontend
     nodes = [{'id': node, **data} for node, data in daemon.graph.nodes(data=True)]
     edges = [{'source': source, 'target': target, **data} for source, target, data in daemon.graph.edges(data=True)]

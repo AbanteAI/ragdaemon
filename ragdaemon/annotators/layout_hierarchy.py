@@ -7,9 +7,11 @@ from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
 
 
-def fruchterman_reingold_3d(G, iterations=50, repulsive_force=1, spring_length=0.02, dt=0.1):
+def fruchterman_reingold_3d(G, iterations=40, repulsive_force=0.2, spring_length=0.2, dt=0.1):
     # Initialize node positions with random values
-    pos = {node: np.random.rand(3) for node in G.nodes()}
+    pos = {node: data.get("layout", {}).get("hierarchy") for node, data in G.nodes(data=True)}
+    if not all(pos.values()):
+        pos = {node: np.random.rand(3) for node in G.nodes()}
 
     # Define force functions
     def repulsion_force(distance, k):
@@ -58,7 +60,7 @@ class LayoutHierarchy(Annotator):
                 return False
         return True
 
-    def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes

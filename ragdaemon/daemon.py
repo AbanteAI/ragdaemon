@@ -31,18 +31,17 @@ class Daemon:
         else:
             self.graph = nx.MultiDiGraph()
 
-        # Build a graph of active files
-        self.graph = Hierarchy(cwd, config.get(Hierarchy.name, {})).annotate(self.graph)
-
-        # Add 3d force-directed layout of file structure
-        self.graph = LayoutHierarchy(cwd, config.get(LayoutHierarchy.name, {})).annotate(self.graph)
-
         self.save()
 
         # Iteratively build graph by adding annotations to the graph object.
         # Save the graph to disk after each annotation.
         self.pipeline = [
             
+            # Build a graph of active files
+            Hierarchy(cwd, config.get(Hierarchy.name, {})),
+
+            # Add 3d force-directed layout of file structure
+            LayoutHierarchy(cwd, config.get(LayoutHierarchy.name, {})),
             
             # # Convert files into chunks w/ calls, add to graph
             # Chunker(cwd, config.get(Chunker.name, {})),
@@ -65,26 +64,15 @@ class Daemon:
 
     async def refresh(self):
         """Iteratively updates graph by calling itself until graph is fully annotated."""
-        while not self.up_to_date:
+        for annotator in self.pipeline:
             try:
-                self.up_to_date = await self._worker()
+                if not annotator.is_complete(self.graph):
+                    self.graph = await annotator.annotate(self.graph)
+                    self.save()
             except Exception as e:
                 self.error = e
-                print(f"Error: {e}")
+                print(f"Error in {annotator.name}: {e}")
                 break
-
-    async def _worker(self) -> bool:
-        """Perform one iterative update to self.graph, then save it."""
-        for annotator in self.pipeline:
-            if not annotator.is_complete(self.graph):
-                result = await annotator.annotate(self.graph)
-                if isinstance(result, nx.MultiDiGraph):
-                    self.graph = result
-                    self.save()
-                    return False
-                else:
-                    raise ValueError(f"Annotator {annotator.name} returned invalid result: {result}")
-        return True
     
     async def search(self, query: str, limit: None, tokens: None):
         """Searches the graph for a given query."""

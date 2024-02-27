@@ -28,7 +28,7 @@ class Hierarchy(Annotator):
         checksums = {f: get_file_checksum(self.cwd / f) for f in active_files}
         return graph.graph.get("files_checksum") == hash_str(str(checksums))
 
-    def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         # Reset active database records (for search)
         for record in get_db()._db.values():
