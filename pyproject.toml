@@ -11,6 +11,7 @@ version = "0.1.0"
 description = "Generate and render a call graph for a Python project."
 readme = "README.md"
 dependencies = [
+    "chromadb==0.4.24",
     "fastapi==0.109.2",
     "litellm==1.26.7",
     "networkx==3.2.1",

@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Set
 
 
+ragdaemon_dir = Path.cwd() / ".ragdaemon"
+ragdaemon_dir.mkdir(exist_ok=True)
+
+
 IGNORE_PATTERNS = [
     ".*",
     "node_modules",
