@@ -5,12 +5,11 @@ import networkx as nx
 
 class Annotator:
     name: str = "base_annotator"
-    def __init__(self, cwd: Path, config: dict = {}):
-        self.cwd = cwd
-        self.config = config
+    def __init__(self):
+        pass
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         raise NotImplementedError()
 
-    def annotate(self, graph: nx.MultiDiGraph, cwd: Path) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         raise NotImplementedError()

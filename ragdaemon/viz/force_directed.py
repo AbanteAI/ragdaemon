@@ -1,6 +1,20 @@
 import numpy as np
 
 
+def layout_force_directed(G):
+    if not all(
+        data.get("layout", {}).get("hierarchy")
+        for _, data in G.nodes(data=True)
+    ):
+        print(f"Generating 3d layout for {G.number_of_nodes()} nodes")
+        pos = fruchterman_reingold_3d(G)
+        for node_id, coordinates in pos.items():
+            if "layout" not in G.nodes[node_id]:
+                G.nodes[node_id]["layout"] = {}
+            G.nodes[node_id]["layout"]["hierarchy"] = coordinates
+    return G        
+
+
 def fruchterman_reingold_3d(G, iterations=40, repulsive_force=0.2, spring_length=0.2, dt=0.1):
     """Nodes repel, edges attract."""
     # Initialize node positions with random values
