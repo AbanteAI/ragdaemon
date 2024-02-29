@@ -63,19 +63,6 @@ const addNode = (node) => {
                 _node.userData.setSelected(false);
             }
         });
-
-        // Update controlPanel
-        const selectedNodeDisplay = document.getElementById('selected-node-display');
-        if (selected) {
-            selectedNodeDisplay.style.display = "block";
-            const name = node.id.split(/\.|:/).pop();
-            selectedNodeDisplay.innerHTML = `<h3>${name}</h3>\n`
-            Object.entries(node).forEach(([key, value]) => {
-                selectedNodeDisplay.innerHTML += `<li>${key}: ${value}</li>`
-            })
-        } else {
-            selectedNodeDisplay.style.display = "none";
-        }
     };
 }
 

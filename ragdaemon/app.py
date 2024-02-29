@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import networkx as nx
 from starlette.templating import Jinja2Templates
@@ -39,6 +39,13 @@ async def home(request: Request):
         "index.html", 
         {"request": request, "nodes": nodes, "edges": edges, "metadata": metadata}
     )
+
+
+@app.get('/search', response_class=JSONResponse)
+async def search(request: Request, q: str):
+    """Search the knowledge graph and return results."""
+    results = daemon.search(q)
+    return [data["id"] for data in results["metadatas"][0]]
 
 
 async def main():
