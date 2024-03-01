@@ -18,6 +18,8 @@ Each item in the list should contain:
 2. `start_line` - where the function, class or method begins
 3. `end_line` - where it ends - INCLUSIVE
 
+If there are no chunks, return an empty list.
+
 EXAMPLE:
 --------------------------------------------------------------------------------
 src/graph.py
@@ -68,7 +70,7 @@ async def get_llm_response(file_message: str) -> dict:
 async def get_file_chunk_data(cwd, node, data) -> list[dict]:
     """Get or add chunk data to database, load into file data"""
     file_lines = (cwd / Path(node)).read_text().splitlines()
-    if not file_lines:
+    if len(file_lines) == 0:
         chunks = []
     else:
         tries = 3
@@ -85,26 +87,30 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
             ):
                 break
             print(f"Error with chunker response:\n{response}.\n{tries} tries left.")
+            chunks = []
     if chunks:
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))
         for chunk in chunks:
             for i in range(chunk["start_line"], chunk["end_line"] + 1):
                 base_chunk_lines.discard(i)
-        base_chunk_lines_sorted = sorted(list(base_chunk_lines))
-        base_chunk_refs = []
-        start = base_chunk_lines_sorted[0]
-        end = start
-        for i in base_chunk_lines_sorted[1:]:
-            if i == end + 1:
-                end = i
-            else:
-                if start == end:
-                    base_chunk_refs.append(f"{start}")
+        if len(base_chunk_lines) > 0:
+            base_chunk_lines_sorted = sorted(list(base_chunk_lines))
+            base_chunk_refs = []
+            start = base_chunk_lines_sorted[0]
+            end = start
+            for i in base_chunk_lines_sorted[1:]:
+                if i == end + 1:
+                    end = i
                 else:
-                    base_chunk_refs.append(f"{start}-{end}")
-                start = end = i
-        base_chunk_refs.append(f"{start}-{end}")
+                    if start == end:
+                        base_chunk_refs.append(f"{start}")
+                    else:
+                        base_chunk_refs.append(f"{start}-{end}")
+                    start = end = i
+            base_chunk_refs.append(f"{start}-{end}")
+        else:
+            base_chunk_refs = []
         # Replace with standardized fields
         base_chunk = {"id": f"{node}:BASE", "path": f"{node}:{','.join(base_chunk_refs)}"}
         chunks = [

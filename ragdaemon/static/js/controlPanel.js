@@ -19,6 +19,9 @@ const startControlPanel = () => {
                 resultPanel.className = 'result-panel';
                 resultPanel.textContent = result;
                 searchResults.appendChild(resultPanel);
+                resultPanel.addEventListener('click', () => {
+                    scene.children.find(child => child.userData.id === result).userData.handleClick();
+                });
             });
         }
     });

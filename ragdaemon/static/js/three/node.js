@@ -15,7 +15,7 @@ function createCanvasTexture(text) {
     return texture;
 }
 
-const addNode = (node) => {
+const addNode = (node, onClickCallback) => {
     // Sphere
     const geometry = new THREE.SphereGeometry(NODE_RADIUS, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: "lightgray" });
@@ -43,26 +43,31 @@ const addNode = (node) => {
     };
     sphere.userData.handleClick = () => {
         const selected = !sprite.visible;
-        const nodesToUpdate = new Set();
-        nodesToUpdate.add(id);
+        const idsToUpdate = new Set();
+        idsToUpdate.add(id);
         const edges = scene.children.filter(child => child.userData.type === "edge");
         edges.forEach(edge => {
             if (edge.userData.source === id || edge.userData.target === id) {
                 edge.userData.setSelected(selected);
-                nodesToUpdate.add(edge.userData.source);
-                nodesToUpdate.add(edge.userData.target);
+                idsToUpdate.add(edge.userData.source);
+                idsToUpdate.add(edge.userData.target);
             } else {
                 edge.userData.setSelected(false);
             }
         });
         const nodes = scene.children.filter(child => child.userData.type === "node");
+        const nodesToUpdate = []
         nodes.forEach(_node => {
-            if (nodesToUpdate.has(_node.userData.id)) {
+            if (idsToUpdate.has(_node.userData.id)) {
                 _node.userData.setSelected(selected);
+                nodesToUpdate.push(_node);
             } else {
                 _node.userData.setSelected(false);
             }
         });
+        if (selected) {
+            onClickCallback(nodesToUpdate);
+        }
     };
 }
 
