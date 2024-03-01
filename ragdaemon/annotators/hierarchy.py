@@ -24,6 +24,11 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
         )
         if (Path(cwd) / p).exists()
     )
+    add_to_db = {
+        "ids": [],
+        "documents": [],
+        "metadatas": [],
+    }
     for path in git_paths:
         try:
             # could cache checksum by (path, last_updated) to save reads
@@ -40,7 +45,9 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
                     "checksum": checksum, 
                     "active": True
                 }
-                get_db().add(ids=checksum, documents=document, metadatas=metadatas)
+                add_to_db["ids"].append(checksum)
+                add_to_db["documents"].append(document)
+                add_to_db["metadatas"].append(metadatas)
             else:
                 db_meta = get_db().get(checksum)["metadatas"][0]
                 db_meta["active"] = True
@@ -49,12 +56,13 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
             pass
         except Exception as e:
             print(f"Error processing path {path}: {e}")
+    if len(add_to_db["ids"]) > 0:
+        get_db().add(**add_to_db)
     return checksums
 
 
 class Hierarchy(Annotator):
     name = "hierarchy"
-    description = "Build a graph of active files"
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = graph.graph.get("cwd") or Path.cwd()

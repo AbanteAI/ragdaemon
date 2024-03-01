@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
+from textwrap import dedent
 
 import networkx as nx
+from litellm import token_counter
 
 from ragdaemon.annotators import Hierarchy, Chunker, LayoutHierarchy
 from ragdaemon.utils import ragdaemon_dir
@@ -11,11 +13,8 @@ from ragdaemon.database import get_db, query_graph
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
-    def __init__(self, cwd: Path, config: dict = {}):
+    def __init__(self, cwd: Path):
         self.cwd = cwd
-        self.config = config
-        self.up_to_date = False
-        self.error = None
 
         # Load or setup db
         count = get_db().count()
@@ -58,5 +57,52 @@ class Daemon:
         self.save()
 
     def search(self, query: str) -> list[dict]:
-        # Flag active checksums
+        """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph)
+    
+    def render_context_message(self, nodes: list[dict]) -> str:
+        """Return a formatted context message for the given nodes."""
+        output = ""
+        for node in nodes:
+            if output:
+                output += "\n"
+            tags = "" if not node["tags"] else f" ({', '.join(node['tags'])})"
+            lines = "\n".join(f"{i+1}: {line}" for i, line in enumerate(node["document"].splitlines()))
+            output += f"{node['id']}{tags}\n{lines}"
+        return output
+
+    def get_context_message(
+        self, 
+        query: str, 
+        include: list[str] = [], 
+        max_tokens: int = 8000, 
+        auto_tokens: int = 2000,
+    ) -> str:
+        """Return formatted context for the given query."""
+        selected = []
+        for id in include:
+            if ":" in id:
+                id = id.split(":")[0]  # TODO: support line numbers
+            if id in self.graph:
+                selected.append({**self.graph.nodes[id], "tags": ["user-included"]})
+            else:
+                print(f"Warning: {id} not found in results.")
+        include_context_message = self.render_context_message(selected)
+        include_tokens = token_counter(include_context_message)
+        if include_tokens >= max_tokens:
+            return include_context_message
+
+        auto_tokens = min(auto_tokens, max_tokens - include_tokens)
+        results = self.search(query)
+        while query and results:
+            node_id = results.pop(0)
+            was_included = any(node_id == node["id"] for node in selected)
+            if was_included:
+                node = next(node for node in selected if node["id"] == node_id)
+                node["tags"].append("auto-included")
+            else:
+                node = {**self.graph.nodes[node_id], "tags": ["embedding-similarity"]}
+            next_context_message = self.render_context_message(selected + [node])
+            next_tokens = token_counter(next_context_message)
+            if (next_tokens - include_tokens) > auto_tokens:
+                break

@@ -1,10 +1,7 @@
-from pathlib import Path
-
 import networkx as nx
 import numpy as np
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import get_db
 
 
 def fruchterman_reingold_3d(G, iterations=40, repulsive_force=0.2, spring_length=0.2, dt=0.1):

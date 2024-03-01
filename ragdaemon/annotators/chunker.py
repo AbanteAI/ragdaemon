@@ -182,8 +182,10 @@ class Chunker(Annotator):
     name = "chunker"
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
-        # TODO: Implement
-        return False
+        for _, data in graph.nodes(data=True):
+            if data.get("type") == "file" and data.get("chunks", None) is None:
+                return False
+        return True
     
     async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         cwd = graph.graph.get("cwd") or Path.cwd()
