@@ -42,29 +42,32 @@ const addNode = (node, onClickCallback) => {
         sphere.material.color.set(selected ? "lime" : "lightgray");
     };
     sphere.userData.handleClick = () => {
-        const selected = !sprite.visible;
-        const idsToUpdate = new Set();
-        idsToUpdate.add(id);
+        // Select hierarchy parent recursively until root (no parent)
         const edges = scene.children.filter(child => child.userData.type === "edge");
-        edges.forEach(edge => {
-            if (edge.userData.source === id || edge.userData.target === id) {
-                edge.userData.setSelected(selected);
-                idsToUpdate.add(edge.userData.source);
-                idsToUpdate.add(edge.userData.target);
-            } else {
-                edge.userData.setSelected(false);
-            }
-        });
         const nodes = scene.children.filter(child => child.userData.type === "node");
-        const nodesToUpdate = []
-        nodes.forEach(_node => {
-            if (idsToUpdate.has(_node.userData.id)) {
-                _node.userData.setSelected(selected);
-                nodesToUpdate.push(_node);
-            } else {
-                _node.userData.setSelected(false);
+        edges.forEach(edge => edge.userData.setSelected(false));
+        nodes.forEach(node => node.userData.setSelected(false));
+        
+        const selected = !sprite.visible;
+        const nodesToUpdate = new Set();
+        sphere.userData.setSelected(selected);
+        nodesToUpdate.add(sphere);
+        const linkToRoot = (node_id, killswitch=20) => {
+            if (killswitch == 0) {
+                throw new Error("Infinite loop detected");
             }
-        });
+            const inbound_edge = edges.find(edge => edge.userData.target === node_id);
+            if (inbound_edge) {
+                inbound_edge.userData.setSelected(selected);
+                const parent = inbound_edge.userData.source;
+                const parent_node = nodes.find(node => node.userData.id === parent);
+                parent_node.userData.setSelected(selected);
+                nodesToUpdate.add(parent_node);
+                linkToRoot(parent, killswitch-1);
+            }
+        }
+        linkToRoot(id);
+
         if (selected) {
             onClickCallback(nodesToUpdate);
         }

@@ -38,9 +38,12 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
                     "type": "file", 
                     "path": str(path), 
                     "checksum": checksum, 
-                    "active": False
+                    "active": True
                 }
                 get_db().add(ids=checksum, documents=document, metadatas=metadatas)
+            else:
+                db_meta = get_db().get(checksum)["metadatas"][0]
+                db_meta["active"] = True
             checksums[path] = checksum
         except UnicodeDecodeError:  # Ignore non-text files
             pass

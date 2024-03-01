@@ -5,8 +5,7 @@ import networkx as nx
 
 from ragdaemon.annotators import Hierarchy, Chunker, LayoutHierarchy
 from ragdaemon.utils import ragdaemon_dir
-from ragdaemon.database import get_db
-
+from ragdaemon.database import get_db, query_graph
 
 
 class Daemon:
@@ -50,10 +49,14 @@ class Daemon:
 
     async def refresh(self):
         """Iteratively build the knowledge graph"""
+        _graph = self.graph.copy()
+        self.graph.graph["refreshing"] = True
         for annotator in self.pipeline:
-            if not annotator.is_complete(self.graph):
-                self.graph = await annotator.annotate(self.graph)
-                self.save()
+            if not annotator.is_complete(_graph):
+                _graph = await annotator.annotate(_graph)
+        self.graph = _graph
+        self.save()
 
-    def search(self, query: str):
-        return get_db().query(query_texts=query)
+    def search(self, query: str) -> list[dict]:
+        # Flag active checksums
+        return query_graph(query, self.graph)

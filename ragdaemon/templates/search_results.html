@@ -1,0 +1,7 @@
+{% for result in results %}
+    <p class="result-panel" data-id="{{ result["id"] }}">
+        {{ result["id"] }}</p>
+    </p>
+{% else %}
+    <div>No results found.</div>
+{% endfor %}

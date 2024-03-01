@@ -146,7 +146,7 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph):
             if '-' in ref:
                 _start, _end = ref.split('-')
                 text += "\n".join(file_lines[int(_start)-1:int(_end)])
-            else:
+            elif ref.isdigit():
                 text += file_lines[int(ref)]
         document = f"{id}\n{text}"
         checksum = hash_str(document)
@@ -189,7 +189,7 @@ class Chunker(Annotator):
         cwd = graph.graph.get("cwd") or Path.cwd()
         file_nodes = [
             (file, data) for file, data in graph.nodes(data=True) 
-            if data["type"] == "file"
+            if data.get("type") == "file"
         ]
         # Generate/add chunk data to file nodes
         tasks = []

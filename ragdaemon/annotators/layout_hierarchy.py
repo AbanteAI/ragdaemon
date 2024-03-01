@@ -69,5 +69,7 @@ class LayoutHierarchy(Annotator):
         pos = fruchterman_reingold_3d(graph)
         for node_id, coordinates in pos.items():
             node = graph.nodes[node_id]
-            node["layout"] = {"hierarchy": coordinates}
+            if "layout" not in node:
+                node["layout"] = {}
+            node["layout"]["hierarchy"] = coordinates
         return graph

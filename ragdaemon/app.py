@@ -1,10 +1,9 @@
-import json
+import asyncio
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-import networkx as nx
 from starlette.templating import Jinja2Templates
 import uvicorn
 
@@ -21,31 +20,29 @@ templates = Jinja2Templates(directory=app_dir / "templates")
 daemon = Daemon(Path.cwd())
 @app.on_event("startup")
 async def startup_event():
-    global daemon
-    await daemon.refresh()
+    asyncio.create_task(daemon.refresh())
 
 
 @app.get('/', response_class=HTMLResponse)
 async def home(request: Request):
-
-    # Serialize and send to frontend
+    # Serialize graph and send to frontend
     nodes = [{'id': node, **data} for node, data in daemon.graph.nodes(data=True)]
     edges = [{'source': source, 'target': target, **data} for source, target, data in daemon.graph.edges(data=True)]
-    metadata = {
-        'num_nodes': len(nodes),
-        'num_edges': len(edges)
-    }
+    metadata = daemon.graph.graph
     return templates.TemplateResponse(
         "index.html", 
         {"request": request, "nodes": nodes, "edges": edges, "metadata": metadata}
     )
 
 
-@app.get('/search', response_class=JSONResponse)
+@app.get('/search', response_class=HTMLResponse)
 async def search(request: Request, q: str):
-    """Search the knowledge graph and return results."""
+    """Search the knowledge graph and return results as HTML."""
     results = daemon.search(q)
-    return [data["id"] for data in results["metadatas"][0]]
+    return templates.TemplateResponse(
+        "search_results.html", 
+        {"request": request, "results": results}
+    )
 
 
 async def main():
