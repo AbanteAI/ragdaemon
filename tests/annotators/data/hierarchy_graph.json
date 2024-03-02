@@ -2,50 +2,79 @@
     "directed": true,
     "multigraph": true,
     "graph": {
-        "files_checksum": "39333fc87b5e0d7571f10813e5c2b31a"
+        "cwd": "tests/sample",
+        "files_checksum": "4604dc881c4850f32da927c19af2b743"
     },
     "nodes": [
         {
-            "path": ".",
-            "type": "directory",
-            "id": "ROOT"
-        },
-        {
+            "active": true,
+            "checksum": "3ef86dd3830a400484c55d45d7f98ba8",
             "id": "main.py",
             "path": "main.py",
-            "checksum": "41522b0631768a3e8f14ca04f59e6e78"
+            "type": "file"
         },
         {
-            "id": "src/__init__.py",
-            "path": "src/__init__.py",
-            "checksum": "d41d8cd98f00b204e9800998ecf8427e"
-        },
-        {
-            "path": "src",
-            "type": "directory",
-            "id": "src"
-        },
-        {
-            "id": "README.md",
-            "path": "README.md",
-            "checksum": "3e40e1600008765726c0b0a53d9da838"
-        },
-        {
+            "active": true,
+            "checksum": "454b3730611bb57bf9e488e425a6c570",
             "id": "src/interface.py",
             "path": "src/interface.py",
-            "checksum": "d6aaac578e3e945f60278135899115cb"
+            "type": "file"
         },
         {
+            "active": true,
+            "checksum": "33d1c743e84b980a4c07902654452110",
             "id": "src/operations.py",
             "path": "src/operations.py",
-            "checksum": "52d4dc8051f5058dc479a89a12820252"
+            "type": "file"
+        },
+        {
+            "active": true,
+            "checksum": "b9ba74388a4d956f0aff968bfc165db3",
+            "id": "src/__init__.py",
+            "path": "src/__init__.py",
+            "type": "file"
+        },
+        {
+            "active": true,
+            "checksum": "332606dfbd176bd16b6158acd375689d",
+            "id": "README.md",
+            "path": "README.md",
+            "type": "file"
+        },
+        {
+            "id": "src",
+            "type": "directory",
+            "path": "src"
+        },
+        {
+            "id": "ROOT",
+            "type": "directory",
+            "path": "ROOT"
         }
     ],
     "links": [
         {
             "type": "hierarchy",
+            "source": "src",
+            "target": "src/interface.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "src",
+            "target": "src/operations.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "src",
+            "target": "src/__init__.py",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
             "source": "ROOT",
-            "target": "main.py",
+            "target": "README.md",
             "key": 0
         },
         {
@@ -57,25 +86,7 @@
         {
             "type": "hierarchy",
             "source": "ROOT",
-            "target": "README.md",
-            "key": 0
-        },
-        {
-            "type": "hierarchy",
-            "source": "src",
-            "target": "src/__init__.py",
-            "key": 0
-        },
-        {
-            "type": "hierarchy",
-            "source": "src",
-            "target": "src/interface.py",
-            "key": 0
-        },
-        {
-            "type": "hierarchy",
-            "source": "src",
-            "target": "src/operations.py",
+            "target": "main.py",
             "key": 0
         }
     ]

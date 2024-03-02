@@ -65,19 +65,19 @@ class Hierarchy(Annotator):
     name = "hierarchy"
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
-        cwd = graph.graph.get("cwd") or Path.cwd()
+        cwd = Path(graph.graph["cwd"])
         checksums = get_active_checksums(cwd)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         return graph.graph.get("files_checksum") == files_checksum
 
     async def annotate(self, old_graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
-        cwd = old_graph.graph.get("cwd") or Path.cwd()
+        cwd = Path(old_graph.graph["cwd"])
         checksums = get_active_checksums(cwd)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         
         graph = nx.MultiDiGraph()
-        graph.graph["cwd"] = cwd
+        graph.graph["cwd"] = str(cwd)
         edges_to_add = set()
         for path, checksum in checksums.items():
             # add db reecord

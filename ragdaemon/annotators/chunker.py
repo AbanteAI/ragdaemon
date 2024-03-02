@@ -127,13 +127,14 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
 
 def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> dict[str: list]:
     """Load chunks from file data into db/graph"""
+    cwd = Path(graph.graph["cwd"])
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
     if not isinstance(data["chunks"], list):
         data["chunks"] = json.loads(data["chunks"])
     chunks = data["chunks"]
     if len(data["chunks"]) == 0:
         return add_to_db
-    with open(Path(file), "r") as f:
+    with open(cwd / file, "r") as f:
         file_lines = f.readlines()
     edges_to_add = set()
     base_id = f"{file}:BASE"
@@ -193,7 +194,7 @@ class Chunker(Annotator):
         return True
     
     async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
-        cwd = graph.graph.get("cwd") or Path.cwd()
+        cwd = Path(graph.graph["cwd"])
         file_nodes = [
             (file, data) for file, data in graph.nodes(data=True) 
             if data.get("type") == "file"
