@@ -1,9 +1,4 @@
 import hashlib
-from pathlib import Path
-
-
-ragdaemon_dir = Path.cwd() / ".ragdaemon"
-ragdaemon_dir.mkdir(exist_ok=True)
 
 
 def hash_str(string: str) -> str:

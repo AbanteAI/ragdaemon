@@ -36,7 +36,7 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
                 text = f.read()  
             document = f"{path}\n{text}"
             checksum = hash_str(document)
-            if len(get_db().get(checksum)["ids"]) == 0:
+            if len(get_db(cwd).get(checksum)["ids"]) == 0:
                 # add new items to db (will generate embeddings)
                 metadatas = {
                     "id": str(path), 
@@ -49,7 +49,7 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(metadatas)
             else:
-                db_meta = get_db().get(checksum)["metadatas"][0]
+                db_meta = get_db(cwd).get(checksum)["metadatas"][0]
                 db_meta["active"] = True
             checksums[path] = checksum
         except UnicodeDecodeError:  # Ignore non-text files
@@ -57,7 +57,7 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
         except Exception as e:
             print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
-        get_db().add(**add_to_db)
+        get_db(cwd).add(**add_to_db)
     return checksums
 
 
@@ -82,7 +82,7 @@ class Hierarchy(Annotator):
         for path, checksum in checksums.items():
             # add db reecord
             node_id = str(path)
-            db_record = get_db().get(checksum)
+            db_record = get_db(cwd).get(checksum)
             record = db_record["metadatas"][0]
             graph.add_node(node_id, **record)
             # add hierarchy edges

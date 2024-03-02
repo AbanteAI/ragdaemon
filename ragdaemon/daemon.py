@@ -1,12 +1,10 @@
 import json
 from pathlib import Path
-from textwrap import dedent
 
 import networkx as nx
 from litellm import token_counter
 
 from ragdaemon.annotators import Hierarchy, Chunker, LayoutHierarchy
-from ragdaemon.utils import ragdaemon_dir
 from ragdaemon.database import get_db, query_graph
 
 
@@ -17,11 +15,11 @@ class Daemon:
         self.cwd = cwd
 
         # Load or setup db
-        count = get_db().count()
+        count = get_db(Path(self.cwd)).count()
         print(f"Initialized database with {count} records.")
 
         # Load or initialize graph
-        self.graph_path = ragdaemon_dir / "graph.json"
+        self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
         self.graph_path.parent.mkdir(exist_ok=True)
         if self.graph_path.exists():
             with open(self.graph_path, "r") as f:

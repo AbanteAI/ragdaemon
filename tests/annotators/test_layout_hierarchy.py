@@ -41,8 +41,3 @@ async def test_layout_hierarchy_annotate(cwd):
         assert coordinates, f"Node {node} is missing hierarchy layout"
         all_coordinates.add((coordinates["x"], coordinates["y"], coordinates["z"]))
     assert len(all_coordinates) == actual.number_of_nodes(), "Coordinates are not unique"
-
-    # Overwrite test graph
-    with open("tests/annotators/data/layout_hierarchy_graph.json", "w") as f:
-        data = nx.readwrite.json_graph.node_link_data(actual)
-        json.dump(data, f, indent=4)

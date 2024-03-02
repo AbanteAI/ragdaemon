@@ -1,19 +1,18 @@
 import os
+from pathlib import Path
 
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 import networkx as nx
 
-from ragdaemon.utils import ragdaemon_dir
 
-
-db_path = ragdaemon_dir / "chroma"
 api_key = os.environ.get("OPENAI_API_KEY")
 
 
 _client = None
 _collection = None
-def get_db():
+def get_db(cwd):
+    db_path = Path(cwd) / ".ragdaemon" / "chroma"
     global _client
     global _collection
     if _collection is None:
@@ -35,18 +34,19 @@ def query_graph(query: str, graph: nx.MultiDiGraph) -> list[dict]:
     Chroma's default search covers all records, including inactive ones, so we
     manually flag the active records, query them, and then unflag them.
     """
-    metadatas = get_db().get([
+    cwd = graph.graph["cwd"]
+    metadatas = get_db(cwd).get([
         data["checksum"] for _, data in graph.nodes(data=True) if "checksum" in data
     ])["metadatas"]
     metadatas = [{ **data, "active": True } for data in metadatas]
-    get_db().update(ids=[m["checksum"] for m in metadatas], metadatas=metadatas)
-    response = get_db().query(
+    get_db(cwd).update(ids=[m["checksum"] for m in metadatas], metadatas=metadatas)
+    response = get_db(cwd).query(
         query_texts=query,
         where={"active": True},
         n_results=len(metadatas),
     )
     metadatas = [{ **data, "active": False } for data in metadatas]
-    get_db().update(ids=[m["checksum"] for m in metadatas], metadatas=metadatas)
+    get_db(cwd).update(ids=[m["checksum"] for m in metadatas], metadatas=metadatas)
     results = [
         { **data, "document": document, "distance": distance } 
         for data, document, distance in zip(

@@ -119,9 +119,9 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
             for chunk in chunks
         ] + [base_chunk]
     # Save to db and graph
-    metadatas = get_db().get(data["checksum"])["metadatas"][0]
+    metadatas = get_db(cwd).get(data["checksum"])["metadatas"][0]
     metadatas["chunks"] = json.dumps(chunks)
-    get_db().update(data["checksum"], metadatas=metadatas)
+    get_db(cwd).update(data["checksum"], metadatas=metadatas)
     data["chunks"] = chunks
 
 
@@ -153,7 +153,7 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> d
                 text += file_lines[int(ref)]
         document = f"{id}\n{text}"
         checksum = hash_str(document)
-        records = get_db().get(checksum)["metadatas"]
+        records = get_db(cwd).get(checksum)["metadatas"]
         if len(records) > 0:
             record = records[0]
         else:
@@ -214,5 +214,5 @@ class Chunker(Annotator):
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:
-            get_db().add(**add_to_db)
+            get_db(cwd).add(**add_to_db)
         return graph
