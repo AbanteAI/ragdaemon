@@ -6,7 +6,7 @@ import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.utils import hash_str
+from ragdaemon.utils import hash_str, get_document
 from ragdaemon.database import get_db
 from ragdaemon.llm import acompletion
 
@@ -142,16 +142,8 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> d
     for chunk in chunks:
         # Get the checksum record from database
         id = chunk["id"]
-        text = ""
-        lines_ref = chunk["path"].split(':')[1]
-        ranges = lines_ref.split(',')
-        for ref in ranges:
-            if '-' in ref:
-                _start, _end = ref.split('-')
-                text += "\n".join(file_lines[int(_start)-1:int(_end)])
-            elif ref.isdigit():
-                text += file_lines[int(ref)]
-        document = f"{id}\n{text}"
+        path = chunk["path"]
+        document = get_document(path, cwd, file_lines)
         checksum = hash_str(document)
         records = get_db(cwd).get(checksum)["metadatas"]
         if len(records) > 0:

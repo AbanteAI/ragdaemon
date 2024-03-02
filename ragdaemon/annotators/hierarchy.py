@@ -6,7 +6,7 @@ import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
-from ragdaemon.utils import hash_str
+from ragdaemon.utils import hash_str, get_document
 
 
 def get_active_checksums(cwd: Path) -> dict[Path: str]:
@@ -31,10 +31,8 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
     }
     for path in git_paths:
         try:
-            # could cache checksum by (path, last_updated) to save reads
-            with open(cwd / path, "r") as f:
-                text = f.read()  
-            document = f"{path}\n{text}"
+
+            document = get_document(path, cwd)
             checksum = hash_str(document)
             if len(get_db(cwd).get(checksum)["ids"]) == 0:
                 # add new items to db (will generate embeddings)

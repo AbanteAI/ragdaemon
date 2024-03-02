@@ -19,6 +19,7 @@ const startControlPanel = () => {
     searchInput.addEventListener('keyup', debounce(async (e) => {
         const query = e.target.value;
         if (query.length < 3) { // Clear results if search box is empty
+            searchResults.innerHTML = '';
             return;
         }
         const response = await fetch(`/search?q=${encodeURIComponent(query)}`);

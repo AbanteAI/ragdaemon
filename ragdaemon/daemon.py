@@ -2,10 +2,10 @@ import json
 from pathlib import Path
 
 import networkx as nx
-from litellm import token_counter
 
 from ragdaemon.annotators import Hierarchy, Chunker, LayoutHierarchy
 from ragdaemon.database import get_db, query_graph
+from ragdaemon.llm import token_counter
 
 
 class Daemon:
@@ -22,10 +22,7 @@ class Daemon:
         self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
         self.graph_path.parent.mkdir(exist_ok=True)
         if self.graph_path.exists():
-            with open(self.graph_path, "r") as f:
-                data = json.load(f)
-                self.graph = nx.readwrite.json_graph.node_link_graph(data)
-                print(f"Loaded graph with {self.graph.number_of_nodes()} nodes.")
+            self.load()
         else:
             self.graph = nx.MultiDiGraph()
             self.graph.graph["cwd"] = str(cwd)
@@ -44,6 +41,12 @@ class Daemon:
             json.dump(data, f, indent=4)
         print(f"refreshed knowledge graph saved to {self.graph_path}")
 
+    def load(self):
+        """Load the graph from disk."""
+        with open(self.graph_path, "r") as f:
+            data = json.load(f)
+            self.graph = nx.readwrite.json_graph.node_link_graph(data)
+                
     async def refresh(self):
         """Iteratively build the knowledge graph"""
         _graph = self.graph.copy()
@@ -64,7 +67,7 @@ class Daemon:
         for node in nodes:
             if output:
                 output += "\n"
-            tags = "" if not node["tags"] else f" ({', '.join(node['tags'])})"
+            tags = "" if "tags" not in node else f" ({', '.join(node['tags'])})"
             lines = "\n".join(f"{i+1}: {line}" for i, line in enumerate(node["document"].splitlines()))
             output += f"{node['id']}{tags}\n{lines}"
         return output
