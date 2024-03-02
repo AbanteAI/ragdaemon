@@ -75,8 +75,10 @@ class Daemon:
             for line in sorted(data["lines"]):
                 if line - last_rendered > 1:
                     output += "...\n"
-                output += f"{line}: {file_lines[line]}\n"
+                output += f"{line}:{file_lines[line]}\n"
                 last_rendered = line
+            if last_rendered < len(file_lines) - 1:
+                output += "...\n"
         return output
 
     def get_context_message(
@@ -110,7 +112,7 @@ class Daemon:
                     "document": get_db(self.cwd).get(checksum)["documents"][0],
                 }
                 context[path] = message
-            context[path]["tags"].append("user-included")
+            context[path]["tags"].add("user-included")
             if lines_ref:
                 for _range in lines_ref.split(","):
                     if "-" in _range:
