@@ -9,14 +9,7 @@ from ragdaemon.database import get_db
 async def test_daemon_get_context(cwd):
     daemon = Daemon(cwd.resolve())
     await daemon.refresh()
-
-    nodes = [data for _, data in daemon.graph.nodes(data=True) if "checksum" in data]
-    response = get_db(cwd).get(ids=[n["checksum"] for n in nodes])
-    data = [
-        { **metadatas, "document": document } 
-        for metadatas, document in zip(response["metadatas"], response["documents"])
-    ]
-    context_message = daemon.render_context_message(data)
-    with open('context_message.txt', 'w') as f:
-        f.write(context_message)
-
+    actual = daemon.get_context_message("test", max_tokens=1e6)
+    with open('tests/data/context_message.txt', 'r') as f:
+        expected = f.read()
+    assert actual == expected

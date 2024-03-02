@@ -13,7 +13,7 @@ def test_get_active_checksums(cwd):
     assert all(isinstance(k, Path) for k in checksums), "Keys are not all Paths"
     assert all(isinstance(v, str) for v in checksums.values()), "Values are not all strings"
 
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     expected = {(node, data["checksum"]) for node, data in hierarchy_graph.nodes(data=True) if "checksum" in data}
@@ -31,7 +31,7 @@ def test_hierarchy_is_complete(cwd):
     incomplete_graph.add_node(str(cwd), path=str(cwd), type="directory", id=str(cwd))
     assert not hierarchy.is_complete(incomplete_graph), "Incomplete graph should not be complete"
 
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     assert hierarchy.is_complete(hierarchy_graph), "Hierarchy graph should be complete."
@@ -44,7 +44,7 @@ async def test_hierarchy_annotate(cwd):
     actual = await Hierarchy().annotate(graph)
 
     # Load the template graph
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         expected = nx.readwrite.json_graph.node_link_graph(data)
     for node in expected:  # Add the ID field back in

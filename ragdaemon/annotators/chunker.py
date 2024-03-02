@@ -134,8 +134,6 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> d
     chunks = data["chunks"]
     if len(data["chunks"]) == 0:
         return add_to_db
-    with open(cwd / file, "r") as f:
-        file_lines = f.readlines()
     edges_to_add = set()
     base_id = f"{file}:BASE"
     edges_to_add.add((file, base_id))
@@ -143,7 +141,7 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> d
         # Get the checksum record from database
         id = chunk["id"]
         path = chunk["path"]
-        document = get_document(path, cwd, file_lines)
+        document = get_document(path, cwd)
         checksum = hash_str(document)
         records = get_db(cwd).get(checksum)["metadatas"]
         if len(records) > 0:

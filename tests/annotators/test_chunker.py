@@ -20,7 +20,7 @@ def test_chunker_is_complete(cwd):
     empty_graph = nx.MultiDiGraph()
     assert chunker.is_complete(empty_graph), "Empty graph is complete."
 
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     assert not chunker.is_complete(hierarchy_graph), "Hierarchy graph should not be complete."
@@ -35,7 +35,7 @@ def test_chunker_is_complete(cwd):
             data["chunks"] = []
     assert chunker.is_complete(incomplete_graph), "Empty chunks should be complete"
 
-    with open("tests/annotators/data/chunker_graph.json", "r") as f:
+    with open("tests/data/chunker_graph.json", "r") as f:
         data = json.load(f)
         chunker_graph = nx.readwrite.json_graph.node_link_graph(data)
     assert chunker.is_complete(chunker_graph), "Chunker graph should be complete."
@@ -43,7 +43,7 @@ def test_chunker_is_complete(cwd):
 
 @pytest.mark.asyncio
 async def test_chunker_annotate(cwd, mock_get_llm_response):
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     actual = await Chunker().annotate(hierarchy_graph)

@@ -61,15 +61,22 @@ class Daemon:
         """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph)
     
-    def render_context_message(self, nodes: list[dict]) -> str:
+    def render_context_message(self, context: dict[str, dict]) -> str:
         """Return a formatted context message for the given nodes."""
         output = ""
-        for node in nodes:
+        for data in context.values():
             if output:
                 output += "\n"
-            tags = "" if "tags" not in node else f" ({', '.join(node['tags'])})"
-            lines = "\n".join(f"{i+1}: {line}" for i, line in enumerate(node["document"].splitlines()))
-            output += f"{node['id']}{tags}\n{lines}"
+            tags = "" if "tags" not in data else f" ({', '.join(data['tags'])})"
+            output += f"{data['id']}{tags}\n"
+
+            file_lines = data["document"].splitlines()
+            last_rendered = 0
+            for line in sorted(data["lines"]):
+                if line - last_rendered > 1:
+                    output += "...\n"
+                output += f"{line}: {file_lines[line]}\n"
+                last_rendered = line
         return output
 
     def get_context_message(
@@ -79,31 +86,79 @@ class Daemon:
         max_tokens: int = 8000, 
         auto_tokens: int = 2000,
     ) -> str:
-        """Return formatted context for the given query."""
-        selected = []
+        """
+        Args:
+            query: The search query to match context for
+            include: List of node refs (path/to/file:line_start-line_end) to include automatically
+            max_tokens: The maximum number of tokens for the context message
+            auto_tokens: Auto-selected nodes to add in addition to include        
+        """
+        context = {}
         for id in include:
+            path, lines_ref = id, None
             if ":" in id:
-                id = id.split(":")[0]  # TODO: support line numbers
-            if id in self.graph:
-                selected.append({**self.graph.nodes[id], "tags": ["user-included"]})
+                path, lines_ref = id.split(":", 1)
+            if path not in self.graph:
+                print(f"Warning: no matching message found for {id}.")
+                continue
+            if path not in context:
+                checksum = self.graph.nodes[path]["checksum"]
+                message = {
+                    "id": id,
+                    "lines": set(), 
+                    "tags": set(),
+                    "document": get_db(self.cwd).get(checksum)["documents"][0],
+                }
+                context[path] = message
+            context[path]["tags"].append("user-included")
+            if lines_ref:
+                for _range in lines_ref.split(","):
+                    if "-" in _range:
+                        start, end = _range.split("-")
+                        for i in range(int(start), int(end) + 1):
+                            context[path]["lines"].add(i)
+                    else:
+                        context[path]["lines"].add(int(_range))
             else:
-                print(f"Warning: {id} not found in results.")
-        include_context_message = self.render_context_message(selected)
+                for i in range(1, len(context[path]["document"].splitlines())): 
+                    context[path]["lines"].add(i)  # +1 line for filename, -1 for indexing
+            
+        include_context_message = self.render_context_message(context)
         include_tokens = token_counter(include_context_message)
         if include_tokens >= max_tokens:
             return include_context_message
 
+        full_context_message = include_context_message
         auto_tokens = min(auto_tokens, max_tokens - include_tokens)
         results = self.search(query)
-        while query and results:
-            node_id = results.pop(0)
-            was_included = any(node_id == node["id"] for node in selected)
-            if was_included:
-                node = next(node for node in selected if node["id"] == node_id)
-                node["tags"].append("auto-included")
+        for i, node in enumerate(results):
+            path, lines_ref = node["path"], None
+            if ":" in path:
+                path, lines_ref = path.split(":", 1)
+            if path not in context:
+                message = {
+                    "id": node["id"],
+                    "lines": set(), 
+                    "tags": set(), 
+                    "document": node["document"]}
+                message["document"] = node["document"]
+                context[path] = message
+            context[path]["tags"].add(f"no-{i+1}-search-result")
+            if lines_ref:
+                for _range in lines_ref.split(","):
+                    if "-" in _range:
+                        start, end = _range.split("-")
+                        for i in range(int(start), int(end) + 1):
+                            context[path]["lines"].add(i)
+                    else:
+                        context[path]["lines"].add(int(_range))
             else:
-                node = {**self.graph.nodes[node_id], "tags": ["embedding-similarity"]}
-            next_context_message = self.render_context_message(selected + [node])
+                for i in range(1, len(context[path]["document"].splitlines())): 
+                    context[path]["lines"].add(i)
+
+            next_context_message = self.render_context_message(context)
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:
-                break
+                return full_context_message
+            full_context_message = next_context_message
+        return full_context_message

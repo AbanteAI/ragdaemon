@@ -7,13 +7,12 @@ def hash_str(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def get_document(_path: str | Path, _cwd: Path, file_lines: list[str] | None = None) -> str:
+def get_document(_path: str | Path, _cwd: Path) -> str:
     _path = str(_path)
     if ":" in _path:
         _path, lines_ref = _path.split(':')
-        if file_lines is None:
-            with open(_cwd / _path, "r") as f:
-                file_lines = f.readlines()
+        with open(_cwd / _path, "r") as f:
+            file_lines = f.readlines()
         ranges = lines_ref.split(',')
         text = ""
         for ref in ranges:

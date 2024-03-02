@@ -12,7 +12,7 @@ def test_layout_hierarchy_is_complete(cwd):
     empty_graph = nx.MultiDiGraph()
     assert layout_hierarchy.is_complete(empty_graph), "Empty graph is complete."
 
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     assert not layout_hierarchy.is_complete(hierarchy_graph), "Hierarchy graph should not be complete."
@@ -22,7 +22,7 @@ def test_layout_hierarchy_is_complete(cwd):
     incomplete_graph.nodes[first_node]["layout"] = {"hierarchy": {"x": 0, "y": 0, "z": 0}}
     assert not layout_hierarchy.is_complete(incomplete_graph), "Incomplete graph should not be complete"
 
-    with open("tests/annotators/data/layout_hierarchy_graph.json", "r") as f:
+    with open("tests/data/layout_hierarchy_graph.json", "r") as f:
         data = json.load(f)
         layout_hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     assert layout_hierarchy.is_complete(layout_hierarchy_graph), "Layout hierarchy graph should be complete."
@@ -30,7 +30,7 @@ def test_layout_hierarchy_is_complete(cwd):
 
 @pytest.mark.asyncio
 async def test_layout_hierarchy_annotate(cwd):
-    with open("tests/annotators/data/hierarchy_graph.json", "r") as f:
+    with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
     actual = await LayoutHierarchy().annotate(hierarchy_graph)
