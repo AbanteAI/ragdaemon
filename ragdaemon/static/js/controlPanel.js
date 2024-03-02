@@ -1,18 +1,24 @@
 import scene from './three/scene.js';
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 const startControlPanel = () => {
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
 
-searchInput.addEventListener('keyup', async (e) => {
-    const query = e.target.value;
-    if (query.length === 0) { // Clear results if search box is empty
-        searchResults.innerHTML = '';
-        return;
-    }
-    if (e.key === 'Enter') {
-        if (query.length < 3) { // Minimum query length
-            searchResults.innerHTML = '';
+    searchInput.addEventListener('keyup', debounce(async (e) => {
+        const query = e.target.value;
+        if (query.length < 3) { // Clear results if search box is empty
             return;
         }
         const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
@@ -23,8 +29,7 @@ searchInput.addEventListener('keyup', async (e) => {
                 scene.children.find(child => child.userData.id === resultId).userData.handleClick();
             });
         });
-    }
-});
+    }, 300)); // Adding debounce time of 300 milliseconds
 }
 
 export default startControlPanel;
