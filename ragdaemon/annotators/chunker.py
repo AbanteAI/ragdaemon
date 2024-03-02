@@ -2,12 +2,13 @@ import asyncio
 import json
 from pathlib import Path
 
-from litellm import acompletion
 import networkx as nx
+from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.utils import hash_str
 from ragdaemon.database import get_db
+from ragdaemon.llm import acompletion
 
 
 chunker_prompt = """\
@@ -64,7 +65,7 @@ async def get_llm_response(file_message: str) -> dict:
             messages=messages,
             response_format={ "type": "json_object" },
         )
-        return json.loads(response["choices"][0]["message"]["content"])
+        return json.loads(response.choices[0].message.content)
     
 
 async def get_file_chunk_data(cwd, node, data) -> list[dict]:
@@ -124,13 +125,14 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
     data["chunks"] = chunks
 
 
-def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph):
+def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> dict[str: list]:
     """Load chunks from file data into db/graph"""
+    add_to_db = {"ids": [], "documents": [], "metadatas": []}
     if not isinstance(data["chunks"], list):
         data["chunks"] = json.loads(data["chunks"])
     chunks = data["chunks"]
     if len(data["chunks"]) == 0:
-        return
+        return add_to_db
     with open(Path(file), "r") as f:
         file_lines = f.readlines()
     edges_to_add = set()
@@ -161,7 +163,9 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph):
                 "checksum": checksum, 
                 "active": False
             }
-            get_db().add(ids=checksum, documents=document, metadatas=record)
+            add_to_db["ids"].append(checksum)
+            add_to_db["documents"].append(document)
+            add_to_db["metadatas"].append(record)
         # Load into graph with edges
         graph.add_node(record["id"], **record)
         def _link_to_base_chunk(_id):
@@ -176,6 +180,7 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph):
         _link_to_base_chunk(id)
     for source, origin in edges_to_add:
         graph.add_edge(source, origin, type="hierarchy")
+    return add_to_db
 
 
 class Chunker(Annotator):
@@ -200,8 +205,13 @@ class Chunker(Annotator):
                 tasks.append(get_file_chunk_data(cwd, node, data))
         if len(tasks) > 0:
             print(f"Chunking {len(tasks)} files...")
-            await asyncio.gather(*tasks)
+            await tqdm.gather(*tasks)
         # Load/Create chunk nodes into database and graph
+        add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
-            add_file_chunks_to_graph(file, data, graph)
+            _add_to_db = add_file_chunks_to_graph(file, data, graph)
+            for field, values in _add_to_db.items():
+                add_to_db[field].extend(values)
+        if len(add_to_db["ids"]) > 0:
+            get_db().add(**add_to_db)
         return graph
