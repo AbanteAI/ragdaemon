@@ -77,18 +77,28 @@ class Daemon:
         self.graph = _graph
         self.save()
 
-    async def watch(self, refresh=False, interval=3):
+    async def watch(self, refresh=False, interval=2, debounce=5):
         """Calls self.update interval seconds after a file is modified."""
         await self.update(refresh)
         git_paths = get_non_gitignored_files(self.cwd)
         last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
+        _update_task = None
         while True:
             await asyncio.sleep(interval)
             git_paths = get_non_gitignored_files(self.cwd)
             _last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
-            if _last_updated > last_updated and (time.time() - _last_updated) > interval:
-                await self.update()
+            if (
+                _last_updated > last_updated
+                and (time.time() - _last_updated) > debounce
+            ):
+                if _update_task is not None:
+                    try:
+                        _update_task.cancel()
+                        await _update_task
+                    except asyncio.CancelledError:
+                        pass
                 last_updated = _last_updated
+                _update_task = asyncio.create_task(self.update(refresh))
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict]:
         """Return a sorted list of nodes that match the query."""
