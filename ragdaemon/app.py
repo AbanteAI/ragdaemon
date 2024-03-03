@@ -17,16 +17,20 @@ app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
 templates = Jinja2Templates(directory=app_dir / "templates")
 
 
-# Load daemon when server starts
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
 parser.add_argument('--refresh', '-r', action='store_true', help='Refresh active records.')
+parser.add_argument('--verbose', '-v', action='store_true', help='Print daemon status to cwd.')
 parser.add_argument('--chunk-extensions', '-c', nargs='*', help='List of file extensions to chunk, e.g., .py .js')
 args = parser.parse_args()
+refresh = args.refresh
+verbose = args.verbose
 chunk_extensions = None if args.chunk_extensions is None else set(args.chunk_extensions)
-daemon = Daemon(Path.cwd(), chunk_extensions=chunk_extensions)
+
+# Load daemon when server starts
+daemon = Daemon(Path.cwd(), chunk_extensions=chunk_extensions, verbose=verbose)
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(daemon.update(args.refresh))
+    asyncio.create_task(daemon.update(refresh))
 
 
 @app.get('/', response_class=HTMLResponse)

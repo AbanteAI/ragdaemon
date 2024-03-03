@@ -57,13 +57,20 @@ class LayoutHierarchy(Annotator):
                 return False
         return True
 
-    async def annotate(self, graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
+    async def annotate(
+        self, 
+        graph: nx.MultiDiGraph, 
+        refresh: bool = False,
+        iterations: int = 40,
+    ) -> nx.MultiDiGraph:
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes
         c. Save to chroma
         """
-        pos = fruchterman_reingold_3d(graph)
+        if self.verbose:
+            print(f"Generating hierarchical layout, {iterations} iterations...")
+        pos = fruchterman_reingold_3d(graph, iterations=iterations)
         for node_id, coordinates in pos.items():
             node = graph.nodes[node_id]
             if "layout" not in node:

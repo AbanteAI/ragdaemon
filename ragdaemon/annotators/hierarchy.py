@@ -9,7 +9,7 @@ from ragdaemon.database import get_db
 from ragdaemon.utils import hash_str, get_document
 
 
-def get_active_checksums(cwd: Path, refresh: bool = False) -> dict[Path: str]:
+def get_active_checksums(cwd: Path, refresh: bool = False, verbose: bool = False) -> dict[Path: str]:
     checksums: dict[Path: str] = {}
     git_paths = set(  # All non-ignored and untracked files
         Path(os.path.normpath(p))
@@ -50,7 +50,8 @@ def get_active_checksums(cwd: Path, refresh: bool = False) -> dict[Path: str]:
         except UnicodeDecodeError:  # Ignore non-text files
             pass
         except Exception as e:
-            print(f"Error processing path {path}: {e}")
+            if verbose:
+                print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
         get_db(cwd).upsert(**add_to_db)
     return checksums
@@ -61,14 +62,14 @@ class Hierarchy(Annotator):
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = Path(graph.graph["cwd"])
-        checksums = get_active_checksums(cwd)
+        checksums = get_active_checksums(cwd, verbose=self.verbose)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         return graph.graph.get("files_checksum") == files_checksum
 
     async def annotate(self, old_graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         cwd = Path(old_graph.graph["cwd"])
-        checksums = get_active_checksums(cwd, refresh=refresh)
+        checksums = get_active_checksums(cwd, refresh=refresh, verbose=self.verbose)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         
         graph = nx.MultiDiGraph()

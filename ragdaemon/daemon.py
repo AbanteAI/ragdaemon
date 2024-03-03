@@ -12,12 +12,14 @@ from ragdaemon.llm import token_counter
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
-    def __init__(self, cwd: Path, chunk_extensions: Optional[set[str]] = None):
+    def __init__(self, cwd: Path, chunk_extensions: Optional[set[str]] = None, verbose: bool = False):
         self.cwd = cwd
+        self.verbose = verbose
 
         # Load or setup db
         count = get_db(Path(self.cwd)).count()
-        print(f"Initialized database with {count} records.")
+        if self.verbose:
+            print(f"Initialized database with {count} records.")
 
         # Load or initialize graph
         self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
@@ -26,13 +28,14 @@ class Daemon:
             self.load()
         else:
             self.graph = nx.MultiDiGraph()
-            self.graph.graph["cwd"] = str(cwd)
-            print(f"Initialized empty graph.")
+            self.graph.graph["cwd"] = str(self.cwd)
+            if self.verbose:
+                print(f"Initialized empty graph.")
 
         self.pipeline = [
-            Hierarchy(),
-            Chunker(chunk_extensions=chunk_extensions),
-            LayoutHierarchy(),
+            Hierarchy(verbose=self.verbose),
+            Chunker(chunk_extensions=chunk_extensions, verbose=self.verbose),
+            LayoutHierarchy(verbose=self.verbose),
         ]
 
     def save(self):
@@ -40,7 +43,8 @@ class Daemon:
         data = nx.readwrite.json_graph.node_link_data(self.graph)
         with open(self.graph_path, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"updated knowledge graph saved to {self.graph_path}")
+        if self.verbose:
+            print(f"Saved updated graph to {self.graph_path}")
 
     def load(self):
         """Load the graph from disk."""
@@ -76,11 +80,7 @@ class Daemon:
             for line in sorted(data["lines"]):
                 if line - last_rendered > 1:
                     output += "...\n"
-                try:
-                    output += f"{line}:{file_lines[line]}\n"
-                except Exception as e:
-                    print(e)
-                    raise e
+                output += f"{line}:{file_lines[line]}\n"
                 last_rendered = line
             if last_rendered < len(file_lines) - 1:
                 output += "...\n"
@@ -92,7 +92,8 @@ class Daemon:
         if ":" in id:
             path, lines_ref = id.split(":", 1)
         if path not in self.graph:
-            print(f"Warning: no matching message found for {id}.")
+            if self.verbose:
+                print(f"Warning: no matching message found for {id}.")
             return
         if path not in context:
             checksum = self.graph.nodes[path]["checksum"]

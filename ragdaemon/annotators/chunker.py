@@ -68,7 +68,7 @@ async def get_llm_response(file_message: str) -> dict:
         return json.loads(response.choices[0].message.content)
     
 
-async def get_file_chunk_data(cwd, node, data) -> list[dict]:
+async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[dict]:
     """Get or add chunk data to database, load into file data"""
     file_lines = (cwd / Path(node)).read_text().splitlines()
     if len(file_lines) == 0:
@@ -87,7 +87,8 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
                 for chunk in chunks
             ):
                 break
-            print(f"Error with chunker response:\n{response}.\n{tries} tries left.")
+            if verbose:
+                print(f"Error with chunker response:\n{response}.\n{tries} tries left.")
             chunks = []
     if chunks:
         # Generate a 'BASE chunk' with all lines not already part of a chunk
@@ -176,7 +177,8 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refr
 
 class Chunker(Annotator):
     name = "chunker"
-    def __init__(self, chunk_extensions: set[str] = None):
+    def __init__(self, *args, chunk_extensions: list[str] = None, **kwargs):
+        super().__init__(*args, **kwargs)
         self.chunk_extensions = chunk_extensions
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
@@ -202,8 +204,11 @@ class Chunker(Annotator):
             if refresh or data.get("chunks", None) is None:
                 tasks.append(get_file_chunk_data(cwd, node, data))
         if len(tasks) > 0:
-            print(f"Chunking {len(tasks)} files...")
-            await tqdm.gather(*tasks)
+            if self.verbose:
+                print(f"Chunking {len(tasks)} files...")
+                await tqdm.gather(*tasks)
+            else:
+                await asyncio.gather(*tasks)
         # Load/Create chunk nodes into database and graph
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
