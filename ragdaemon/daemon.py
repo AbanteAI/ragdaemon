@@ -1,3 +1,5 @@
+import time
+import asyncio
 import json
 from pathlib import Path
 from typing import Optional
@@ -8,6 +10,7 @@ from ragdaemon.annotators import annotators_map
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import token_counter
 from ragdaemon.render_context import add_id_to_context, render_context_message
+from ragdaemon.utils import get_non_gitignored_files
 
 
 class Daemon:
@@ -73,6 +76,19 @@ class Daemon:
                 _graph = await annotator.annotate(_graph, refresh=refresh)
         self.graph = _graph
         self.save()
+
+    async def watch(self, refresh=False, interval=3):
+        """Calls self.update interval seconds after a file is modified."""
+        await self.update(refresh)
+        git_paths = get_non_gitignored_files(self.cwd)
+        last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
+        while True:
+            await asyncio.sleep(interval)
+            git_paths = get_non_gitignored_files(self.cwd)
+            _last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
+            if _last_updated > last_updated and (time.time() - _last_updated) > interval:
+                await self.update()
+                last_updated = _last_updated
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict]:
         """Return a sorted list of nodes that match the query."""

@@ -37,13 +37,19 @@ annotators = {
 daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 
 
-# Load FastAPI server
+# Start/run daemon in the background
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    asyncio.create_task(daemon.update(refresh))
+    watch_task = asyncio.create_task(daemon.watch(refresh))
     yield
+    watch_task.cancel()
+    try:
+        await watch_task
+    except asyncio.CancelledError:
+        pass
 
 
+# Load FastAPI server
 app = FastAPI(lifespan=lifespan)
 app_dir = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
