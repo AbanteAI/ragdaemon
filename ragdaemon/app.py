@@ -2,6 +2,7 @@ import webbrowser
 import argparse
 import asyncio
 from contextlib import asynccontextmanager
+import socket
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -40,12 +41,6 @@ daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     asyncio.create_task(daemon.update(refresh))
-
-    async def _wait_1s_then_open_browser():
-        asyncio.sleep(1)
-        webbrowser.open("http://localhost:5001")
-
-    asyncio.create_task(_wait_1s_then_open_browser())
     yield
 
 
@@ -80,9 +75,23 @@ async def search(request: Request, q: str):
 
 
 async def main():
-    """Starts the uvicorn server programmatically."""
+    """Starts the uvicorn server programmatically, checking for available port starting from 5001."""
+    port = 5001
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("localhost", port)) != 0:
+                break  # The port is available
+            port += 1  # Try the next port
     config = uvicorn.Config(
-        app="ragdaemon.app:app", host="localhost", port=5001, log_level="info"
+        app="ragdaemon.app:app", host="localhost", port=port, log_level="info"
     )
+    if verbose:
+        print(f"Starting server on port {port}...")
     server = uvicorn.Server(config)
+
+    async def _wait_1s_then_open_browser():
+        await asyncio.sleep(1)
+        webbrowser.open(f"http://localhost:{port}")
+
+    asyncio.create_task(_wait_1s_then_open_browser())
     await server.serve()

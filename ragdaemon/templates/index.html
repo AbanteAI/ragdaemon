@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Rag Daemon</title>
+    <title>ragdaemon</title>
     <link rel="icon" href="static/favicon.ico">
 </head>
 <body>
@@ -75,6 +75,9 @@
         var nodes = {{ nodes | tojson }};
         var edges = {{ edges | tojson }};
         var metadata = {{ metadata | tojson }};
+        // Set the window title to the last element of metadata.cwd
+        document.title = `/${metadata.cwd.split('/').pop()}`;
+
         // Scale node sizes, camera placement, etc to number of nodes
         const SCALE = Math.sqrt(1 / nodes.length);
         const NODE_RADIUS = SCALE / 5
