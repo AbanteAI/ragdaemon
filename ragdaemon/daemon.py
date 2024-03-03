@@ -4,7 +4,7 @@ from typing import Optional
 
 import networkx as nx
 
-from ragdaemon.annotators import Hierarchy, Chunker, LayoutHierarchy
+from ragdaemon.annotators import annotators_map
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import token_counter
 
@@ -15,7 +15,7 @@ class Daemon:
     def __init__(
         self,
         cwd: Path,
-        chunk_extensions: Optional[set[str]] = None,
+        annotators: Optional[dict[str, dict]] = None,
         verbose: bool = False,
     ):
         self.cwd = cwd
@@ -37,11 +37,23 @@ class Daemon:
             if self.verbose:
                 print(f"Initialized empty graph.")
 
-        self.pipeline = [
-            Hierarchy(verbose=self.verbose),
-            Chunker(chunk_extensions=chunk_extensions, verbose=self.verbose),
-            LayoutHierarchy(verbose=self.verbose),
-        ]
+        if annotators:
+            for annotator in annotators:
+                if annotator not in annotators_map:
+                    raise ValueError(
+                        f"Annotator {annotator} not found.\n{annotators_map}"
+                    )
+        else:
+            annotators = {
+                "hierarchy": {},
+                "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
+            }
+        if self.verbose:
+            print(f"Initializing annotators: {list(annotators.keys())}...")
+        self.pipeline = {
+            ann: annotators_map[ann](**kwargs, verbose=self.verbose)
+            for ann, kwargs in annotators.items()
+        }
 
     def save(self):
         """Saves the graph to disk."""
@@ -61,15 +73,15 @@ class Daemon:
         """Iteratively build the knowledge graph"""
         _graph = self.graph.copy()
         self.graph.graph["refreshing"] = True
-        for annotator in self.pipeline:
+        for annotator in self.pipeline.values():
             if refresh or not annotator.is_complete(_graph):
                 _graph = await annotator.annotate(_graph, refresh=refresh)
         self.graph = _graph
         self.save()
 
-    def search(self, query: str) -> list[dict]:
+    def search(self, query: str, n: Optional[int] = None) -> list[dict]:
         """Return a sorted list of nodes that match the query."""
-        return query_graph(query, self.graph)
+        return query_graph(query, self.graph, n=n)
 
     def render_context_message(self, context: dict[str, dict]) -> str:
         """Return a formatted context message for the given nodes."""

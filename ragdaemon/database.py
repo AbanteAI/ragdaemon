@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Optional
 
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
@@ -30,7 +31,9 @@ def get_db(cwd):
     return _collection
 
 
-def query_graph(query: str, graph: nx.MultiDiGraph) -> list[dict]:
+def query_graph(
+    query: str, graph: nx.MultiDiGraph, n: Optional[int] = None
+) -> list[dict]:
     """Return documents, metadatas and distances, sorted, for nodes in the graph.
 
     Chroma's default search covers all records, including inactive ones, so we
@@ -41,6 +44,8 @@ def query_graph(query: str, graph: nx.MultiDiGraph) -> list[dict]:
         [data["checksum"] for _, data in graph.nodes(data=True) if "checksum" in data]
     )["metadatas"]
     metadatas = [{**data, "active": True} for data in metadatas]
+    if len(metadatas) == 0:
+        return []
     get_db(cwd).update(ids=[m["checksum"] for m in metadatas], metadatas=metadatas)
     response = get_db(cwd).query(
         query_texts=query,
@@ -56,4 +61,6 @@ def query_graph(query: str, graph: nx.MultiDiGraph) -> list[dict]:
         )
     ]
     results = sorted(results, key=lambda x: x["distance"])
+    if n:
+        results = results[:n]
     return results

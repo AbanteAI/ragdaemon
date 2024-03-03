@@ -1,5 +1,7 @@
+import webbrowser
 import argparse
 import asyncio
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -11,18 +13,10 @@ import uvicorn
 from ragdaemon.daemon import Daemon
 
 
-app = FastAPI()
-app_dir = Path(__file__).resolve().parent
-app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
-templates = Jinja2Templates(directory=app_dir / "templates")
-
-
+# Load daemon with command line arguments and visualization annotators
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
 parser.add_argument(
     "--refresh", "-r", action="store_true", help="Refresh active records."
-)
-parser.add_argument(
-    "--verbose", "-v", action="store_true", help="Print daemon status to cwd."
 )
 parser.add_argument(
     "--chunk-extensions",
@@ -32,16 +26,33 @@ parser.add_argument(
 )
 args = parser.parse_args()
 refresh = args.refresh
-verbose = args.verbose
+verbose = True  # Always verbose in server mode
 chunk_extensions = None if args.chunk_extensions is None else set(args.chunk_extensions)
+annotators = {
+    "hierarchy": {},
+    "chunker": {"chunk_extensions": chunk_extensions},
+    "layout_hierarchy": {},
+}
+daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 
-# Load daemon when server starts
-daemon = Daemon(Path.cwd(), chunk_extensions=chunk_extensions, verbose=verbose)
 
-
-@app.on_event("startup")
-async def startup_event():
+# Load FastAPI server
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     asyncio.create_task(daemon.update(refresh))
+
+    async def _wait_1s_then_open_browser():
+        asyncio.sleep(1)
+        webbrowser.open("http://localhost:5001")
+
+    asyncio.create_task(_wait_1s_then_open_browser())
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+app_dir = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
+templates = Jinja2Templates(directory=app_dir / "templates")
 
 
 @app.get("/", response_class=HTMLResponse)
