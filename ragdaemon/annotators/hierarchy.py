@@ -9,7 +9,7 @@ from ragdaemon.database import get_db
 from ragdaemon.utils import hash_str, get_document
 
 
-def get_active_checksums(cwd: Path) -> dict[Path: str]:
+def get_active_checksums(cwd: Path, refresh: bool = False) -> dict[Path: str]:
     checksums: dict[Path: str] = {}
     git_paths = set(  # All non-ignored and untracked files
         Path(os.path.normpath(p))
@@ -34,21 +34,21 @@ def get_active_checksums(cwd: Path) -> dict[Path: str]:
 
             document = get_document(path, cwd)
             checksum = hash_str(document)
-            if len(get_db(cwd).get(checksum)["ids"]) == 0:
+            existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
+            if refresh or not existing_record:
+                if existing_record:
+                    get_db(cwd).delete(checksum)
                 # add new items to db (will generate embeddings)
                 metadatas = {
                     "id": str(path), 
                     "type": "file", 
                     "path": str(path), 
                     "checksum": checksum, 
-                    "active": True
+                    "active": False
                 }
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(metadatas)
-            else:
-                db_meta = get_db(cwd).get(checksum)["metadatas"][0]
-                db_meta["active"] = True
             checksums[path] = checksum
         except UnicodeDecodeError:  # Ignore non-text files
             pass
@@ -68,10 +68,10 @@ class Hierarchy(Annotator):
         files_checksum = hash_str("".join(sorted(checksums.values())))
         return graph.graph.get("files_checksum") == files_checksum
 
-    async def annotate(self, old_graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, old_graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         cwd = Path(old_graph.graph["cwd"])
-        checksums = get_active_checksums(cwd)
+        checksums = get_active_checksums(cwd, refresh=refresh)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         
         graph = nx.MultiDiGraph()

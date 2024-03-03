@@ -9,7 +9,7 @@ async def test_daemon_get_context(cwd):
 
     # Full Context
     daemon = Daemon(cwd.resolve())
-    await daemon.refresh()
+    await daemon.update()
     actual = daemon.get_context_message("test", max_tokens=1e6)
     with open('tests/data/context_message.txt', 'r') as f:
         expected = f.read()

@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 from pathlib import Path
 
@@ -16,11 +17,15 @@ app.mount("/static", StaticFiles(directory=app_dir / "static"), name="static")
 templates = Jinja2Templates(directory=app_dir / "templates")
 
 
-# Generate when the server starts
+# Load daemon when server starts
+parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
+parser.add_argument('--refresh', '-r', action='store_true', help='Refresh active records.')
+args = parser.parse_args()
+
 daemon = Daemon(Path.cwd())
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(daemon.refresh())
+    asyncio.create_task(daemon.update(args.refresh))
 
 
 @app.get('/', response_class=HTMLResponse)

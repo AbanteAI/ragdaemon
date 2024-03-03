@@ -39,7 +39,7 @@ class Daemon:
         data = nx.readwrite.json_graph.node_link_data(self.graph)
         with open(self.graph_path, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"refreshed knowledge graph saved to {self.graph_path}")
+        print(f"updated knowledge graph saved to {self.graph_path}")
 
     def load(self):
         """Load the graph from disk."""
@@ -47,13 +47,13 @@ class Daemon:
             data = json.load(f)
             self.graph = nx.readwrite.json_graph.node_link_graph(data)
                 
-    async def refresh(self):
+    async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
         _graph = self.graph.copy()
         self.graph.graph["refreshing"] = True
         for annotator in self.pipeline:
-            if not annotator.is_complete(_graph):
-                _graph = await annotator.annotate(_graph)
+            if refresh or not annotator.is_complete(_graph):
+                _graph = await annotator.annotate(_graph, refresh=refresh)
         self.graph = _graph
         self.save()
 

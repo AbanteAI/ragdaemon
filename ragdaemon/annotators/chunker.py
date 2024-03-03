@@ -125,14 +125,14 @@ async def get_file_chunk_data(cwd, node, data) -> list[dict]:
     data["chunks"] = chunks
 
 
-def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> dict[str: list]:
+def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False) -> dict[str: list]:
     """Load chunks from file data into db/graph"""
     cwd = Path(graph.graph["cwd"])
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
     if not isinstance(data["chunks"], list):
         data["chunks"] = json.loads(data["chunks"])
     chunks = data["chunks"]
-    if len(data["chunks"]) == 0:
+    if not refresh and len(data["chunks"]) == 0:
         return add_to_db
     edges_to_add = set()
     base_id = f"{file}:BASE"
@@ -144,9 +144,11 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph) -> d
         document = get_document(path, cwd)
         checksum = hash_str(document)
         records = get_db(cwd).get(checksum)["metadatas"]
-        if len(records) > 0:
+        if not refresh and len(records) > 0:
             record = records[0]
         else:
+            if len(records) > 0:
+                get_db(cwd).delete(checksum)
             record = {
                 "id": id, 
                 "type": "chunk", 
@@ -183,7 +185,7 @@ class Chunker(Annotator):
                 return False
         return True
     
-    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
         cwd = Path(graph.graph["cwd"])
         file_nodes = [
             (file, data) for file, data in graph.nodes(data=True) 
@@ -192,7 +194,7 @@ class Chunker(Annotator):
         # Generate/add chunk data to file nodes
         tasks = []
         for node, data in file_nodes:
-            if data.get("chunks", None) is None:
+            if refresh or data.get("chunks", None) is None:
                 tasks.append(get_file_chunk_data(cwd, node, data))
         if len(tasks) > 0:
             print(f"Chunking {len(tasks)} files...")

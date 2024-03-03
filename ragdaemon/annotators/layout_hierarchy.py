@@ -57,7 +57,7 @@ class LayoutHierarchy(Annotator):
                 return False
         return True
 
-    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes

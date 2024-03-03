@@ -9,5 +9,5 @@ class Annotator:
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         raise NotImplementedError()
 
-    async def annotate(self, graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
+    async def annotate(self, graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
         raise NotImplementedError()
