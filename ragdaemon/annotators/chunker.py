@@ -54,6 +54,8 @@ RESPONSE:
 
 
 semaphore = asyncio.Semaphore(20)
+
+
 async def get_llm_response(file_message: str) -> dict:
     async with semaphore:
         messages = [
@@ -63,10 +65,10 @@ async def get_llm_response(file_message: str) -> dict:
         response = await acompletion(
             model="gpt-4-turbo-preview",
             messages=messages,
-            response_format={ "type": "json_object" },
+            response_format={"type": "json_object"},
         )
         return json.loads(response.choices[0].message.content)
-    
+
 
 async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[dict]:
     """Get or add chunk data to database, load into file data"""
@@ -77,8 +79,10 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
         tries = 3
         for tries in range(tries, 0, -1):
             tries -= 1
-            numbered_lines = "\n".join(f"{i+1}:{line}" for i, line in enumerate(file_lines))
-            file_message = (f"{node}\n{numbered_lines}")
+            numbered_lines = "\n".join(
+                f"{i+1}:{line}" for i, line in enumerate(file_lines)
+            )
+            file_message = f"{node}\n{numbered_lines}"
             response = await get_llm_response(file_message)
             chunks = response.get("chunks", [])
             if not chunks or all(
@@ -114,9 +118,15 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
         else:
             base_chunk_refs = []
         # Replace with standardized fields
-        base_chunk = {"id": f"{node}:BASE", "path": f"{node}:{','.join(base_chunk_refs)}"}
+        base_chunk = {
+            "id": f"{node}:BASE",
+            "path": f"{node}:{','.join(base_chunk_refs)}",
+        }
         chunks = [
-            {"id": chunk["path"], "path": f"{node}:{chunk['start_line']}-{chunk['end_line']}"}
+            {
+                "id": chunk["path"],
+                "path": f"{node}:{chunk['start_line']}-{chunk['end_line']}",
+            }
             for chunk in chunks
         ] + [base_chunk]
     # Save to db and graph
@@ -126,7 +136,9 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
     data["chunks"] = chunks
 
 
-def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False) -> dict[str: list]:
+def add_file_chunks_to_graph(
+    file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False
+) -> dict[str:list]:
     """Load chunks from file data into db/graph"""
     cwd = Path(graph.graph["cwd"])
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
@@ -149,26 +161,30 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refr
             record = records[0]
         else:
             record = {
-                "id": id, 
-                "type": "chunk", 
+                "id": id,
+                "type": "chunk",
                 "path": chunk["path"],
-                "checksum": checksum, 
-                "active": False
+                "checksum": checksum,
+                "active": False,
             }
             add_to_db["ids"].append(checksum)
             add_to_db["documents"].append(document)
             add_to_db["metadatas"].append(record)
         # Load into graph with edges
         graph.add_node(record["id"], **record)
+
         def _link_to_base_chunk(_id):
-            file_path, chunk_path = _id.split(':')
-            chunk_stack = chunk_path.split('.')
+            file_path, chunk_path = _id.split(":")
+            chunk_stack = chunk_path.split(".")
             _parent = (
-                f"{file_path}:{'.'.join(chunk_stack[:-1])}" if len(chunk_stack) > 1 else base_id
+                f"{file_path}:{'.'.join(chunk_stack[:-1])}"
+                if len(chunk_stack) > 1
+                else base_id
             )
             edges_to_add.add((_parent, _id))
             if _parent != base_id:
                 _link_to_base_chunk(_parent)
+
         _link_to_base_chunk(id)
     for source, origin in edges_to_add:
         graph.add_edge(source, origin, type="hierarchy")
@@ -177,6 +193,7 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refr
 
 class Chunker(Annotator):
     name = "chunker"
+
     def __init__(self, *args, chunk_extensions: list[str] = None, **kwargs):
         super().__init__(*args, **kwargs)
         self.chunk_extensions = chunk_extensions
@@ -186,16 +203,20 @@ class Chunker(Annotator):
             if data.get("type") == "file" and data.get("chunks", None) is None:
                 return False
         return True
-    
-    async def annotate(self, graph: nx.MultiDiGraph, refresh: bool = False) -> nx.MultiDiGraph:
+
+    async def annotate(
+        self, graph: nx.MultiDiGraph, refresh: bool = False
+    ) -> nx.MultiDiGraph:
         cwd = Path(graph.graph["cwd"])
         file_nodes = [
-            (file, data) for file, data in graph.nodes(data=True) 
+            (file, data)
+            for file, data in graph.nodes(data=True)
             if data.get("type") == "file"
         ]
         if self.chunk_extensions is not None:
             file_nodes = [
-                (file, data) for file, data in file_nodes
+                (file, data)
+                for file, data in file_nodes
                 if Path(data["path"]).suffix in self.chunk_extensions
             ]
         # Generate/add chunk data to file nodes

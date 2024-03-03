@@ -5,60 +5,68 @@ main.py (search-result)
 1:from src.interface import parse_arguments, render_response
 2:from src.operations import add, divide, multiply, subtract
 3:
-4:def main():
-5:    a, op, b = parse_arguments()
-6:    
-7:    if op == '+':
-8:        result = add(a, b)
-9:    elif op == '-':
-10:        result = subtract(a, b)
-11:    elif op == '*':
-12:        result = multiply(a, b)
-13:    elif op == '/':
-14:        result = divide(a, b)
-15:    else:
-16:        raise ValueError("Unsupported operation")
-17:    
-18:    render_response(result)
-19:
-20:if __name__ == "__main__":
-21:    main()
+4:
+5:def main():
+6:    a, op, b = parse_arguments()
+7:
+8:    if op == "+":
+9:        result = add(a, b)
+10:    elif op == "-":
+11:        result = subtract(a, b)
+12:    elif op == "*":
+13:        result = multiply(a, b)
+14:    elif op == "/":
+15:        result = divide(a, b)
+16:    else:
+17:        raise ValueError("Unsupported operation")
+18:
+19:    render_response(result)
+20:
+21:
+22:if __name__ == "__main__":
+23:    main()
+
+src/__init__.py (search-result)
 
 src/interface.py (search-result)
-1:
-2:import argparse
-3:import re
+1:import argparse
+2:import re
+3:
 4:
 5:def parse_arguments():
-6:    parser = argparse.ArgumentParser(description='Basic Calculator')
-7:    parser.add_argument('operation', type=str, help='Calculation operation (e.g., 3+4)')
+6:    parser = argparse.ArgumentParser(description="Basic Calculator")
+7:    parser.add_argument("operation", type=str, help="Calculation operation (e.g., 3+4)")
 8:    args = parser.parse_args()
 9:
 10:    # use re to parse symbol, nubmer before, nubmer after
-11:    match = re.match(r'(\d+)(\D)(\d+)', args.operation)
+11:    match = re.match(r"(\d+)(\D)(\d+)", args.operation)
 12:    if match is None:
 13:        raise ValueError("Invalid operation")
 14:    return int(match.group(1)), match.group(2), int(match.group(3))
 15:
-16:def render_response(result):
-17:    print(result)
-
-src/__init__.py (search-result)
+16:
+17:def render_response(result):
+18:    print(result)
 
 src/operations.py (search-result)
 1:import math
 2:
-3:def add(a, b):
-4:    return a + b
-5:
-6:def subtract(a, b):
-7:    return a - b
-8:
-9:def multiply(a, b):
-10:    return a * b
+3:
+4:def add(a, b):
+5:    return a + b
+6:
+7:
+8:def subtract(a, b):
+9:    return a - b
+10:
 11:
-12:def divide(a, b):
-13:    return a / b
+12:def multiply(a, b):
+13:    return a * b
 14:
-15:def sqrt(a):
-16:    return math.sqrt(a)
+15:
+16:def divide(a, b):
+17:    return a / b
+18:
+19:
+20:def sqrt(a):
+21:    return math.sqrt(a)

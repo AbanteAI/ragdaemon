@@ -11,12 +11,18 @@ def test_get_active_checksums(cwd):
     checksums = get_active_checksums(cwd)
     assert isinstance(checksums, dict), "Checksums is not a dict"
     assert all(isinstance(k, Path) for k in checksums), "Keys are not all Paths"
-    assert all(isinstance(v, str) for v in checksums.values()), "Values are not all strings"
+    assert all(
+        isinstance(v, str) for v in checksums.values()
+    ), "Values are not all strings"
 
     with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
-    expected = {(node, data["checksum"]) for node, data in hierarchy_graph.nodes(data=True) if "checksum" in data}
+    expected = {
+        (node, data["checksum"])
+        for node, data in hierarchy_graph.nodes(data=True)
+        if "checksum" in data
+    }
     actual = {(str(path), checksum) for path, checksum in checksums.items()}
     assert actual == expected, "Checksums are not equal"
 
@@ -29,7 +35,9 @@ def test_hierarchy_is_complete(cwd):
     assert not hierarchy.is_complete(empty_graph), "Empty graph should not be complete."
     incomplete_graph = empty_graph.copy()
     incomplete_graph.add_node(str(cwd), path=str(cwd), type="directory", id=str(cwd))
-    assert not hierarchy.is_complete(incomplete_graph), "Incomplete graph should not be complete"
+    assert not hierarchy.is_complete(
+        incomplete_graph
+    ), "Incomplete graph should not be complete"
 
     with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)

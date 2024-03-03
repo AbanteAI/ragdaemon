@@ -8,7 +8,7 @@ client = AsyncOpenAI()
 async def acompletion(
     messages: list[dict[str, str]],
     model: str = MODEL,
-    response_format: dict = { "type": "text" },        
+    response_format: dict = {"type": "text"},
 ):
     response = await client.chat.completions.create(
         model=model,

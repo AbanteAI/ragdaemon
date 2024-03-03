@@ -3,109 +3,126 @@
     "multigraph": true,
     "graph": {
         "cwd": "tests/sample",
-        "files_checksum": "4604dc881c4850f32da927c19af2b743"
+        "files_checksum": "fd4dd8694f2f475e08b6197b742b6c9e"
     },
     "nodes": [
         {
-            "active": true,
-            "checksum": "3ef86dd3830a400484c55d45d7f98ba8",
-            "path": "main.py",
-            "type": "file",
-            "layout": {
-                "hierarchy": {
-                    "x": 0.6356426110861335,
-                    "y": 0.5281997161821111,
-                    "z": 0.3268449976612967
-                }
-            },
-            "id": "main.py"
-        },
-        {
-            "active": true,
-            "checksum": "454b3730611bb57bf9e488e425a6c570",
-            "path": "src/interface.py",
-            "type": "file",
-            "layout": {
-                "hierarchy": {
-                    "x": 0.39486819164898035,
-                    "y": 0.41867353373470284,
-                    "z": 0.4406273062000825
-                }
-            },
-            "id": "src/interface.py"
-        },
-        {
-            "active": true,
-            "checksum": "33d1c743e84b980a4c07902654452110",
-            "path": "src/operations.py",
-            "type": "file",
-            "layout": {
-                "hierarchy": {
-                    "x": 0.3056120208297108,
-                    "y": 0.41315738003634817,
-                    "z": 0.12421814345874155
-                }
-            },
-            "id": "src/operations.py"
-        },
-        {
-            "active": true,
-            "checksum": "b9ba74388a4d956f0aff968bfc165db3",
-            "path": "src/__init__.py",
-            "type": "file",
-            "layout": {
-                "hierarchy": {
-                    "x": 0.5783480503531799,
-                    "y": 0.2405441562512986,
-                    "z": 0.25422621924345534
-                }
-            },
-            "id": "src/__init__.py"
-        },
-        {
-            "active": true,
+            "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
+            "chunks": "[]",
             "path": "README.md",
             "type": "file",
             "layout": {
                 "hierarchy": {
-                    "x": 0.5474267420806915,
-                    "y": 0.59115042688209,
-                    "z": 0.2579152511323314
+                    "x": 0.5273198411332679,
+                    "y": 0.7304764651392146,
+                    "z": 0.32595138044745675
                 }
             },
             "id": "README.md"
         },
         {
             "type": "directory",
+            "path": "ROOT",
+            "layout": {
+                "hierarchy": {
+                    "x": 0.4770236434793431,
+                    "y": 0.9173308938655352,
+                    "z": 0.6069445804179272
+                }
+            },
+            "id": "ROOT"
+        },
+        {
+            "active": false,
+            "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
+            "chunks": "[]",
+            "path": "main.py",
+            "type": "file",
+            "layout": {
+                "hierarchy": {
+                    "x": 0.3839938465503471,
+                    "y": 0.7471701056172371,
+                    "z": 0.4064424163330574
+                }
+            },
+            "id": "main.py"
+        },
+        {
+            "type": "directory",
             "path": "src",
             "layout": {
                 "hierarchy": {
-                    "x": 0.33596981621681615,
-                    "y": 0.24549789243421388,
-                    "z": 0.26398646565827943
+                    "x": 0.4624466137919497,
+                    "y": 0.46906971486698573,
+                    "z": 0.01683503952958043
                 }
             },
             "id": "src"
         },
         {
-            "type": "directory",
-            "path": "ROOT",
+            "active": false,
+            "checksum": "b9ba74388a4d956f0aff968bfc165db3",
+            "chunks": "[]",
+            "path": "src/__init__.py",
+            "type": "file",
             "layout": {
                 "hierarchy": {
-                    "x": 0.8003749136540272,
-                    "y": 0.8007719509599844,
-                    "z": 0.3222607329006466
+                    "x": 0.6487096224144477,
+                    "y": 0.5556744739330748,
+                    "z": 0.1482088737194331
                 }
             },
-            "id": "ROOT"
+            "id": "src/__init__.py"
+        },
+        {
+            "active": false,
+            "checksum": "e0544d192b0bc55d5a33071baae809e2",
+            "chunks": "[]",
+            "path": "src/interface.py",
+            "type": "file",
+            "layout": {
+                "hierarchy": {
+                    "x": 0.3661098226154063,
+                    "y": 0.474293339615203,
+                    "z": 0.24916482164000753
+                }
+            },
+            "id": "src/interface.py"
+        },
+        {
+            "active": false,
+            "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
+            "chunks": "[]",
+            "path": "src/operations.py",
+            "type": "file",
+            "layout": {
+                "hierarchy": {
+                    "x": 0.36344599108966713,
+                    "y": 0.6869620172833532,
+                    "z": 0.05161781261227116
+                }
+            },
+            "id": "src/operations.py"
         }
     ],
     "links": [
         {
             "type": "hierarchy",
-            "source": "src",
-            "target": "src/interface.py",
+            "source": "ROOT",
+            "target": "src",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": "README.md",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": "main.py",
             "key": 0
         },
         {
@@ -122,20 +139,8 @@
         },
         {
             "type": "hierarchy",
-            "source": "ROOT",
-            "target": "README.md",
-            "key": 0
-        },
-        {
-            "type": "hierarchy",
-            "source": "ROOT",
-            "target": "src",
-            "key": 0
-        },
-        {
-            "type": "hierarchy",
-            "source": "ROOT",
-            "target": "main.py",
+            "source": "src",
+            "target": "src/interface.py",
             "key": 0
         }
     ]

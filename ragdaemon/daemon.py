@@ -12,7 +12,12 @@ from ragdaemon.llm import token_counter
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
-    def __init__(self, cwd: Path, chunk_extensions: Optional[set[str]] = None, verbose: bool = False):
+    def __init__(
+        self,
+        cwd: Path,
+        chunk_extensions: Optional[set[str]] = None,
+        verbose: bool = False,
+    ):
         self.cwd = cwd
         self.verbose = verbose
 
@@ -51,7 +56,7 @@ class Daemon:
         with open(self.graph_path, "r") as f:
             data = json.load(f)
             self.graph = nx.readwrite.json_graph.node_link_graph(data)
-                
+
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
         _graph = self.graph.copy()
@@ -65,7 +70,7 @@ class Daemon:
     def search(self, query: str) -> list[dict]:
         """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph)
-    
+
     def render_context_message(self, context: dict[str, dict]) -> str:
         """Return a formatted context message for the given nodes."""
         output = ""
@@ -99,7 +104,7 @@ class Daemon:
             checksum = self.graph.nodes[path]["checksum"]
             message = {
                 "id": id,
-                "lines": set(), 
+                "lines": set(),
                 "tags": set(),
                 "document": get_db(self.cwd).get(checksum)["documents"][0],
             }
@@ -116,15 +121,15 @@ class Daemon:
                 else:
                     context[path]["lines"].add(int(_range))
         else:
-            for i in range(1, len(context[path]["document"].splitlines())): 
+            for i in range(1, len(context[path]["document"].splitlines())):
                 context[path]["lines"].add(i)  # +1 line for filename, -1 for indexing
         return context
 
     def get_context_message(
-        self, 
-        query: str, 
-        include: list[str] = [], 
-        max_tokens: int = 8000, 
+        self,
+        query: str,
+        include: list[str] = [],
+        max_tokens: int = 8000,
         auto_tokens: int = 2000,
     ) -> str:
         """
@@ -132,7 +137,7 @@ class Daemon:
             query: The search query to match context for
             include: List of node refs (path/to/file:line_start-line_end) to include automatically
             max_tokens: The maximum number of tokens for the context message
-            auto_tokens: Auto-selected nodes to add in addition to include        
+            auto_tokens: Auto-selected nodes to add in addition to include
         """
         context = {}
         for id in include:

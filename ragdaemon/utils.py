@@ -10,15 +10,15 @@ def hash_str(string: str) -> str:
 def get_document(_path: str | Path, _cwd: Path) -> str:
     _path = str(_path)
     if ":" in _path:
-        _path, lines_ref = _path.split(':')
+        _path, lines_ref = _path.split(":")
         with open(_cwd / _path, "r") as f:
             file_lines = f.readlines()
-        ranges = lines_ref.split(',')
+        ranges = lines_ref.split(",")
         text = ""
         for ref in ranges:
-            if '-' in ref:
-                _start, _end = ref.split('-')
-                text += "\n".join(file_lines[int(_start)-1:int(_end)])
+            if "-" in ref:
+                _start, _end = ref.split("-")
+                text += "\n".join(file_lines[int(_start) - 1 : int(_end)])
             elif ref.isdigit():
                 text += file_lines[int(ref)]
     else:
