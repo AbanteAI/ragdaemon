@@ -31,13 +31,10 @@ def get_active_checksums(cwd: Path, refresh: bool = False) -> dict[Path: str]:
     }
     for path in git_paths:
         try:
-
             document = get_document(path, cwd)
             checksum = hash_str(document)
             existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
             if refresh or not existing_record:
-                if existing_record:
-                    get_db(cwd).delete(checksum)
                 # add new items to db (will generate embeddings)
                 metadatas = {
                     "id": str(path), 
@@ -55,7 +52,7 @@ def get_active_checksums(cwd: Path, refresh: bool = False) -> dict[Path: str]:
         except Exception as e:
             print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
-        get_db(cwd).add(**add_to_db)
+        get_db(cwd).upsert(**add_to_db)
     return checksums
 
 

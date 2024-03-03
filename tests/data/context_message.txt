@@ -1,7 +1,7 @@
-README.md (no-1-search-result)
+README.md (search-result)
 1:An unnecessarily convoluted app to test the boundaries of the treesitter parser
 
-main.py (no-2-search-result)
+main.py (search-result)
 1:from src.interface import parse_arguments, render_response
 2:from src.operations import add, divide, multiply, subtract
 3:
@@ -24,7 +24,7 @@ main.py (no-2-search-result)
 20:if __name__ == "__main__":
 21:    main()
 
-src/interface.py (no-3-search-result)
+src/interface.py (search-result)
 1:
 2:import argparse
 3:import re
@@ -43,9 +43,9 @@ src/interface.py (no-3-search-result)
 16:def render_response(result):
 17:    print(result)
 
-src/__init__.py (no-4-search-result)
+src/__init__.py (search-result)
 
-src/operations.py (no-5-search-result)
+src/operations.py (search-result)
 1:import math
 2:
 3:def add(a, b):

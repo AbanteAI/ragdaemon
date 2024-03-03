@@ -147,8 +147,6 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refr
         if not refresh and len(records) > 0:
             record = records[0]
         else:
-            if len(records) > 0:
-                get_db(cwd).delete(checksum)
             record = {
                 "id": id, 
                 "type": "chunk", 
@@ -178,6 +176,8 @@ def add_file_chunks_to_graph(file: str, data: dict, graph: nx.MultiDiGraph, refr
 
 class Chunker(Annotator):
     name = "chunker"
+    def __init__(self, chunk_extensions: set[str] = None):
+        self.chunk_extensions = chunk_extensions
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         for _, data in graph.nodes(data=True):
@@ -191,6 +191,11 @@ class Chunker(Annotator):
             (file, data) for file, data in graph.nodes(data=True) 
             if data.get("type") == "file"
         ]
+        if self.chunk_extensions is not None:
+            file_nodes = [
+                (file, data) for file, data in file_nodes
+                if Path(data["path"]).suffix in self.chunk_extensions
+            ]
         # Generate/add chunk data to file nodes
         tasks = []
         for node, data in file_nodes:
@@ -206,5 +211,5 @@ class Chunker(Annotator):
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:
-            get_db(cwd).add(**add_to_db)
+            get_db(cwd).upsert(**add_to_db)
         return graph

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Optional
 
 import networkx as nx
 
@@ -11,7 +12,7 @@ from ragdaemon.llm import token_counter
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
-    def __init__(self, cwd: Path):
+    def __init__(self, cwd: Path, chunk_extensions: Optional[set[str]] = None):
         self.cwd = cwd
 
         # Load or setup db
@@ -30,7 +31,7 @@ class Daemon:
 
         self.pipeline = [
             Hierarchy(),
-            Chunker(),
+            Chunker(chunk_extensions=chunk_extensions),
             LayoutHierarchy(),
         ]
 
@@ -75,11 +76,48 @@ class Daemon:
             for line in sorted(data["lines"]):
                 if line - last_rendered > 1:
                     output += "...\n"
-                output += f"{line}:{file_lines[line]}\n"
+                try:
+                    output += f"{line}:{file_lines[line]}\n"
+                except Exception as e:
+                    print(e)
+                    raise e
                 last_rendered = line
             if last_rendered < len(file_lines) - 1:
                 output += "...\n"
         return output
+
+    def add_id_to_context(self, id: str, context: dict, tags: list[str]):
+        """Take an id like path/to/file.suffix:line_start-line_end and add to context"""
+        path, lines_ref = id, None
+        if ":" in id:
+            path, lines_ref = id.split(":", 1)
+        if path not in self.graph:
+            print(f"Warning: no matching message found for {id}.")
+            return
+        if path not in context:
+            checksum = self.graph.nodes[path]["checksum"]
+            message = {
+                "id": id,
+                "lines": set(), 
+                "tags": set(),
+                "document": get_db(self.cwd).get(checksum)["documents"][0],
+            }
+            context[path] = message
+        else:
+            context[path]["id"] = context[path]["id"].split(":")[0]
+        context[path]["tags"].update(tags)
+        if lines_ref:
+            for _range in lines_ref.split(","):
+                if "-" in _range:
+                    start, end = _range.split("-")
+                    for i in range(int(start), int(end) + 1):
+                        context[path]["lines"].add(i)
+                else:
+                    context[path]["lines"].add(int(_range))
+        else:
+            for i in range(1, len(context[path]["document"].splitlines())): 
+                context[path]["lines"].add(i)  # +1 line for filename, -1 for indexing
+        return context
 
     def get_context_message(
         self, 
@@ -97,34 +135,7 @@ class Daemon:
         """
         context = {}
         for id in include:
-            path, lines_ref = id, None
-            if ":" in id:
-                path, lines_ref = id.split(":", 1)
-            if path not in self.graph:
-                print(f"Warning: no matching message found for {id}.")
-                continue
-            if path not in context:
-                checksum = self.graph.nodes[path]["checksum"]
-                message = {
-                    "id": id,
-                    "lines": set(), 
-                    "tags": set(),
-                    "document": get_db(self.cwd).get(checksum)["documents"][0],
-                }
-                context[path] = message
-            context[path]["tags"].add("user-included")
-            if lines_ref:
-                for _range in lines_ref.split(","):
-                    if "-" in _range:
-                        start, end = _range.split("-")
-                        for i in range(int(start), int(end) + 1):
-                            context[path]["lines"].add(i)
-                    else:
-                        context[path]["lines"].add(int(_range))
-            else:
-                for i in range(1, len(context[path]["document"].splitlines())): 
-                    context[path]["lines"].add(i)  # +1 line for filename, -1 for indexing
-            
+            context = self.add_id_to_context(id, context, tags=["user-included"])
         include_context_message = self.render_context_message(context)
         include_tokens = token_counter(include_context_message)
         if include_tokens >= max_tokens:
@@ -134,30 +145,8 @@ class Daemon:
         auto_tokens = min(auto_tokens, max_tokens - include_tokens)
         results = self.search(query)
         for i, node in enumerate(results):
-            path, lines_ref = node["path"], None
-            if ":" in path:
-                path, lines_ref = path.split(":", 1)
-            if path not in context:
-                message = {
-                    "id": node["id"],
-                    "lines": set(), 
-                    "tags": set(), 
-                    "document": node["document"]}
-                message["document"] = node["document"]
-                context[path] = message
-            context[path]["tags"].add(f"no-{i+1}-search-result")
-            if lines_ref:
-                for _range in lines_ref.split(","):
-                    if "-" in _range:
-                        start, end = _range.split("-")
-                        for i in range(int(start), int(end) + 1):
-                            context[path]["lines"].add(i)
-                    else:
-                        context[path]["lines"].add(int(_range))
-            else:
-                for i in range(1, len(context[path]["document"].splitlines())): 
-                    context[path]["lines"].add(i)
-
+            id = node["path"]
+            context = self.add_id_to_context(id, context, tags=["search-result"])
             next_context_message = self.render_context_message(context)
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:
