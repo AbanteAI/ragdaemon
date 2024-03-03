@@ -7,6 +7,7 @@ import networkx as nx
 from ragdaemon.annotators import annotators_map
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import token_counter
+from ragdaemon.render_context import add_id_to_context, render_context_message
 
 
 class Daemon:
@@ -37,13 +38,7 @@ class Daemon:
             if self.verbose:
                 print(f"Initialized empty graph.")
 
-        if annotators:
-            for annotator in annotators:
-                if annotator not in annotators_map:
-                    raise ValueError(
-                        f"Annotator {annotator} not found.\n{annotators_map}"
-                    )
-        else:
+        if annotators is None:
             annotators = {
                 "hierarchy": {},
                 "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
@@ -83,60 +78,6 @@ class Daemon:
         """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph, n=n)
 
-    def render_context_message(self, context: dict[str, dict]) -> str:
-        """Return a formatted context message for the given nodes."""
-        output = ""
-        for data in context.values():
-            if output:
-                output += "\n"
-            tags = "" if "tags" not in data else f" ({', '.join(data['tags'])})"
-            output += f"{data['id']}{tags}\n"
-
-            file_lines = data["document"].splitlines()
-            last_rendered = 0
-            for line in sorted(data["lines"]):
-                if line - last_rendered > 1:
-                    output += "...\n"
-                output += f"{line}:{file_lines[line]}\n"
-                last_rendered = line
-            if last_rendered < len(file_lines) - 1:
-                output += "...\n"
-        return output
-
-    def add_id_to_context(self, id: str, context: dict, tags: list[str]):
-        """Take an id like path/to/file.suffix:line_start-line_end and add to context"""
-        path, lines_ref = id, None
-        if ":" in id:
-            path, lines_ref = id.split(":", 1)
-        if path not in self.graph:
-            if self.verbose:
-                print(f"Warning: no matching message found for {id}.")
-            return
-        if path not in context:
-            checksum = self.graph.nodes[path]["checksum"]
-            message = {
-                "id": id,
-                "lines": set(),
-                "tags": set(),
-                "document": get_db(self.cwd).get(checksum)["documents"][0],
-            }
-            context[path] = message
-        else:
-            context[path]["id"] = context[path]["id"].split(":")[0]
-        context[path]["tags"].update(tags)
-        if lines_ref:
-            for _range in lines_ref.split(","):
-                if "-" in _range:
-                    start, end = _range.split("-")
-                    for i in range(int(start), int(end) + 1):
-                        context[path]["lines"].add(i)
-                else:
-                    context[path]["lines"].add(int(_range))
-        else:
-            for i in range(1, len(context[path]["document"].splitlines())):
-                context[path]["lines"].add(i)  # +1 line for filename, -1 for indexing
-        return context
-
     def get_context_message(
         self,
         query: str,
@@ -153,8 +94,10 @@ class Daemon:
         """
         context = {}
         for id in include:
-            context = self.add_id_to_context(id, context, tags=["user-included"])
-        include_context_message = self.render_context_message(context)
+            context = add_id_to_context(
+                self.graph, id, context, tags=["user-included"], verbose=self.verbose
+            )
+        include_context_message = render_context_message(context)
         include_tokens = token_counter(include_context_message)
         if include_tokens >= max_tokens:
             return include_context_message
@@ -164,8 +107,10 @@ class Daemon:
         results = self.search(query)
         for i, node in enumerate(results):
             id = node["path"]
-            context = self.add_id_to_context(id, context, tags=["search-result"])
-            next_context_message = self.render_context_message(context)
+            context = add_id_to_context(
+                self.graph, id, context, tags=["search-result"], verbose=self.verbose
+            )
+            next_context_message = render_context_message(context)
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:
                 return full_context_message

@@ -6,26 +6,14 @@ import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
-from ragdaemon.utils import hash_str, get_document
+from ragdaemon.utils import hash_str, get_document, get_non_gitignored_files
 
 
 def get_active_checksums(
     cwd: Path, refresh: bool = False, verbose: bool = False
 ) -> dict[Path:str]:
     checksums: dict[Path:str] = {}
-    git_paths = set(  # All non-ignored and untracked files
-        Path(os.path.normpath(p))
-        for p in filter(
-            lambda p: p != "",
-            subprocess.check_output(
-                ["git", "ls-files", "-c", "-o", "--exclude-standard"],
-                cwd=cwd,
-                text=True,
-                stderr=subprocess.DEVNULL,
-            ).split("\n"),
-        )
-        if (Path(cwd) / p).exists()
-    )
+    git_paths = get_non_gitignored_files(cwd)
     add_to_db = {
         "ids": [],
         "documents": [],

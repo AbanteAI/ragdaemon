@@ -1,4 +1,6 @@
 import hashlib
+import os
+import subprocess
 from pathlib import Path
 
 
@@ -25,3 +27,19 @@ def get_document(_path: str | Path, _cwd: Path) -> str:
         with open(_cwd / _path, "r") as f:
             text = f.read()
     return f"{_path}\n{text}"
+
+
+def get_non_gitignored_files(cwd: Path) -> set[Path]:
+    return set(  # All non-ignored and untracked files
+        Path(os.path.normpath(p))
+        for p in filter(
+            lambda p: p != "",
+            subprocess.check_output(
+                ["git", "ls-files", "-c", "-o", "--exclude-standard"],
+                cwd=cwd,
+                text=True,
+                stderr=subprocess.DEVNULL,
+            ).split("\n"),
+        )
+        if (Path(cwd) / p).exists()
+    )
