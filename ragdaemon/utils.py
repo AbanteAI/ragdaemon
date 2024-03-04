@@ -9,11 +9,10 @@ def hash_str(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def get_document(_path: str | Path, _cwd: Path) -> str:
-    _path = str(_path)
-    if ":" in _path:
-        _path, lines_ref = _path.split(":")
-        with open(_cwd / _path, "r") as f:
+def get_document(ref: str, cwd: Path) -> str:
+    path_str, lines_ref = parse_ref(ref)
+    if lines_ref:
+        with open(cwd / path_str, "r") as f:
             file_lines = f.readlines()
         ranges = lines_ref.split(",")
         text = ""
@@ -24,9 +23,9 @@ def get_document(_path: str | Path, _cwd: Path) -> str:
             elif ref.isdigit():
                 text += file_lines[int(ref)]
     else:
-        with open(_cwd / _path, "r") as f:
+        with open(cwd / path_str, "r") as f:
             text = f.read()
-    return f"{_path}\n{text}"
+    return f"{ref}\n{text}"
 
 
 def get_non_gitignored_files(cwd: Path) -> set[Path]:
@@ -43,3 +42,10 @@ def get_non_gitignored_files(cwd: Path) -> set[Path]:
         )
         if (Path(cwd) / p).exists()
     )
+
+
+def parse_ref(ref: str) -> tuple[str, str | None]:
+    if ":" in ref:
+        return ref.split(":", 1)
+    else:
+        return ref, None

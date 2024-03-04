@@ -15,7 +15,7 @@ chunker_prompt = """\
 Split the provided code file into chunks.
 Return a list of functions, classes and methods in this code file as JSON data.
 Each item in the list should contain:
-1. `path` - a complete call path, e.g. `path/to/file:class.method`
+1. `id` - the complete call path, e.g. `path/to/file:class.method`
 2. `start_line` - where the function, class or method begins
 3. `end_line` - where it ends - INCLUSIVE
 
@@ -44,9 +44,9 @@ src/graph.py
 RESPONSE:
 {
     "chunks": [
-        {"path": "src/graph.py:KnowledgeGraph", "start_line": 6, "end_line": 8},
-        {"path": "src/graph.py:KnowledgeGraph.__init__", "start_line": 7, "end_line": 8},
-        {"path": "src/graph.py:get_knowledge_graph", "start_line": 11, "end_line": 15}
+        {"id": "src/graph.py:KnowledgeGraph", "start_line": 6, "end_line": 8},
+        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 7, "end_line": 8},
+        {"id": "src/graph.py:get_knowledge_graph", "start_line": 11, "end_line": 15}
     ]
 }
 --------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
     if len(file_lines) == 0:
         chunks = []
     else:
-        tries = 3
+        tries = 1
         for tries in range(tries, 0, -1):
             tries -= 1
             numbered_lines = "\n".join(
@@ -86,8 +86,8 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
             response = await get_llm_response(file_message)
             chunks = response.get("chunks", [])
             if not chunks or all(
-                set(chunk.keys()) == {"path", "start_line", "end_line"}
-                and chunk["path"].count(":") == 1
+                set(chunk.keys()) == {"id", "start_line", "end_line"}
+                and chunk["id"].count(":") == 1
                 for chunk in chunks
             ):
                 break
@@ -120,12 +120,12 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
         # Replace with standardized fields
         base_chunk = {
             "id": f"{node}:BASE",
-            "path": f"{node}:{','.join(base_chunk_refs)}",
+            "ref": f"{node}:{','.join(base_chunk_refs)}",
         }
         chunks = [
             {
-                "id": chunk["path"],
-                "path": f"{node}:{chunk['start_line']}-{chunk['end_line']}",
+                "id": chunk["id"],
+                "ref": f"{node}:{chunk['start_line']}-{chunk['end_line']}",
             }
             for chunk in chunks
         ] + [base_chunk]
@@ -153,8 +153,8 @@ def add_file_chunks_to_graph(
     for chunk in chunks:
         # Get the checksum record from database
         id = chunk["id"]
-        path = chunk["path"]
-        document = get_document(path, cwd)
+        ref = chunk["ref"]
+        document = get_document(ref, cwd)
         checksum = hash_str(document)
         records = get_db(cwd).get(checksum)["metadatas"]
         if not refresh and len(records) > 0:
@@ -163,7 +163,7 @@ def add_file_chunks_to_graph(
             record = {
                 "id": id,
                 "type": "chunk",
-                "path": chunk["path"],
+                "ref": chunk["ref"],
                 "checksum": checksum,
                 "active": False,
             }
@@ -174,11 +174,11 @@ def add_file_chunks_to_graph(
         graph.add_node(record["id"], **record)
 
         def _link_to_base_chunk(_id):
-            file_path, chunk_path = _id.split(":")
-            chunk_stack = chunk_path.split(".")
+            path_str, chunk_str = _id.split(":")
+            chunk_list = chunk_str.split(".")
             _parent = (
-                f"{file_path}:{'.'.join(chunk_stack[:-1])}"
-                if len(chunk_stack) > 1
+                f"{path_str}:{'.'.join(chunk_list[:-1])}"
+                if len(chunk_list) > 1
                 else base_id
             )
             edges_to_add.add((_parent, _id))
@@ -217,7 +217,7 @@ class Chunker(Annotator):
             file_nodes = [
                 (file, data)
                 for file, data in file_nodes
-                if Path(data["path"]).suffix in self.chunk_extensions
+                if Path(data["ref"]).suffix in self.chunk_extensions
             ]
         # Generate/add chunk data to file nodes
         tasks = []

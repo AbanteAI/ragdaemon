@@ -10,45 +10,45 @@
             "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "id": "README.md",
-            "path": "README.md",
+            "ref": "README.md",
             "type": "file"
         },
         {
             "id": "ROOT",
             "type": "directory",
-            "path": "ROOT"
+            "ref": "ROOT"
         },
         {
             "active": false,
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
             "id": "main.py",
-            "path": "main.py",
+            "ref": "main.py",
             "type": "file"
         },
         {
             "id": "src",
             "type": "directory",
-            "path": "src"
+            "ref": "src"
         },
         {
             "active": false,
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
             "id": "src/__init__.py",
-            "path": "src/__init__.py",
+            "ref": "src/__init__.py",
             "type": "file"
         },
         {
             "active": false,
             "checksum": "e0544d192b0bc55d5a33071baae809e2",
             "id": "src/interface.py",
-            "path": "src/interface.py",
+            "ref": "src/interface.py",
             "type": "file"
         },
         {
             "active": false,
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
             "id": "src/operations.py",
-            "path": "src/operations.py",
+            "ref": "src/operations.py",
             "type": "file"
         }
     ],

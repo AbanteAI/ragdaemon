@@ -21,7 +21,8 @@ def get_active_checksums(
     }
     for path in git_paths:
         try:
-            document = get_document(path, cwd)
+            ref = str(path)
+            document = get_document(ref, cwd)
             checksum = hash_str(document)
             existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
             if refresh or not existing_record:
@@ -29,7 +30,7 @@ def get_active_checksums(
                 metadatas = {
                     "id": str(path),
                     "type": "file",
-                    "path": str(path),
+                    "ref": ref,
                     "checksum": checksum,
                     "active": False,
                 }
@@ -64,15 +65,15 @@ class Hierarchy(Annotator):
         checksums = get_active_checksums(cwd, refresh=refresh, verbose=self.verbose)
         files_checksum = hash_str("".join(sorted(checksums.values())))
 
-        graph = nx.MultiDiGraph()
+        graph = nx.MultiDiGraph()  # Initialize an empty graph. We'll build it from scratch.
         graph.graph["cwd"] = str(cwd)
         edges_to_add = set()
         for path, checksum in checksums.items():
             # add db reecord
-            node_id = str(path)
-            db_record = get_db(cwd).get(checksum)
-            record = db_record["metadatas"][0]
-            graph.add_node(node_id, **record)
+            id = str(path)
+            results = get_db(cwd).get(checksum)
+            data = results["metadatas"][0]
+            graph.add_node(id, **data)
 
             # add hierarchy edges
             def _link_to_cwd(_path):
@@ -85,11 +86,11 @@ class Hierarchy(Annotator):
 
         # Add directory nodes with checksums
         for source, target in edges_to_add:
-            for node_id in (source, target):
-                if node_id not in graph:
+            for id in (source, target):
+                if id not in graph:
                     # add directories to graph (to link hierarchy) but not db
-                    record = {"id": node_id, "type": "directory", "path": node_id}
-                    graph.add_node(node_id, **record)
+                    record = {"id": id, "type": "directory", "ref": id}
+                    graph.add_node(id, **record)
             graph.add_edge(source, target, type="hierarchy")
 
         graph.graph["files_checksum"] = files_checksum

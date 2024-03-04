@@ -10,7 +10,7 @@
             "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "chunks": "[]",
-            "path": "README.md",
+            "ref": "README.md",
             "type": "file",
             "layout": {
                 "hierarchy": {
@@ -23,7 +23,7 @@
         },
         {
             "type": "directory",
-            "path": "ROOT",
+            "ref": "ROOT",
             "layout": {
                 "hierarchy": {
                     "x": 0.4770236434793431,
@@ -37,7 +37,7 @@
             "active": false,
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
             "chunks": "[]",
-            "path": "main.py",
+            "ref": "main.py",
             "type": "file",
             "layout": {
                 "hierarchy": {
@@ -50,7 +50,7 @@
         },
         {
             "type": "directory",
-            "path": "src",
+            "ref": "src",
             "layout": {
                 "hierarchy": {
                     "x": 0.4624466137919497,
@@ -64,7 +64,7 @@
             "active": false,
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
             "chunks": "[]",
-            "path": "src/__init__.py",
+            "ref": "src/__init__.py",
             "type": "file",
             "layout": {
                 "hierarchy": {
@@ -79,7 +79,7 @@
             "active": false,
             "checksum": "e0544d192b0bc55d5a33071baae809e2",
             "chunks": "[]",
-            "path": "src/interface.py",
+            "ref": "src/interface.py",
             "type": "file",
             "layout": {
                 "hierarchy": {
@@ -94,7 +94,7 @@
             "active": false,
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
             "chunks": "[]",
-            "path": "src/operations.py",
+            "ref": "src/operations.py",
             "type": "file",
             "layout": {
                 "hierarchy": {

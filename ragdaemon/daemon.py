@@ -112,8 +112,8 @@ class Daemon:
         auto_tokens: int = 2000,
     ):
         context = ContextBuilder(self.graph, self.verbose)
-        for path in include:
-            context.add(path, tags=["user-included"])
+        for ref in include:
+            context.add(ref, tags=["user-included"])
         include_context_message = context.render()
         include_tokens = token_counter(include_context_message)
         if include_tokens >= max_tokens:
@@ -122,11 +122,11 @@ class Daemon:
         auto_tokens = min(auto_tokens, max_tokens - include_tokens)
         results = self.search(query)
         for node in results:
-            context.add(node["path"], tags=["search-result"])
+            context.add(node["ref"], tags=["search-result"])
             next_context_message = context.render()
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:
-                context.remove(node["path"])
+                context.remove(node["ref"])
                 break
         return context
 

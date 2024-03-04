@@ -5,15 +5,16 @@ from ragdaemon.context import ContextBuilder
 
 
 def test_daemon_render_context(cwd):
-    _path = "src/interface.py"
+    path_str = "src/interface.py"
+    ref = path_str
 
     # Base Chunk
     context = ContextBuilder(nx.MultiDiGraph())
     context.context = {
-        _path: {
+        path_str: {
             "lines": set([1, 2, 3, 4, 15]),
             "tags": ["test-flag"],
-            "document": get_document(_path, cwd),
+            "document": get_document(ref, cwd),
         }
     }
     actual = context.render()
@@ -33,10 +34,10 @@ src/interface.py (test-flag)
 
     # Function Chunk
     context.context = {
-        _path: {
+        path_str: {
             "lines": set([5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
             "tags": ["test-flag"],
-            "document": get_document(_path, cwd),
+            "document": get_document(ref, cwd),
         }
     }
     actual = context.render()
