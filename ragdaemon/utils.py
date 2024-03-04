@@ -10,23 +10,30 @@ def hash_str(string: str) -> str:
 
 
 def get_document(ref: str, cwd: Path) -> str:
-    path_str, lines_ref = parse_ref(ref)
-    if lines_ref:
-        with open(cwd / path_str, "r") as f:
-            file_lines = f.readlines()
-        ranges = lines_ref.split(",")
+
+    is_commit = ref.startswith("commit-") and not any(_ in ref for _ in "/:.")
+    if is_commit:
+        hexsha = ref.split("-")[1]
+        message = subprocess.check_output(
+            ["git", "log", "-1", "--pretty=%B", hexsha], cwd=cwd, text=True
+        )
+        diff = subprocess.check_output(
+            ["git", "show", "--pretty=", "--name-only", hexsha], cwd=cwd, text=True
+        )
+        return f"{ref}: {message}\n{diff}"
+
+    path, lines = parse_path_ref(ref)
+    if lines:
         text = ""
-        for ref in ranges:
-            if "-" in ref:
-                _start, _end = ref.split("-")
-                text += "\n".join(file_lines[int(_start) - 1 : int(_end)])
-            elif ref.isdigit():
-                text += file_lines[int(ref)]
+        with open(cwd / path, "r") as f:
+            file_lines = f.readlines()
+        for line in sorted(lines):
+            text += f"{line}:{file_lines[line - 1]}\n"
     else:
-        with open(cwd / path_str, "r") as f:
+        with open(cwd / path, "r") as f:
             text = f.read()
     return f"{ref}\n{text}"
-
+    
 
 def get_non_gitignored_files(cwd: Path) -> set[Path]:
     return set(  # All non-ignored and untracked files
@@ -44,8 +51,16 @@ def get_non_gitignored_files(cwd: Path) -> set[Path]:
     )
 
 
-def parse_ref(ref: str) -> tuple[str, str | None]:
+def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
     if ":" in ref:
-        return ref.split(":", 1)
+        path_str, lines_ref = ref.split(":", 1)
+        lines = set()
+        for ref in lines_ref.split(","):
+            if "-" in ref:
+                start, end = ref.split("-")
+                lines.update(range(int(start), int(end) + 1))
+            else:
+                lines.add(int(ref))
     else:
-        return ref, None
+        path_str, lines = ref, None
+    return Path(path_str), lines

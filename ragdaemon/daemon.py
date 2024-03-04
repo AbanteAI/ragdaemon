@@ -13,6 +13,13 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.utils import get_non_gitignored_files
 
 
+def default_annotators():
+    return {
+        "hierarchy": {},
+        "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
+    }
+
+
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
@@ -41,11 +48,7 @@ class Daemon:
             if self.verbose:
                 print(f"Initialized empty graph.")
 
-        if annotators is None:
-            annotators = {
-                "hierarchy": {},
-                "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
-            }
+        annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
         self.pipeline = {
