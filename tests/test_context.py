@@ -1,24 +1,26 @@
+import networkx as nx
+
 from ragdaemon.utils import get_document
-from ragdaemon.render_context import render_context_message
+from ragdaemon.context import ContextBuilder
 
 
 def test_daemon_render_context(cwd):
     _path = "src/interface.py"
 
     # Base Chunk
-    context = {
+    context = ContextBuilder(nx.MultiDiGraph())
+    context.context = {
         _path: {
-            "id": f"{_path}:BASE",
             "lines": set([1, 2, 3, 4, 15]),
             "tags": ["test-flag"],
             "document": get_document(_path, cwd),
         }
     }
-    actual = render_context_message(context)
+    actual = context.render()
     assert (
         actual
         == """\
-src/interface.py:BASE (test-flag)
+src/interface.py (test-flag)
 1:import argparse
 2:import re
 3:
@@ -30,19 +32,18 @@ src/interface.py:BASE (test-flag)
     )
 
     # Function Chunk
-    context = {
+    context.context = {
         _path: {
-            "id": f"{_path}:parse_arguments",
             "lines": set([5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
             "tags": ["test-flag"],
             "document": get_document(_path, cwd),
         }
     }
-    actual = render_context_message(context)
+    actual = context.render()
     assert (
         actual
         == """\
-src/interface.py:parse_arguments (test-flag)
+src/interface.py (test-flag)
 ...
 5:def parse_arguments():
 6:    parser = argparse.ArgumentParser(description="Basic Calculator")

@@ -9,7 +9,7 @@ import networkx as nx
 from ragdaemon.annotators import annotators_map
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import token_counter
-from ragdaemon.render_context import add_id_to_context, render_context_message
+from ragdaemon.context import ContextBuilder
 from ragdaemon.utils import get_non_gitignored_files
 
 
@@ -78,8 +78,8 @@ class Daemon:
         self.save()
 
     async def watch(self, refresh=False, interval=2, debounce=5):
-        """Calls self.update interval seconds after a file is modified."""
-        await self.update(refresh)
+        """Calls self.update interval seconds after a file is modified. """
+        await self.update(refresh)  # Initial update
         git_paths = get_non_gitignored_files(self.cwd)
         last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
         _update_task = None
@@ -98,11 +98,37 @@ class Daemon:
                     except asyncio.CancelledError:
                         pass
                 last_updated = _last_updated
-                _update_task = asyncio.create_task(self.update(refresh))
+                _update_task = asyncio.create_task(self.update())
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict]:
         """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph, n=n)
+    
+    def get_context(
+        self,
+        query: str,
+        include: list[str] = [],
+        max_tokens: int = 8000,
+        auto_tokens: int = 2000,
+    ):
+        context = ContextBuilder(self.graph, self.verbose)
+        for path in include:
+            context.add(path, tags=["user-included"])
+        include_context_message = context.render()
+        include_tokens = token_counter(include_context_message)
+        if include_tokens >= max_tokens:
+            return include_context_message
+
+        auto_tokens = min(auto_tokens, max_tokens - include_tokens)
+        results = self.search(query)
+        for node in results:
+            context.add(node["path"], tags=["search-result"])
+            next_context_message = context.render()
+            next_tokens = token_counter(next_context_message)
+            if (next_tokens - include_tokens) > auto_tokens:
+                context.remove(node["path"])
+                break
+        return context
 
     def get_context_message(
         self,
@@ -118,27 +144,5 @@ class Daemon:
             max_tokens: The maximum number of tokens for the context message
             auto_tokens: Auto-selected nodes to add in addition to include
         """
-        context = {}
-        for id in include:
-            context = add_id_to_context(
-                self.graph, id, context, tags=["user-included"], verbose=self.verbose
-            )
-        include_context_message = render_context_message(context)
-        include_tokens = token_counter(include_context_message)
-        if include_tokens >= max_tokens:
-            return include_context_message
-
-        full_context_message = include_context_message
-        auto_tokens = min(auto_tokens, max_tokens - include_tokens)
-        results = self.search(query)
-        for i, node in enumerate(results):
-            id = node["path"]
-            context = add_id_to_context(
-                self.graph, id, context, tags=["search-result"], verbose=self.verbose
-            )
-            next_context_message = render_context_message(context)
-            next_tokens = token_counter(next_context_message)
-            if (next_tokens - include_tokens) > auto_tokens:
-                return full_context_message
-            full_context_message = next_context_message
-        return full_context_message
+        context = self.get_context(query, include, max_tokens, auto_tokens)
+        return context.render()

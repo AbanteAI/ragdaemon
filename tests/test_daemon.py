@@ -20,7 +20,7 @@ async def test_daemon_get_context(cwd):
     assert (
         actual
         == """\
-src/interface.py:11-12 (user-included)
+src/interface.py (user-included)
 ...
 11:    match = re.match(r"(\d+)(\D)(\d+)", args.operation)
 12:    if match is None:
