@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import networkx as nx
 
 from ragdaemon.utils import get_document
@@ -5,7 +7,7 @@ from ragdaemon.context import ContextBuilder
 
 
 def test_daemon_render_context(cwd):
-    path_str = "src/interface.py"
+    path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Base Chunk

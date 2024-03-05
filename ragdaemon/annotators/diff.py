@@ -82,9 +82,10 @@ class Diff(Annotator):
     async def annotate(
         self, graph: nx.MultiDiGraph, refresh: bool = False
     ) -> nx.MultiDiGraph:
-        graph.remove_nodes_from({
+        graph_nodes = {
             node for node, data in graph.nodes(data=True) if data.get("type") == "diff"
-        })
+        }
+        graph.remove_nodes_from(graph_nodes)
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)

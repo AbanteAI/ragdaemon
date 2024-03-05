@@ -21,14 +21,15 @@ def get_active_checksums(
     }
     for path in git_paths:
         try:
-            ref = str(path)
+            path_str = path.as_posix()
+            ref = path_str
             document = get_document(ref, cwd)
             checksum = hash_str(document)
             existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
             if refresh or not existing_record:
                 # add new items to db (will generate embeddings)
                 metadatas = {
-                    "id": str(path),
+                    "id": path_str,
                     "type": "file",
                     "ref": ref,
                     "checksum": checksum,
@@ -70,15 +71,15 @@ class Hierarchy(Annotator):
         edges_to_add = set()
         for path, checksum in checksums.items():
             # add db reecord
-            id = str(path)
+            id = path.as_posix()
             results = get_db(cwd).get(checksum)
             data = results["metadatas"][0]
             graph.add_node(id, **data)
 
             # add hierarchy edges
-            def _link_to_cwd(_path):
-                _parent = str(_path.parent) if len(_path.parts) > 1 else "ROOT"
-                edges_to_add.add((_parent, str(_path)))
+            def _link_to_cwd(_path: Path):
+                _parent = _path.parent.as_posix() if len(_path.parts) > 1 else "ROOT"
+                edges_to_add.add((_parent, _path.as_posix()))
                 if _parent != "ROOT":
                     _link_to_cwd(_path.parent)
 

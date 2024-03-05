@@ -14,7 +14,7 @@ class ContextBuilder:
     def add(self, ref: str, tags: list[str] = []):
         """Take an ref and add to context"""
         path, lines = parse_path_ref(ref)
-        path_str = str(path)
+        path_str = path.as_posix()
         if path_str not in self.graph:
             if self.verbose:
                 print(f"Warning: no matching message found for {ref}.")
@@ -38,7 +38,7 @@ class ContextBuilder:
     def remove(self, ref: str):
         """Remove the given ref from the context."""
         path, lines = parse_path_ref(ref)
-        path_str = str(path)
+        path_str = path.as_posix()
         if path_str not in self.context:
             if self.verbose:
                 print(f"Warning: no matching message found for {path_str}.")

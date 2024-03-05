@@ -23,7 +23,7 @@ def test_get_active_checksums(cwd):
         for node, data in hierarchy_graph.nodes(data=True)
         if "checksum" in data
     }
-    actual = {(str(path), checksum) for path, checksum in checksums.items()}
+    actual = {(path.as_posix(), checksum) for path, checksum in checksums.items()}
     assert actual == expected, "Checksums are not equal"
 
 
@@ -34,7 +34,8 @@ def test_hierarchy_is_complete(cwd):
 
     assert not hierarchy.is_complete(empty_graph), "Empty graph should not be complete."
     incomplete_graph = empty_graph.copy()
-    incomplete_graph.add_node(str(cwd), path=str(cwd), type="directory", id=str(cwd))
+    path_str = cwd.as_posix()
+    incomplete_graph.add_node(path_str, path=path_str, type="directory", id=path_str)
     assert not hierarchy.is_complete(
         incomplete_graph
     ), "Incomplete graph should not be complete"
