@@ -9,32 +9,6 @@ def hash_str(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def get_document(ref: str, cwd: Path) -> str:
-
-    is_commit = ref.startswith("commit-") and not any(_ in ref for _ in "/:.")
-    if is_commit:
-        hexsha = ref.split("-")[1]
-        message = subprocess.check_output(
-            ["git", "log", "-1", "--pretty=%B", hexsha], cwd=cwd, text=True
-        )
-        diff = subprocess.check_output(
-            ["git", "show", "--pretty=", "--name-only", hexsha], cwd=cwd, text=True
-        )
-        return f"{ref}: {message}\n{diff}"
-
-    path, lines = parse_path_ref(ref)
-    if lines:
-        text = ""
-        with open(cwd / path, "r") as f:
-            file_lines = f.readlines()
-        for line in sorted(lines):
-            text += f"{line}:{file_lines[line - 1]}\n"
-    else:
-        with open(cwd / path, "r") as f:
-            text = f.read()
-    return f"{ref}\n{text}"
-    
-
 def get_non_gitignored_files(cwd: Path) -> set[Path]:
     return set(  # All non-ignored and untracked files
         Path(os.path.normpath(p))
@@ -51,16 +25,67 @@ def get_non_gitignored_files(cwd: Path) -> set[Path]:
     )
 
 
+def get_git_diff(diff_args: str, cwd: str) -> str:
+    args = ["git", "diff", "-U1"]
+    if diff_args and diff_args != "DEFAULT":
+        args += diff_args.split(" ")
+    diff = subprocess.check_output(args, cwd=cwd, text=True)
+    return diff
+
+
+def parse_lines_ref(ref: str) -> set[int] | None:
+    lines = set()
+    for ref in ref.split(","):
+        if "-" in ref:
+            start, end = ref.split("-")
+            lines.update(range(int(start), int(end) + 1))
+        else:
+            lines.add(int(ref))
+    return lines or None
+
+
 def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
     if ":" in ref:
         path_str, lines_ref = ref.split(":", 1)
-        lines = set()
-        for ref in lines_ref.split(","):
-            if "-" in ref:
-                start, end = ref.split("-")
-                lines.update(range(int(start), int(end) + 1))
-            else:
-                lines.add(int(ref))
+        lines = parse_lines_ref(lines_ref)
     else:
         path_str, lines = ref, None
     return Path(path_str), lines
+
+
+def get_document(ref: str, cwd: Path, type: str = "file") -> str:
+
+    if type == "diff":
+        if ":" in ref:
+            diff_ref, lines_ref = ref.split(":", 1)
+            lines = parse_lines_ref(lines_ref)
+        else:
+            diff_ref, lines = ref, None
+        diff = get_git_diff(diff_ref, cwd)
+        if lines:
+            text = "\n".join([
+                line for i, line in enumerate(diff.split("\n")) 
+                if i + 1 in lines
+            ])
+        else:
+            text = diff
+        ref = f"git diff{f' {ref}' if ref else ''}"
+
+    elif type == "file":
+        path, lines = parse_path_ref(ref)
+        if lines:
+            text = ""
+            with open(cwd / path, "r") as f:
+                file_lines = f.readlines()
+            for line in sorted(lines):
+                text += f"{line}:{file_lines[line - 1]}\n"
+        else:
+            with open(cwd / path, "r") as f:
+                text = f.read()
+
+    else:
+        raise ValueError(f"Invalid type: {type}")
+
+    return f"{ref}\n{text}"
+    
+

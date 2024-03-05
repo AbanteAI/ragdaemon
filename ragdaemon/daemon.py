@@ -17,6 +17,7 @@ def default_annotators():
     return {
         "hierarchy": {},
         "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
+        "diff": {},
     }
 
 

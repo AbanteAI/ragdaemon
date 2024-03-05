@@ -25,13 +25,21 @@ parser.add_argument(
     nargs="*",
     help="List of file extensions to chunk, e.g., .py .js",
 )
+parser.add_argument(
+    "--diff",
+    "-d",
+    default="",
+    help="Annotate graph with 'git diff <target>'",
+)
 args = parser.parse_args()
 refresh = args.refresh
 verbose = True  # Always verbose in server mode
 chunk_extensions = None if args.chunk_extensions is None else set(args.chunk_extensions)
+diff = args.diff
 annotators = {
     "hierarchy": {},
     "chunker": {"chunk_extensions": chunk_extensions},
+    "diff": {"diff": diff},
     "layout_hierarchy": {},
 }
 daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)

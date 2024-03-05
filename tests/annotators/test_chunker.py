@@ -3,19 +3,7 @@ import json
 import networkx as nx
 import pytest
 
-from ragdaemon.annotators.chunker import (
-    Chunker,
-    get_file_chunk_data,
-    add_file_chunks_to_graph,
-)
-
-
-def test_get_file_chunk_data():
-    pass
-
-
-def test_add_file_chunks_to_graph():
-    pass
+from ragdaemon.annotators.chunker import Chunker
 
 
 def test_chunker_is_complete(cwd):

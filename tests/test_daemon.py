@@ -1,6 +1,6 @@
 import pytest
 
-from ragdaemon.daemon import Daemon
+from ragdaemon.daemon import Daemon, default_annotators
 
 
 def get_message_chunk_set(message):  # Because order can vary
@@ -14,7 +14,9 @@ def get_message_chunk_set(message):  # Because order can vary
 @pytest.mark.asyncio
 async def test_daemon_get_context(cwd):
     # Full Context
-    daemon = Daemon(cwd.resolve())
+    annotators = default_annotators()
+    del annotators["diff"]
+    daemon = Daemon(cwd.resolve(), annotators=annotators)
     await daemon.update()
     actual = daemon.get_context_message("test", max_tokens=1e6)
     
