@@ -11,43 +11,58 @@ class ContextBuilder:
         self.verbose = verbose
         self.context = {}  # {path: {lines, tags, document}}
 
-    def add(self, ref: str, tags: list[str] = []):
-        """Take an ref and add to context"""
-        path, lines = parse_path_ref(ref)
-        path_str = path.as_posix()
+    def add_path(self, path_str: str):
+        """Create a new record in the context for the given path."""
+        cwd = self.graph.graph["cwd"]
         if path_str not in self.graph:
             if self.verbose:
-                print(f"Warning: no matching message found for {ref}.")
+                print(f"Warning: no matching record found for {path_str}.")
             return
-        if path_str not in self.context:
-            cwd = self.graph.graph["cwd"]
-            checksum = self.graph.nodes[path_str]["checksum"]
-            message = {
-                "lines": set(),
-                "tags": set(),
-                "document": get_db(cwd).get(checksum)["documents"][0],
-            }
-            self.context[path_str] = message
-        self.context[path_str]["tags"].update(tags)
-        if lines:
-            self.context[path_str]["lines"].update(lines)
-        else:
-            for i in range(1, len(self.context[path_str]["document"].splitlines())):
-                self.context[path_str]["lines"].add(i)  # +1 line for filename, -1 for indexing
+        checksum = self.graph.nodes[path_str]["checksum"]
+        message = {
+            "lines": set(),
+            "tags": set(),
+            "document": get_db(cwd).get(checksum)["documents"][0],
+        }
+        self.context[path_str] = message
 
-    def remove(self, ref: str):
-        """Remove the given ref from the context."""
+    def include(self, path_ref: str, tags: list[str] = []):
+        """Manually include path_refs"""
+        path, lines = parse_path_ref(path_ref)
+        path_str = path.as_posix()
+        if path_str not in self.context:
+            self.add_path(path_str)
+        self.context[path_str]["tags"].update(tags)
+        if not lines:
+            document = self.context[path_str]["document"]
+            lines = list(range(1, len(document.splitlines())))
+        self.context[path_str]["lines"].update(lines)
+
+    def add(self, id: str, tags: list[str] = []):
+        """Take an id and add to context"""
+        ref = self.graph.nodes[id]["ref"]
+        path, lines = parse_path_ref(ref)
+        path_str = path.as_posix()
+        if path_str not in self.context:
+            self.add_path(path_str)
+        self.context[path_str]["tags"].update(tags)
+        if not lines:
+            document = self.context[path_str]["document"]
+            lines = list(range(1, len(document.splitlines())))
+        self.context[path_str]["lines"].update(lines)
+
+    def remove(self, id: str):
+        """Remove the given id from the context."""
+        ref = self.graph.nodes[id]["ref"]
         path, lines = parse_path_ref(ref)
         path_str = path.as_posix()
         if path_str not in self.context:
             if self.verbose:
                 print(f"Warning: no matching message found for {path_str}.")
             return        
-        if lines is None:
-            del self.context[path_str]
-            return
-        self.context[path_str]["lines"] -= lines
-        if not self.context[path_str]["lines"]:
+        if lines:
+            self.context[path_str]["lines"] -= lines
+        if not lines or not self.context[path_str]["lines"]:
             del self.context[path_str]
 
     def render(self) -> str:

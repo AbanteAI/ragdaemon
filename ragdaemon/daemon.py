@@ -113,24 +113,24 @@ class Daemon:
         query: str,
         include: list[str] = [],
         max_tokens: int = 8000,
-        auto_tokens: int = 2000,
+        auto_tokens: int = 0,
     ):
         context = ContextBuilder(self.graph, self.verbose)
         for ref in include:
-            context.add(ref, tags=["user-included"])
+            context.include(ref, tags=["user-included"])
         include_context_message = context.render()
         include_tokens = token_counter(include_context_message)
-        if include_tokens >= max_tokens:
+        if not auto_tokens or include_tokens >= max_tokens:
             return include_context_message
 
         auto_tokens = min(auto_tokens, max_tokens - include_tokens)
         results = self.search(query)
         for node in results:
-            context.add(node["ref"], tags=["search-result"])
+            context.add(node["id"], tags=["search-result"])
             next_context_message = context.render()
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:
-                context.remove(node["ref"])
+                context.remove(node["id"])
                 break
         return context
 
@@ -139,7 +139,7 @@ class Daemon:
         query: str,
         include: list[str] = [],
         max_tokens: int = 8000,
-        auto_tokens: int = 2000,
+        auto_tokens: int = 0,
     ) -> str:
         """
         Args:
