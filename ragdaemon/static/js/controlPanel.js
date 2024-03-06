@@ -25,12 +25,25 @@ const startControlPanel = () => {
         const response = await fetch(`/search?q=${encodeURIComponent(query)}`);
         searchResults.innerHTML = await response.text();
         document.querySelectorAll('.result-panel').forEach(panel => {
-            panel.addEventListener('click', () => {
+            panel.addEventListener('click', (event) => {
                 const resultId = panel.getAttribute('data-id');
-                scene.children.find(child => child.userData.id === resultId).userData.handleClick();
+                scene.children.find(child => child.userData.id === resultId).userData.handleClick(event);
             });
         });
     }, 300)); // Adding debounce time of 300 milliseconds
+
+    // Add a linstener to the window for 'escape' and unselect all scene chidlren
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            scene.children.forEach(child => {
+                if (child.userData.setSelected) {
+                    child.userData.setSelected(false);
+                }
+            });
+        }
+    });
 }
 
 export default startControlPanel;

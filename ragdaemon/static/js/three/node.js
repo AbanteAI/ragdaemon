@@ -15,7 +15,7 @@ function createCanvasTexture(text) {
     return texture;
 }
 
-const addNode = (node, onClickCallback) => {
+const addNode = (node, onClickCallback, getNeighbors) => {
     // Sphere
     const geometry = new THREE.SphereGeometry(NODE_RADIUS, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: "lightgray" });
@@ -41,14 +41,16 @@ const addNode = (node, onClickCallback) => {
         sprite.visible = selected;
         sphere.material.color.set(selected ? "lime" : "lightgray");
     };
-    sphere.userData.handleClick = () => {
+    sphere.userData.handleClick = (event) => {
         // Select hierarchy parent recursively until root (no parent)
         const edges = scene.children.filter(child => child.userData.type === "edge");
         const nodes = scene.children.filter(child => child.userData.type === "node");
-        edges.forEach(edge => edge.userData.setSelected(false));
-        nodes.forEach(node => node.userData.setSelected(false));
-        
         const selected = !sprite.visible;
+        if (!event?.shiftKey) {
+            edges.forEach(edge => edge.userData.setSelected(false));
+            nodes.forEach(node => node.userData.setSelected(false));
+        }
+        
         const nodesToUpdate = new Set();
         sphere.userData.setSelected(selected);
         nodesToUpdate.add(sphere);
@@ -66,12 +68,31 @@ const addNode = (node, onClickCallback) => {
                 linkToRoot(parent, killswitch-1);
             }
         }
-        linkToRoot(id);
+        if (selected || !event?.shiftKey) {
+            linkToRoot(id);
+        }
 
         if (selected) {
             onClickCallback(nodesToUpdate);
         }
     };
+    sphere.userData.handleDoubleClick = (event) => {
+        if (!event?.shiftKey) {
+            scene.children.filter(child => child.userData.setSelected).forEach(child => {
+                child.userData.setSelected(false);
+            });
+        }
+        const neighborIds = getNeighbors(id);
+        neighborIds.add(id);
+        const neighbors = scene.children.filter(child => 
+            (child.userData.type === "node" && neighborIds.has(child.userData.id)) ||
+            (child.userData.type === "edge" && (child.userData.source === id || child.userData.target === id))
+        );
+        neighbors.forEach(object => {
+            object.userData.setSelected(true);
+        });
+        onClickCallback(neighbors);
+    }
 }
 
 export default addNode;

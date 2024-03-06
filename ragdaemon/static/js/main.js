@@ -37,11 +37,23 @@ function lookAtSelectedNodes(selectedNodes) {
     cameraTargetLookAt = center;
 }
 
+const getNeighbors = (nodeId) => {
+    const neighbors = new Set();
+    edges.forEach(edge => {
+        if (edge.source === nodeId) {
+            neighbors.add(edge.target);
+        } else if (edge.target === nodeId) {
+            neighbors.add(edge.source);
+        }
+    })
+    return neighbors;
+}
+
 const initialize = () => {
     // Load the graph
     nodes.forEach(node => {
         if (node.layout?.hierarchy) {
-            addNode(node, lookAtSelectedNodes);
+            addNode(node, lookAtSelectedNodes, getNeighbors);
         } else {
             console.error(`Node ${node.id} does not have a hierarchy layout`);
         }
