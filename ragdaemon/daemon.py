@@ -45,7 +45,7 @@ class Daemon:
             self.load()
         else:
             self.graph = nx.MultiDiGraph()
-            self.graph.graph["cwd"] = str(self.cwd)
+            self.graph.graph["cwd"] = self.cwd.as_posix()
             if self.verbose:
                 print(f"Initialized empty graph.")
 
@@ -70,6 +70,7 @@ class Daemon:
         with open(self.graph_path, "r") as f:
             data = json.load(f)
             self.graph = nx.readwrite.json_graph.node_link_graph(data)
+        self.graph.graph["cwd"] = self.cwd.as_posix()
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
@@ -82,7 +83,7 @@ class Daemon:
         self.save()
 
     async def watch(self, refresh=False, interval=2, debounce=5):
-        """Calls self.update interval seconds after a file is modified. """
+        """Calls self.update interval debounce seconds after a file is modified."""
         await self.update(refresh)  # Initial update
         git_paths = get_non_gitignored_files(self.cwd)
         last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
@@ -107,7 +108,7 @@ class Daemon:
     def search(self, query: str, n: Optional[int] = None) -> list[dict]:
         """Return a sorted list of nodes that match the query."""
         return query_graph(query, self.graph, n=n)
-    
+
     def get_context(
         self,
         query: str,
@@ -121,12 +122,15 @@ class Daemon:
         include_context_message = context.render()
         include_tokens = token_counter(include_context_message)
         if not auto_tokens or include_tokens >= max_tokens:
-            return include_context_message
+            return context
 
         auto_tokens = min(auto_tokens, max_tokens - include_tokens)
         results = self.search(query)
         for node in results:
-            context.add(node["id"], tags=["search-result"])
+            if node["type"] == "diff":
+                context.add_diff(node["id"], tags=["diff"])
+            else:
+                context.add(node["id"], tags=["search-result"])
             next_context_message = context.render()
             next_tokens = token_counter(next_context_message)
             if (next_tokens - include_tokens) > auto_tokens:

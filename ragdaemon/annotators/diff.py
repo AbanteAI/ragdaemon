@@ -10,8 +10,9 @@ from ragdaemon.utils import hash_str, get_document, parse_path_ref
 
 
 def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
-    file_regex = re.compile(r'^diff --git a/(.+) b/(.+)$')  # Match files
-    hunk_header_regex = re.compile(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@.*$')  # Match line numbers
+    # Match files and line numbers
+    file_regex = re.compile(r"^diff --git a/(.+) b/(.+)$")
+    hunk_header_regex = re.compile(r"^@@ -\d+,\d+ \+(\d+),(\d+) @@.*$")
 
     chunks = {}
     file = None
@@ -29,7 +30,7 @@ def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
             chunk_id = None
             chunk_ref_start = None
         if file_match:
-            file = file_match.group(2) # Ending file name
+            file = file_match.group(2)  # Ending file name
         elif hunk_header_match:
             chunk_ref_start = i
             start_line = int(hunk_header_match.group(1))
@@ -46,7 +47,7 @@ def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
         chunk_ref_end = i
         chunk_ref = f"{id}:{chunk_ref_start}-{chunk_ref_end}"
         chunks[chunk_id] = chunk_ref
-    
+
     return chunks
 
 
@@ -72,7 +73,7 @@ class Diff(Annotator):
     def id(self) -> str:
         """Self.diff_args can be none (just 'git diff'), in which case the node is named DEFAULT"""
         return "DEFAULT" if not self.diff_args else self.diff_args
-        
+
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
@@ -132,7 +133,12 @@ class Diff(Annotator):
             path_ref = chunk_id.split(":", 1)[1]
             file, lines = parse_path_ref(path_ref)
             file_str = str(file)
+            if file_str not in graph:  # Removed files
+                if self.verbose:
+                    print(f"File {file_str} not in graph")
+                continue
             edges_to_add.add((chunk_id, file_str))
+
             def _link_to_successors(_node, visited=set()):
                 for successor in graph.successors(_node):
                     if successor in visited:
@@ -146,11 +152,12 @@ class Diff(Annotator):
                     if lines and _lines and lines.intersection(_lines):
                         edges_to_add.add(edge)
                     _link_to_successors(successor, visited)
+
             _link_to_successors(file_str)
 
         for source, origin in edges_to_add:
             graph.add_edge(source, origin, type="diff")
         if len(add_to_db["ids"]) > 0:
             get_db(cwd).upsert(**add_to_db)
-        
+
         return graph

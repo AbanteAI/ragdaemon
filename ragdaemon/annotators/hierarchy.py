@@ -66,7 +66,8 @@ class Hierarchy(Annotator):
         checksums = get_active_checksums(cwd, refresh=refresh, verbose=self.verbose)
         files_checksum = hash_str("".join(sorted(checksums.values())))
 
-        graph = nx.MultiDiGraph()  # Initialize an empty graph. We'll build it from scratch.
+        # Initialize an empty graph. We'll build it from scratch.
+        graph = nx.MultiDiGraph()
         graph.graph["cwd"] = str(cwd)
         edges_to_add = set()
         for path, checksum in checksums.items():

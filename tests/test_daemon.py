@@ -10,7 +10,6 @@ def get_message_chunk_set(message):  # Because order can vary
             chunks[i] += "\n"
 
 
-
 @pytest.mark.asyncio
 async def test_daemon_get_context(cwd):
     # Full Context
@@ -19,7 +18,7 @@ async def test_daemon_get_context(cwd):
     daemon = Daemon(cwd.resolve(), annotators=annotators)
     await daemon.update()
     actual = daemon.get_context_message("test", max_tokens=1e6)
-    
+
     with open("tests/data/context_message.txt", "r") as f:
         expected = f.read()
     assert get_message_chunk_set(actual) == get_message_chunk_set(expected)

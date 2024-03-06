@@ -54,7 +54,6 @@ def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
 
 
 def get_document(ref: str, cwd: Path, type: str = "file") -> str:
-
     if type == "diff":
         if ":" in ref:
             diff_ref, lines_ref = ref.split(":", 1)
@@ -63,13 +62,12 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             diff_ref, lines = ref, None
         diff = get_git_diff(diff_ref, cwd)
         if lines:
-            text = "\n".join([
-                line for i, line in enumerate(diff.split("\n")) 
-                if i + 1 in lines
-            ])
+            text = "\n".join(
+                [line for i, line in enumerate(diff.split("\n")) if i + 1 in lines]
+            )
         else:
             text = diff
-        ref = f"git diff{f' {ref}' if ref else ''}"
+        ref = f"git diff{'' if diff_ref == 'DEFAULT' else f' {diff_ref}'}"
 
     elif type == "file":
         path, lines = parse_path_ref(ref)
@@ -87,5 +85,3 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
         raise ValueError(f"Invalid type: {type}")
 
     return f"{ref}\n{text}"
-    
-

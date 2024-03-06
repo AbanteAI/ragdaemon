@@ -29,7 +29,7 @@ def test_get_active_checksums(cwd):
 
 def test_hierarchy_is_complete(cwd):
     empty_graph = nx.MultiDiGraph()
-    empty_graph.graph["cwd"] = str(cwd)
+    empty_graph.graph["cwd"] = cwd.as_posix()
     hierarchy = Hierarchy()
 
     assert not hierarchy.is_complete(empty_graph), "Empty graph should not be complete."
@@ -49,7 +49,7 @@ def test_hierarchy_is_complete(cwd):
 @pytest.mark.asyncio
 async def test_hierarchy_annotate(cwd):
     graph = nx.MultiDiGraph()
-    graph.graph["cwd"] = str(cwd)
+    graph.graph["cwd"] = cwd.as_posix()
     actual = await Hierarchy().annotate(graph)
 
     # Load the template graph

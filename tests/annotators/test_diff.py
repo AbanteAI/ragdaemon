@@ -1,56 +1,25 @@
 import json
-import shutil
-import subprocess
-import tempfile
-from pathlib import Path
 
 import networkx as nx
 import pytest
 
 from ragdaemon.annotators.diff import (
-    get_chunks_from_diff, parse_diff_id, Diff,
+    get_chunks_from_diff,
+    parse_diff_id,
+    Diff,
 )
+from ragdaemon.context import ContextBuilder
+from ragdaemon.daemon import Daemon, default_annotators
 from ragdaemon.utils import get_git_diff
-
-
-@pytest.fixture(scope="function")
-def git_history(cwd):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir_path = Path(tmpdir)
-        sample_dir = cwd
-        shutil.copytree(sample_dir, tmpdir_path, dirs_exist_ok=True)
-
-        # Initial commit
-        subprocess.run(["git", "init"], cwd=tmpdir_path, check=True)
-        subprocess.run(["git", "config", "user.email", "you@example.com"], cwd=tmpdir_path, check=True)
-        subprocess.run(["git", "config", "user.name", "Your Name"], cwd=tmpdir_path, check=True)
-        subprocess.run(["git", "add", "."], cwd=tmpdir_path, check=True)
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=tmpdir_path, check=True)
-
-        # Diff
-        modify_lines = [1, 2, 3, 8]  # Modify
-        with open(tmpdir_path / "src" / "operations.py", "r") as f:
-            lines = f.readlines()
-        for i in modify_lines:
-            lines[i] = lines[i].strip() + " #modified\n"
-        with open(tmpdir_path / "src" / "operations.py", "w") as f:
-            f.writelines(lines)
-        (tmpdir_path / "main.py").unlink()  # Remove
-        with open(tmpdir_path / "hello.py", "w") as f:  # Add
-            f.write("print('Hello, world!')\n")
-        
-        yield tmpdir_path
-
-        # No need to revert changes, temporary directory will be deleted
 
 
 def test_diff_get_chunks_from_diff(git_history):
     diff = get_git_diff("HEAD", cwd=git_history)
     actual = get_chunks_from_diff("HEAD", diff)
     expected = {
-        'HEAD:main.py': 'HEAD:5-28', 
-        'HEAD:src/operations.py:1-5': 'HEAD:33-41', 
-        'HEAD:src/operations.py:8-10': 'HEAD:42-47'
+        "HEAD:main.py": "HEAD:5-28",
+        "HEAD:src/operations.py:1-5": "HEAD:33-41",
+        "HEAD:src/operations.py:8-10": "HEAD:42-47",
     }
     assert actual == expected
 
@@ -73,7 +42,7 @@ async def test_diff_annotate(git_history):
     with open("tests/data/chunker_graph.json", "r") as f:
         data = json.load(f)
         graph = nx.readwrite.json_graph.node_link_graph(data)
-    graph.graph["cwd"] = str(git_history)
+    graph.graph["cwd"] = git_history.as_posix()
     annotator = Diff()
     actual = await annotator.annotate(graph)
     actual_nodes = {n for n, d in actual.nodes(data=True) if d["type"] == "diff"}
@@ -82,5 +51,116 @@ async def test_diff_annotate(git_history):
         data = json.load(f)
         expected = nx.readwrite.json_graph.node_link_graph(data)
     expected_nodes = {n for n, d in expected.nodes(data=True) if d["type"] == "diff"}
-    
+
     assert actual_nodes == expected_nodes
+
+
+@pytest.mark.asyncio
+async def test_diff_render(git_history):
+    annotators = default_annotators()
+    del annotators["chunker"]
+    daemon = Daemon(cwd=git_history, annotators=annotators)
+    await daemon.update(refresh=True)
+
+    # Only diffs
+    context = ContextBuilder(graph=daemon.graph)
+    context.add_diff("DEFAULT:main.py")
+    context.add_diff("DEFAULT:src/operations.py:1-5")
+    context.add_diff("DEFAULT:src/operations.py:8-10")
+    actual = context.render()
+    assert (
+        actual
+        == """\
+main.py
+--git diff
+@@ -1,23 +0,0 @@
+-from src.interface import parse_arguments, render_response
+-from src.operations import add, divide, multiply, subtract
+-
+-
+-def main():
+-    a, op, b = parse_arguments()
+-
+-    if op == "+":
+-        result = add(a, b)
+-    elif op == "-":
+-        result = subtract(a, b)
+-    elif op == "*":
+-        result = multiply(a, b)
+-    elif op == "/":
+-        result = divide(a, b)
+-    else:
+-        raise ValueError("Unsupported operation")
+-
+-    render_response(result)
+-
+-
+-if __name__ == "__main__":
+-    main()
+
+src/operations.py
+--git diff
+@@ -1,5 +1,5 @@
+ import math
+-
+-
+-def add(a, b):
++ #modified
++ #modified
++def add(a, b): #modified
+     return a + b
+@@ -8,3 +8,3 @@ def add(a, b):
+ def subtract(a, b):
+-    return a - b
++return a - b #modified
+ 
+"""
+    )
+
+    # Diffs with files and chunks
+    context.remove_diff("DEFAULT:main.py")
+    context.add_diff("DEFAULT:src/operations.py:1-5")
+    context.add(f"src/operations.py")
+    actual = context.render()
+    assert (
+        actual
+        == """\
+src/operations.py
+1:import math
+2: #modified
+3: #modified
+4:def add(a, b): #modified
+5:    return a + b
+6:
+7:
+8:def subtract(a, b):
+9:return a - b #modified
+10:
+11:
+12:def multiply(a, b):
+13:    return a * b
+14:
+15:
+16:def divide(a, b):
+17:    return a / b
+18:
+19:
+20:def sqrt(a):
+21:    return math.sqrt(a)
+--git diff
+@@ -1,5 +1,5 @@
+ import math
+-
+-
+-def add(a, b):
++ #modified
++ #modified
++def add(a, b): #modified
+     return a + b
+@@ -8,3 +8,3 @@ def add(a, b):
+ def subtract(a, b):
+-    return a - b
++return a - b #modified
+ 
+"""
+    )

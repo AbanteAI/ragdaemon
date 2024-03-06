@@ -17,6 +17,7 @@ def test_daemon_render_context(cwd):
             "lines": set([1, 2, 3, 4, 15]),
             "tags": ["test-flag"],
             "document": get_document(ref, cwd),
+            "diffs": set(),
         }
     }
     actual = context.render()
@@ -40,6 +41,7 @@ src/interface.py (test-flag)
             "lines": set([5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
             "tags": ["test-flag"],
             "document": get_document(ref, cwd),
+            "diffs": set(),
         }
     }
     actual = context.render()
