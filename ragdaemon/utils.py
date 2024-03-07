@@ -1,6 +1,7 @@
 import hashlib
 import os
 import subprocess
+import re
 from pathlib import Path
 
 
@@ -21,7 +22,7 @@ def get_non_gitignored_files(cwd: Path) -> set[Path]:
                 stderr=subprocess.DEVNULL,
             ).split("\n"),
         )
-        if (Path(cwd) / p).exists()
+        if (Path(cwd) / p).exists() and not p.startswith(".ragdaemon")
     )
 
 
@@ -45,8 +46,10 @@ def parse_lines_ref(ref: str) -> set[int] | None:
 
 
 def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
-    if ":" in ref:
-        path_str, lines_ref = ref.split(":", 1)
+    match = re.match(r"^(.*?)(?::([0-9,\-]+))?$", ref)
+    groups = match.groups()
+    if len(groups) == 2 and all(groups):
+        path_str, lines_ref = match.group(1), match.group(2)
         lines = parse_lines_ref(lines_ref)
     else:
         path_str, lines = ref, None

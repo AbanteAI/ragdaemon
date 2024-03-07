@@ -48,7 +48,9 @@ daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 # Start/run daemon in the background
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    watch_task = asyncio.create_task(daemon.watch(refresh))
+    if refresh:
+        await daemon.update(refresh=True)
+    watch_task = asyncio.create_task(daemon.watch())
     yield
     watch_task.cancel()
     try:

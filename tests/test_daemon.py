@@ -17,16 +17,18 @@ async def test_daemon_get_context(cwd):
     del annotators["diff"]
     daemon = Daemon(cwd.resolve(), annotators=annotators)
     await daemon.update()
-    actual = daemon.get_context_message("test", max_tokens=1e6)
+    actual = daemon.get_context("test", max_tokens=1e6).render()
 
     with open("tests/data/context_message.txt", "r") as f:
         expected = f.read()
     assert get_message_chunk_set(actual) == get_message_chunk_set(expected)
 
     # Included Files
-    actual = daemon.get_context_message(
-        "test", include=["src/interface.py:11-12"], auto_tokens=0
-    )
+    context = daemon.get_context("test")
+    context.add_ref("src/interface.py:11-12", tags=["user-included"])
+    actual = daemon.get_context(
+        "test", context_builder=context, auto_tokens=0
+    ).render()
     assert (
         actual
         == """\

@@ -1,5 +1,4 @@
-import os
-import subprocess
+import fnmatch
 from pathlib import Path
 
 import networkx as nx
@@ -9,8 +8,33 @@ from ragdaemon.database import get_db
 from ragdaemon.utils import hash_str, get_document, get_non_gitignored_files
 
 
+def match_path_with_patterns(path: Path, cwd: Path, patterns: list[str] = []) -> bool:
+    """Check if the given absolute path matches any of the patterns.
+
+    Args:
+        `path` - An absolute path
+        `patterns` - A set of absolute paths/glob patterns
+
+    Return:
+        A boolean flag indicating if the path matches any of the patterns
+    """
+    if not path.is_absolute():
+        path = cwd / path
+    for pattern in patterns:
+        # Check if the pattern is a glob pattern match
+        if fnmatch.fnmatch(str(path), str(pattern)):
+            return True
+        pattern = Path(pattern)
+        if not pattern.is_absolute():
+            pattern = cwd / pattern
+        # Check if the path is relative to the pattern
+        if path.is_relative_to(pattern):
+            return True
+    return False
+
+
 def get_active_checksums(
-    cwd: Path, refresh: bool = False, verbose: bool = False
+    cwd: Path, refresh: bool = False, verbose: bool = False, ignore_patterns: list[str] = []
 ) -> dict[Path:str]:
     checksums: dict[Path:str] = {}
     git_paths = get_non_gitignored_files(cwd)
@@ -20,6 +44,8 @@ def get_active_checksums(
         "metadatas": [],
     }
     for path in git_paths:
+        if match_path_with_patterns(path, cwd, ignore_patterns):
+            continue
         try:
             path_str = path.as_posix()
             ref = path_str
@@ -51,10 +77,13 @@ def get_active_checksums(
 
 class Hierarchy(Annotator):
     name = "hierarchy"
+    def __init__(self, *args, ignore_patterns: list[str] = [], **kwargs):
+        self.ignore_patterns = ignore_patterns
+        super().__init__(*args, **kwargs)
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = Path(graph.graph["cwd"])
-        checksums = get_active_checksums(cwd, verbose=self.verbose)
+        checksums = get_active_checksums(cwd, verbose=self.verbose, ignore_patterns=self.ignore_patterns)
         files_checksum = hash_str("".join(sorted(checksums.values())))
         return graph.graph.get("files_checksum") == files_checksum
 
@@ -63,7 +92,7 @@ class Hierarchy(Annotator):
     ) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         cwd = Path(old_graph.graph["cwd"])
-        checksums = get_active_checksums(cwd, refresh=refresh, verbose=self.verbose)
+        checksums = get_active_checksums(cwd, refresh=refresh, verbose=self.verbose, ignore_patterns=self.ignore_patterns)
         files_checksum = hash_str("".join(sorted(checksums.values())))
 
         # Initialize an empty graph. We'll build it from scratch.

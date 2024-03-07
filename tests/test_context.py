@@ -63,3 +63,21 @@ src/interface.py (test-flag)
 ...
 """
     )
+    
+def test_to_refs(cwd):
+    path_str = Path("src/interface.py").as_posix()
+    ref = path_str
+
+    # Setup Context
+    context = ContextBuilder(nx.MultiDiGraph())
+    context.context = {
+        path_str: {
+            "lines": set([1, 2, 3, 4, 15]),
+            "tags": ["test-flag"],
+            "document": get_document(ref, cwd),
+            "diffs": set(),
+        }
+    }
+    expected_refs = [f"{path_str}:1-4,15-15"]
+    actual_refs = context.to_refs()
+    assert actual_refs == expected_refs, f"Expected {expected_refs}, got {actual_refs}"

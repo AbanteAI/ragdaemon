@@ -34,11 +34,12 @@ for result in results:
 
 # RAG Context Selection
 query = "How do I run the tests?"
-context = daemon.get_context_message(
+context_builder = daemon.get_context(
     query, 
     include=["package.json"], 
     auto_tokens=5000
 )
+context = context_builder.render()
 query += f"\nCODE CONTEXT\n{context}"
 ...
 ```

@@ -10,25 +10,25 @@ import networkx as nx
 api_key = os.environ.get("OPENAI_API_KEY")
 
 
-_client = None
-_collection = None
+_clients = {}
+_collections = {}
 
 
 def get_db(cwd):
     db_path = Path(cwd) / ".ragdaemon" / "chroma"
-    global _client
-    global _collection
-    if _collection is None:
-        if _client is None:
-            _client = chromadb.PersistentClient(path=str(db_path))
-        _collection = _client.get_or_create_collection(
+    global _clients
+    global _collections
+    if _collections.get(cwd) is None:
+        if _clients.get(cwd) is None:
+            _clients[cwd] = chromadb.PersistentClient(path=str(db_path))
+        _collections[cwd] = _clients[cwd].get_or_create_collection(
             name="ragdaemon",
             embedding_function=OpenAIEmbeddingFunction(
                 api_key=api_key,
                 model_name="text-embedding-3-small",
             ),
         )
-    return _collection
+    return _collections[cwd]
 
 
 def query_graph(
