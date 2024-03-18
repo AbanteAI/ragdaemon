@@ -53,7 +53,7 @@ RESPONSE:
 """
 
 
-semaphore = asyncio.Semaphore(20)
+semaphore = asyncio.Semaphore(50)
 
 
 async def get_llm_response(file_message: str) -> dict:
@@ -68,6 +68,20 @@ async def get_llm_response(file_message: str) -> dict:
             response_format={"type": "json_object"},
         )
         return json.loads(response.choices[0].message.content)
+    
+
+def is_chunk_valid(chunk: dict) -> bool:
+    # Includes the correct fields
+    if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
+        return False
+    # ID is in the correct format
+    if not chunk["id"].count(":") == 1:
+        return False
+    # A chunk name is specified    
+    if not len(chunk["id"].split(":")[1]):
+        return False
+    
+    return True
 
 
 async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[dict]:
@@ -85,11 +99,7 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
             file_message = f"{node}\n{numbered_lines}"
             response = await get_llm_response(file_message)
             chunks = response.get("chunks", [])
-            if not chunks or all(
-                set(chunk.keys()) == {"id", "start_line", "end_line"}
-                and chunk["id"].count(":") == 1
-                for chunk in chunks
-            ):
+            if not chunks or all(is_chunk_valid(chunk) for chunk in chunks):
                 break
             if verbose:
                 print(f"Error with chunker response:\n{response}.\n{tries} tries left.")
@@ -137,7 +147,7 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
 
 
 def add_file_chunks_to_graph(
-    file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False
+    file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False, verbose: bool = False
 ) -> dict[str:list]:
     """Load chunks from file data into db/graph"""
     cwd = Path(graph.graph["cwd"])
@@ -151,25 +161,31 @@ def add_file_chunks_to_graph(
     base_id = f"{file}:BASE"
     edges_to_add.add((file, base_id))
     for chunk in chunks:
-        # Get the checksum record from database
-        id = chunk["id"]
-        ref = chunk["ref"]
-        document = get_document(ref, cwd)
-        checksum = hash_str(document)
-        records = get_db(cwd).get(checksum)["metadatas"]
-        if not refresh and len(records) > 0:
-            record = records[0]
-        else:
-            record = {
-                "id": id,
-                "type": "chunk",
-                "ref": chunk["ref"],
-                "checksum": checksum,
-                "active": False,
-            }
-            add_to_db["ids"].append(checksum)
-            add_to_db["documents"].append(document)
-            add_to_db["metadatas"].append(record)
+        try:
+            # Get the checksum record from database
+            id = chunk["id"]
+            ref = chunk["ref"]
+            document = get_document(ref, cwd)
+            checksum = hash_str(document)
+            records = get_db(cwd).get(checksum)["metadatas"]
+            if not refresh and len(records) > 0:
+                record = records[0]
+            else:
+                record = {
+                    "id": id,
+                    "type": "chunk",
+                    "ref": chunk["ref"],
+                    "checksum": checksum,
+                    "active": False,
+                }
+                add_to_db["ids"].append(checksum)
+                add_to_db["documents"].append(document)
+                add_to_db["metadatas"].append(record)
+        except Exception as e:
+            if verbose:
+                print(f"Error processing chunk {chunk}: {e}")
+            continue
+
         # Load into graph with edges
         graph.add_node(record["id"], **record)
 
@@ -226,14 +242,13 @@ class Chunker(Annotator):
                 tasks.append(get_file_chunk_data(cwd, node, data))
         if len(tasks) > 0:
             if self.verbose:
-                print(f"Chunking {len(tasks)} files...")
-                await tqdm.gather(*tasks)
+                await tqdm.gather(*tasks, desc="Chunking files...")
             else:
                 await asyncio.gather(*tasks)
         # Load/Create chunk nodes into database and graph
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
-            _add_to_db = add_file_chunks_to_graph(file, data, graph)
+            _add_to_db = add_file_chunks_to_graph(file, data, graph, verbose=self.verbose)
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:
