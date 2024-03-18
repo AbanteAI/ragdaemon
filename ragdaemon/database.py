@@ -1,13 +1,12 @@
-import os
 from pathlib import Path
 from typing import Optional
 
 import chromadb
-from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 import networkx as nx
 
+from ragdaemon.llm import embedding_function, openai_api_key
 
-api_key = os.environ.get("OPENAI_API_KEY")
+
 MAX_TOKENS_PER_EMBEDDING = 8192
 
 
@@ -23,11 +22,8 @@ def get_db(cwd):
         if _clients.get(cwd) is None:
             _clients[cwd] = chromadb.PersistentClient(path=str(db_path))
         _collections[cwd] = _clients[cwd].get_or_create_collection(
-            name="ragdaemon",
-            embedding_function=OpenAIEmbeddingFunction(
-                api_key=api_key,
-                model_name="text-embedding-3-small",
-            ),
+            name=f"ragdaemon-{'openai' if openai_api_key else 'default'}",
+            embedding_function=embedding_function,
         )
     return _collections[cwd]
 
