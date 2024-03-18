@@ -4,7 +4,8 @@ from pathlib import Path
 import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import get_db
+from ragdaemon.database import get_db, MAX_TOKENS_PER_EMBEDDING
+from ragdaemon.llm import token_counter
 from ragdaemon.utils import hash_str, get_document, get_non_gitignored_files
 
 
@@ -50,6 +51,9 @@ def get_active_checksums(
             path_str = path.as_posix()
             ref = path_str
             document = get_document(ref, cwd)
+            tokens = token_counter(document)
+            if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
+                continue
             checksum = hash_str(document)
             existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
             if refresh or not existing_record:

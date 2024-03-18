@@ -22,6 +22,6 @@ async def acompletion(
 def token_counter(
     text: str,
     model: str = MODEL,
-):
+) -> int:
     encoding = tiktoken.encoding_for_model(model)
     return len(encoding.encode(text))

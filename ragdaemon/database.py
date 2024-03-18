@@ -8,6 +8,7 @@ import networkx as nx
 
 
 api_key = os.environ.get("OPENAI_API_KEY")
+MAX_TOKENS_PER_EMBEDDING = 8192
 
 
 _clients = {}
