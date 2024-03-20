@@ -6,6 +6,7 @@ import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
 
@@ -65,7 +66,7 @@ class Diff(Annotator):
 
     def __init__(self, *args, diff: str = "", **kwargs):
         if ":" in diff:
-            raise ValueError("diff cannot contain ':'")
+            raise RagdaemonError("diff cannot contain ':'")
         super().__init__(*args, **kwargs)
         self.diff_args = diff
 

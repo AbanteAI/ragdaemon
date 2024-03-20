@@ -90,8 +90,10 @@ class Daemon:
                 continue
             if get_db(self.cwd).get(data["checksum"])["ids"] == []:
                 id = data["checksum"]
-                document = get_document(data["ref"])
+                document = get_document(data["ref"], self.cwd, type=data["type"])
                 metadatas = data
+                if "chunks" in data:
+                    metadatas["chunks"] = json.dumps(data["chunks"])
                 get_db(self.cwd).upsert(ids=id, documents=document, metadatas=metadatas)
 
     async def update(self, refresh=False):

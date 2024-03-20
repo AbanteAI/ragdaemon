@@ -7,6 +7,7 @@ from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.llm import acompletion
 from ragdaemon.utils import get_document, hash_str
 
@@ -184,7 +185,7 @@ def add_file_chunks_to_graph(
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(record)
-        except Exception as e:
+        except RagdaemonError as e:
             if verbose:
                 print(f"Error processing chunk {chunk}: {e}")
             continue

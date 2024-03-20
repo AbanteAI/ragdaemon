@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from ragdaemon.errors import RagdaemonError
+
 
 def hash_str(string: str) -> str:
     """Return the MD5 hash of the input string."""
@@ -85,6 +87,6 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
                 text = f.read()
 
     else:
-        raise ValueError(f"Invalid type: {type}")
+        raise RagdaemonError(f"Invalid type: {type}")
 
     return f"{ref}\n{text}"

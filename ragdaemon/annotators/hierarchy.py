@@ -5,6 +5,7 @@ import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, get_db
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
 
@@ -74,7 +75,7 @@ def get_active_checksums(
             checksums[path] = checksum
         except UnicodeDecodeError:  # Ignore non-text files
             pass
-        except Exception as e:
+        except RagdaemonError as e:
             if verbose:
                 print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
