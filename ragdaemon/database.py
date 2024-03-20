@@ -6,7 +6,6 @@ import networkx as nx
 
 from ragdaemon.llm import embedding_function, openai_api_key
 
-
 MAX_TOKENS_PER_EMBEDDING = 8192
 
 

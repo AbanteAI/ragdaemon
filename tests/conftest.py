@@ -2,10 +2,9 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-
-import pytest
 from unittest.mock import patch
 
+import pytest
 
 """
 NOTE: Some of the functions require a DB record to be present. This means the

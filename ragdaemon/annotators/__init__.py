@@ -1,4 +1,4 @@
-from ragdaemon.annotators.base_annotator import Annotator
+from ragdaemon.annotators.base_annotator import Annotator  # noqa: F401
 from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.annotators.diff import Diff
 from ragdaemon.annotators.hierarchy import Hierarchy

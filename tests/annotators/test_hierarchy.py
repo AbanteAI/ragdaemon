@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
 
-import pytest
 import networkx as nx
+import pytest
 
-from ragdaemon.annotators.hierarchy import get_active_checksums, Hierarchy
+from ragdaemon.annotators.hierarchy import Hierarchy, get_active_checksums
 
 
 def test_get_active_checksums(cwd):

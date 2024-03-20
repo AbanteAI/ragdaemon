@@ -1,18 +1,17 @@
-import webbrowser
 import argparse
 import asyncio
-from contextlib import asynccontextmanager
 import socket
+import webbrowser
+from contextlib import asynccontextmanager
 from pathlib import Path
 
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-import uvicorn
 
 from ragdaemon.daemon import Daemon
-
 
 # Load daemon with command line arguments and visualization annotators
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
@@ -91,7 +90,7 @@ async def search(request: Request, q: str):
 
 
 async def main():
-    """Starts the uvicorn server programmatically, checking for available port starting from 5001."""
+    """Starts the uvicorn server programmatically on first available port >5000."""
     port = 5001
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

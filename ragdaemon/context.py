@@ -3,8 +3,8 @@ from typing import Any
 
 import networkx as nx
 
-from ragdaemon.database import get_db
 from ragdaemon.annotators.diff import parse_diff_id
+from ragdaemon.database import get_db
 from ragdaemon.utils import parse_path_ref
 
 
@@ -14,7 +14,9 @@ class ContextBuilder:
     def __init__(self, graph: nx.MultiDiGraph, verbose: bool = False):
         self.graph = graph
         self.verbose = verbose
-        self.context = dict[str, dict[str, Any]]()  # {path: {lines, tags, document, diff}}
+        self.context = dict[
+            str, dict[str, Any]
+        ]()  # {path: {lines, tags, document, diff}}
 
     def _add_path(self, path_str: str):
         """Create a new record in the context for the given path."""
@@ -112,7 +114,7 @@ class ContextBuilder:
     def render_diffs(self, ids: set[str]) -> str:
         output = ""
         diff_str, _, _ = parse_diff_id(next(iter(ids)))
-        git_command = f"--git diff"
+        git_command = "--git diff"
         if diff_str != "DEFAULT":
             git_command += f" {diff_str}"
         output += f"{git_command}\n"
@@ -124,7 +126,7 @@ class ContextBuilder:
             without_git_command = "\n".join(document.splitlines()[1:])
             output += without_git_command + "\n"
         return output
-    
+
     def to_refs(self) -> list[str]:
         """Return a list of path:interval,interval for everything in current context."""
         refs = dict[Path, str]()

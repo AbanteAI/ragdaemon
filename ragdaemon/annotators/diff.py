@@ -6,7 +6,7 @@ import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
-from ragdaemon.utils import hash_str, get_document, parse_path_ref
+from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
 
 def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
@@ -71,7 +71,6 @@ class Diff(Annotator):
 
     @property
     def id(self) -> str:
-        """Self.diff_args can be none (just 'git diff'), in which case the node is named DEFAULT"""
         return "DEFAULT" if not self.diff_args else self.diff_args
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:

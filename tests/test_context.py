@@ -2,8 +2,8 @@ from pathlib import Path
 
 import networkx as nx
 
-from ragdaemon.utils import get_document
 from ragdaemon.context import ContextBuilder
+from ragdaemon.utils import get_document
 
 
 def test_daemon_render_context(cwd):
@@ -52,7 +52,7 @@ src/interface.py (test-flag)
 ...
 5:def parse_arguments():
 6:    parser = argparse.ArgumentParser(description="Basic Calculator")
-7:    parser.add_argument("operation", type=str, help="Calculation operation (e.g., 3+4)")
+7:    parser.add_argument("operation", type=str, help="Calculation operation")
 8:    args = parser.parse_args()
 9:
 10:    # use re to parse symbol, nubmer before, nubmer after
@@ -63,7 +63,8 @@ src/interface.py (test-flag)
 ...
 """
     )
-    
+
+
 def test_to_refs(cwd):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str

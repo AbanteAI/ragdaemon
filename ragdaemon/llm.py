@@ -1,12 +1,11 @@
 import os
 
+import tiktoken
 from chromadb.utils.embedding_functions import (
-    DefaultEmbeddingFunction, 
+    DefaultEmbeddingFunction,
     OpenAIEmbeddingFunction,
 )
 from openai import AsyncOpenAI
-import tiktoken
-
 
 DEFAULT_COMPLETION_MODEL = "gpt-4-0125-preview"
 embedding_function = DefaultEmbeddingFunction()
@@ -37,8 +36,9 @@ async def acompletion(
     return response
 
 
-
 encodings = {}
+
+
 def get_encoding_for(model: str) -> tiktoken.Encoding:
     if encodings.get(model) is None:
         encodings[model] = tiktoken.encoding_for_model(model)

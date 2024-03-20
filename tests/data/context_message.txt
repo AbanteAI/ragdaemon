@@ -35,7 +35,7 @@ src/interface.py (search-result)
 4:
 5:def parse_arguments():
 6:    parser = argparse.ArgumentParser(description="Basic Calculator")
-7:    parser.add_argument("operation", type=str, help="Calculation operation (e.g., 3+4)")
+7:    parser.add_argument("operation", type=str, help="Calculation operation")
 8:    args = parser.parse_args()
 9:
 10:    # use re to parse symbol, nubmer before, nubmer after

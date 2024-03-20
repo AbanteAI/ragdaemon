@@ -3,11 +3,7 @@ import json
 import networkx as nx
 import pytest
 
-from ragdaemon.annotators.diff import (
-    get_chunks_from_diff,
-    parse_diff_id,
-    Diff,
-)
+from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
 from ragdaemon.daemon import Daemon, default_annotators
 from ragdaemon.utils import get_git_diff
@@ -120,7 +116,7 @@ src/operations.py (diff)
     # Diffs with files and chunks
     context.remove_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
-    context.add_ref(f"src/operations.py", tags=["user-included"])
+    context.add_ref("src/operations.py", tags=["user-included"])
     actual = context.render()
     assert (
         actual

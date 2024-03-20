@@ -4,7 +4,7 @@ import re
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Basic Calculator")
-    parser.add_argument("operation", type=str, help="Calculation operation (e.g., 3+4)")
+    parser.add_argument("operation", type=str, help="Calculation operation")
     args = parser.parse_args()
 
     # use re to parse symbol, nubmer before, nubmer after

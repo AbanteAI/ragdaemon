@@ -6,10 +6,9 @@ import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.utils import hash_str, get_document
 from ragdaemon.database import get_db
 from ragdaemon.llm import acompletion
-
+from ragdaemon.utils import get_document, hash_str
 
 chunker_prompt = """\
 Split the provided code file into chunks.
@@ -68,7 +67,7 @@ async def get_llm_response(file_message: str) -> dict:
             response_format={"type": "json_object"},
         )
         return json.loads(response.choices[0].message.content)
-    
+
 
 def is_chunk_valid(chunk: dict) -> bool:
     # Includes the correct fields
@@ -77,10 +76,10 @@ def is_chunk_valid(chunk: dict) -> bool:
     # ID is in the correct format
     if not chunk["id"].count(":") == 1:
         return False
-    # A chunk name is specified    
+    # A chunk name is specified
     if not len(chunk["id"].split(":")[1]):
         return False
-    
+
     return True
 
 
@@ -147,7 +146,11 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
 
 
 def add_file_chunks_to_graph(
-    file: str, data: dict, graph: nx.MultiDiGraph, refresh: bool = False, verbose: bool = False
+    file: str,
+    data: dict,
+    graph: nx.MultiDiGraph,
+    refresh: bool = False,
+    verbose: bool = False,
 ) -> dict[str:list]:
     """Load chunks from file data into db/graph"""
     cwd = Path(graph.graph["cwd"])
@@ -248,7 +251,9 @@ class Chunker(Annotator):
         # Load/Create chunk nodes into database and graph
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
-            _add_to_db = add_file_chunks_to_graph(file, data, graph, verbose=self.verbose)
+            _add_to_db = add_file_chunks_to_graph(
+                file, data, graph, verbose=self.verbose
+            )
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:

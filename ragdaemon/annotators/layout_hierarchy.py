@@ -6,7 +6,12 @@ from ragdaemon.annotators.base_annotator import Annotator
 
 
 def fruchterman_reingold_3d(
-    G, iterations=40, repulsive_force=0.2, spring_length=0.2, dt=0.1, verbose: bool = False
+    G,
+    iterations=40,
+    repulsive_force=0.2,
+    spring_length=0.2,
+    dt=0.1,
+    verbose: bool = False,
 ):
     # Initialize node positions with random values
     pos = {
@@ -22,7 +27,7 @@ def fruchterman_reingold_3d(
 
     def attraction_force(distance, k):
         return distance**2 / k
-    
+
     def iterate(iteration: int):
         # Calculate repulsive forces
         repulsive_forces = {node: np.zeros(3) for node in G.nodes()}
@@ -61,12 +66,13 @@ def fruchterman_reingold_3d(
 
     # Main loop
     if verbose:
-       for iteration in tqdm(range(iterations), desc="Generating hierarchical layout..."):
+        for iteration in tqdm(
+            range(iterations), desc="Generating hierarchical layout..."
+        ):
             iterate(iteration)
     else:
         for iteration in range(iterations):
             iterate(iteration)
-
 
     return {
         node: {"x": pos[node][0], "y": pos[node][1], "z": pos[node][2]}
@@ -95,7 +101,9 @@ class LayoutHierarchy(Annotator):
         b. Update all nodes
         c. Save to chroma
         """
-        pos = fruchterman_reingold_3d(graph, iterations=iterations, verbose=self.verbose)
+        pos = fruchterman_reingold_3d(
+            graph, iterations=iterations, verbose=self.verbose
+        )
         for node_id, coordinates in pos.items():
             node = graph.nodes[node_id]
             if "layout" not in node:

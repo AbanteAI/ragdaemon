@@ -1,15 +1,15 @@
-import time
 import asyncio
 import json
+import time
 from pathlib import Path
 from typing import Any, Optional
 
 import networkx as nx
 
 from ragdaemon.annotators import Annotator, annotators_map
+from ragdaemon.context import ContextBuilder
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import completion_model, token_counter
-from ragdaemon.context import ContextBuilder
 from ragdaemon.utils import get_non_gitignored_files
 
 
@@ -23,6 +23,7 @@ def default_annotators():
 
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
+
     graph: nx.MultiDiGraph
 
     def __init__(
@@ -48,7 +49,7 @@ class Daemon:
             self.graph = nx.MultiDiGraph()
             self.graph.graph["cwd"] = self.cwd.as_posix()
             if self.verbose:
-                print(f"Initialized empty graph.")
+                print("Initialized empty graph.")
 
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:
