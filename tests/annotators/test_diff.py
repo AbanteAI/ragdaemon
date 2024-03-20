@@ -64,9 +64,7 @@ async def test_diff_render(git_history):
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_diff("DEFAULT:src/operations.py:8-10")
     actual = context.render()
-    assert (
-        actual
-        == """\
+    assert actual == """\
 main.py (diff)
 --git diff
 @@ -1,23 +0,0 @@
@@ -111,16 +109,13 @@ src/operations.py (diff)
 +return a - b #modified
  
 """
-    )
 
     # Diffs with files and chunks
     context.remove_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_ref("src/operations.py", tags=["user-included"])
     actual = context.render()
-    assert (
-        actual
-        == """\
+    assert actual == """\
 src/operations.py (diff, user-included)
 1:import math
 2: #modified
@@ -159,4 +154,3 @@ src/operations.py (diff, user-included)
 +return a - b #modified
  
 """
-    )

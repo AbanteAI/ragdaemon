@@ -89,9 +89,7 @@ class Daemon:
                 id = data["checksum"]
                 document = get_document(data["ref"])
                 metadatas = data
-                get_db(self.cwd).upsert(
-                    ids=id, documents=document, metadatas=metadatas
-                )
+                get_db(self.cwd).upsert(ids=id, documents=document, metadatas=metadatas)
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
