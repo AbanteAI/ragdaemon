@@ -3,6 +3,7 @@ import json
 import networkx as nx
 import pytest
 
+from ragdaemon.daemon import Daemon
 from ragdaemon.annotators.chunker import Chunker
 
 
@@ -39,10 +40,12 @@ def test_chunker_is_complete(cwd):
 
 @pytest.mark.asyncio
 async def test_chunker_annotate(cwd, mock_get_llm_response):
-    with open("tests/data/hierarchy_graph.json", "r") as f:
-        data = json.load(f)
-        hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
-    actual = await Chunker().annotate(hierarchy_graph)
+    daemon = Daemon(
+        cwd=cwd, 
+        annotators={"hierarchy": {}}, 
+        graph_path="tests/data/hierarchy_graph.json"
+    )
+    actual = await Chunker().annotate(daemon.graph)
 
     for node, data in actual.nodes(data=True):
         if data["type"] == "file":

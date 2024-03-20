@@ -10,7 +10,7 @@ from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import get_db, query_graph
 from ragdaemon.llm import completion_model, token_counter
-from ragdaemon.utils import get_non_gitignored_files
+from ragdaemon.utils import get_document, get_non_gitignored_files
 
 
 def default_annotators():
@@ -31,6 +31,7 @@ class Daemon:
         cwd: Path,
         annotators: Optional[dict[str, dict]] = None,
         verbose: bool = False,
+        graph_path: Optional[Path] = None,
     ):
         self.cwd = cwd
         self.verbose = verbose
@@ -41,8 +42,11 @@ class Daemon:
             print(f"Initialized database with {count} records.")
 
         # Load or initialize graph
-        self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
-        self.graph_path.parent.mkdir(exist_ok=True)
+        if graph_path is not None:
+            self.graph_path = (cwd / graph_path).resolve()
+        else:
+            self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
+            self.graph_path.parent.mkdir(exist_ok=True)
         if self.graph_path.exists():
             self.load()
         else:
@@ -77,6 +81,17 @@ class Daemon:
             data = json.load(f)
             self.graph = nx.readwrite.json_graph.node_link_graph(data)
         self.graph.graph["cwd"] = self.cwd.as_posix()
+        # Make sure all records are in db, otherwise add them.
+        for node, data in self.graph.nodes(data=True):
+            if "checksum" not in data:
+                continue
+            if get_db(self.cwd).get(data["checksum"])["ids"] == []:
+                id = data["checksum"]
+                document = get_document(data["ref"])
+                metadatas = data
+                get_db(self.cwd).upsert(
+                    ids=id, documents=document, metadatas=metadatas
+                )
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
