@@ -1,3 +1,4 @@
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Optional
 
@@ -9,22 +10,28 @@ from ragdaemon.llm import embedding_function, openai_api_key
 MAX_TOKENS_PER_EMBEDDING = 8192
 
 
-_clients = {}
-_collections = {}
+_collection: ContextVar = ContextVar("_collection", default=None)
 
 
-def get_db(cwd):
+def set_db(cwd: Path):
     db_path = Path(cwd) / ".ragdaemon" / "chroma"
-    global _clients
-    global _collections
-    if _collections.get(cwd) is None:
-        if _clients.get(cwd) is None:
-            _clients[cwd] = chromadb.PersistentClient(path=str(db_path))
-        _collections[cwd] = _clients[cwd].get_or_create_collection(
-            name=f"ragdaemon-{'openai' if openai_api_key else 'default'}",
+    global _collection
+    _client = chromadb.PersistentClient(path=str(db_path))
+    name = f"ragdaemon-{'openai' if openai_api_key else 'default'}"
+    _collection.set(
+        _client.get_or_create_collection(
+            name=name,
             embedding_function=embedding_function,
         )
-    return _collections[cwd]
+    )
+
+
+def get_db(cwd: Path) -> chromadb.Collection:
+    collection = _collection.get()
+    if collection is None:
+        set_db(cwd)
+        collection = _collection.get()
+    return collection
 
 
 def query_graph(

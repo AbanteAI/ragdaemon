@@ -8,7 +8,7 @@ import networkx as nx
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import get_db, query_graph
+from ragdaemon.database import get_db, query_graph, set_db
 from ragdaemon.llm import completion_model, token_counter
 from ragdaemon.utils import get_document, get_non_gitignored_files
 
@@ -54,6 +54,9 @@ class Daemon:
             self.graph.graph["cwd"] = self.cwd.as_posix()
             if self.verbose:
                 print("Initialized empty graph.")
+
+        # Establish a dedicated database client for this instance
+        set_db(self.cwd)
 
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:
