@@ -8,6 +8,7 @@ from openai import AsyncOpenAI
 import tiktoken
 
 
+DEFAULT_COMPLETION_MODEL = "gpt-4-0125-preview"
 embedding_function = DefaultEmbeddingFunction()
 client = None
 completion_model = None
@@ -19,7 +20,7 @@ if openai_api_key is not None:
         model_name="text-embedding-3-small",
     )
     client = AsyncOpenAI()
-    completion_model = "gpt-4-0125-preview"
+    completion_model = DEFAULT_COMPLETION_MODEL
 
 
 async def acompletion(
@@ -46,7 +47,9 @@ def get_encoding_for(model: str) -> tiktoken.Encoding:
 
 def token_counter(
     text: str,
-    model: str = completion_model,
+    model: str = None,
 ) -> int:
+    if model is None:
+        model = completion_model or DEFAULT_COMPLETION_MODEL
     encoding = get_encoding_for(model)
     return len(encoding.encode(text))
