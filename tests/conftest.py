@@ -1,5 +1,6 @@
 import os
 import shutil
+import stat
 import subprocess
 import tempfile
 import time
@@ -25,6 +26,38 @@ def mock_get_llm_response():
         "ragdaemon.annotators.chunker.get_llm_response", return_value={"chunks": []}
     ) as mock:
         yield mock
+
+
+def add_permissions(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
+
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is because the file is being used by another process,
+    it retries after a short delay.
+
+    If the error is for another reason it re-raises the error.
+    """
+
+    gc.collect()  # Force garbage collection
+    # Is the error an access error?
+    if not os.access(path, os.W_OK):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    # Retry deletion with a delay
+    retries = 2
+    delay = 1
+    for attempt in range(retries):
+        try:
+            func(path)
+            break
+        except PermissionError:
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                raise
 
 
 @pytest.fixture(scope="function")
@@ -66,15 +99,5 @@ def git_history(cwd):
 
     yield tmpdir_path 
 
-    # Retry deletion with a delay
-    retries = 3
-    delay = 1
-    for attempt in range(retries):
-        try:
-            shutil.rmtree(tmpdir_path)
-            break
-        except PermissionError:
-            if attempt < retries - 1:
-                time.sleep(delay)
-            else:
-                raise
+    shutil.rmtree(temp_dir, onerror=add_permissions)
+
