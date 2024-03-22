@@ -1,6 +1,7 @@
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Optional
+import os
 
 import chromadb
 import networkx as nx
@@ -11,12 +12,16 @@ MAX_TOKENS_PER_EMBEDDING = 8192
 
 
 _collection: ContextVar = ContextVar("_collection", default=None)
+is_test = os.environ.get("PYTEST_CURRENT_TEST") is not None
 
 
 def set_db(cwd: Path):
     db_path = Path(cwd) / ".ragdaemon" / "chroma"
     global _collection
-    _client = chromadb.PersistentClient(path=str(db_path))
+    if is_test:
+        _client = chromadb.EphemeralClient()
+    else:
+        _client = chromadb.PersistentClient(path=str(db_path))
     name = f"ragdaemon-{'openai' if openai_api_key else 'default'}"
     _collection.set(
         _client.get_or_create_collection(
