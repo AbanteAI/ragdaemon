@@ -27,10 +27,13 @@ async def test_daemon_get_context(cwd):
     context = daemon.get_context("test")
     context.add_ref("src/interface.py:11-12", tags=["user-included"])
     actual = daemon.get_context("test", context_builder=context, auto_tokens=0).render()
-    assert actual == """\
+    assert (
+        actual
+        == """\
 src/interface.py (user-included)
 ...
 11:    match = re.match(r"(\d+)(\D)(\d+)", args.operation)
 12:    if match is None:
 ...
 """
+    )

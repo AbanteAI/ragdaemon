@@ -9,7 +9,7 @@ import networkx as nx
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import get_db, query_graph, set_db
-from ragdaemon.llm import completion_model, token_counter
+from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, get_non_gitignored_files
 
 
@@ -61,10 +61,6 @@ class Daemon:
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
-        if "chunker" in annotators and completion_model is None:
-            if self.verbose:
-                print("No completion model found, disabling chunker.")
-            del annotators["chunker"]
         self.pipeline: dict[str, Annotator] = {
             ann: annotators_map[ann](**kwargs, verbose=self.verbose)
             for ann, kwargs in annotators.items()

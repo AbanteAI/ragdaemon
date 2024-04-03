@@ -21,7 +21,9 @@ def test_daemon_render_context(cwd):
         }
     }
     actual = context.render()
-    assert actual == """\
+    assert (
+        actual
+        == """\
 src/interface.py (test-flag)
 1:import argparse
 2:import re
@@ -31,6 +33,7 @@ src/interface.py (test-flag)
 15:
 ...
 """
+    )
 
     # Function Chunk
     context.context = {
@@ -42,7 +45,9 @@ src/interface.py (test-flag)
         }
     }
     actual = context.render()
-    assert actual == """\
+    assert (
+        actual
+        == """\
 src/interface.py (test-flag)
 ...
 5:def parse_arguments():
@@ -57,6 +62,7 @@ src/interface.py (test-flag)
 14:    return int(match.group(1)), match.group(2), int(match.group(3))
 ...
 """
+    )
 
 
 def test_to_refs(cwd):

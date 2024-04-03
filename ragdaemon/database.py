@@ -5,7 +5,7 @@ from typing import Optional
 import chromadb
 import networkx as nx
 
-from ragdaemon.llm import embedding_function, openai_api_key
+from ragdaemon.llm import embedding_function
 
 MAX_TOKENS_PER_EMBEDDING = 8192
 
@@ -17,7 +17,7 @@ def set_db(cwd: Path):
     db_path = Path(cwd) / ".ragdaemon" / "chroma"
     global _collection
     _client = chromadb.PersistentClient(path=str(db_path))
-    name = f"ragdaemon-{'openai' if openai_api_key else 'default'}"
+    name = f"ragdaemon-{Path(cwd).name}"
     _collection.set(
         _client.get_or_create_collection(
             name=name,

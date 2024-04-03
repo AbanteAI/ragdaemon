@@ -63,11 +63,10 @@ async def get_llm_response(file_message: str) -> dict:
             {"role": "user", "content": file_message},
         ]
         response = await acompletion(
-            model="gpt-4-turbo-preview",
             messages=messages,
             response_format={"type": "json_object"},
         )
-        return json.loads(response.choices[0].message.content)
+        return json.loads(response)
 
 
 def is_chunk_valid(chunk: dict) -> bool:
@@ -130,7 +129,7 @@ async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[di
         # Replace with standardized fields
         base_chunk = {
             "id": f"{node}:BASE",
-            "ref": f"{node}:{','.join(base_chunk_refs)}",
+            "ref": f"{node}{':' + ','.join(base_chunk_refs) if base_chunk_refs else ''}",
         }
         chunks = [
             {
