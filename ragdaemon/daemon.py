@@ -90,7 +90,7 @@ class Daemon:
                     document = get_document(data["ref"], self.cwd, type=data["type"])
                 except FileNotFoundError:
                     # If a file was deleted or renamed since the last save, it's not in
-                    # the active directory, so we can't add it to the graph. The node 
+                    # the active directory, so we can't add it to the graph. The node
                     # will be removed as soon as the graph is updated.
                     continue
                 metadatas = data
