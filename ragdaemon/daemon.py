@@ -86,7 +86,13 @@ class Daemon:
                 continue
             if get_db(self.cwd).get(data["checksum"])["ids"] == []:
                 id = data["checksum"]
-                document = get_document(data["ref"], self.cwd, type=data["type"])
+                try:
+                    document = get_document(data["ref"], self.cwd, type=data["type"])
+                except FileNotFoundError:
+                    # If a file was deleted or renamed since the last save, it's not in
+                    # the active directory, so we can't add it to the graph. The node 
+                    # will be removed as soon as the graph is updated.
+                    continue
                 metadatas = data
                 if "chunks" in data:
                     metadatas["chunks"] = json.dumps(data["chunks"])
