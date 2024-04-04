@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import networkx as nx
 import pytest
@@ -43,7 +44,7 @@ async def test_chunker_annotate(cwd, mock_get_llm_response):
     daemon = Daemon(
         cwd=cwd,
         annotators={"hierarchy": {}},
-        graph_path="tests/data/hierarchy_graph.json",
+        graph_path=(Path.cwd() / "tests/data/hierarchy_graph.json"),
     )
     actual = await Chunker().annotate(daemon.graph)
 

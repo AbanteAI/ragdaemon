@@ -46,7 +46,7 @@ class Daemon:
             self.graph_path = (cwd / graph_path).resolve()
         else:
             self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
-            self.graph_path.parent.mkdir(exist_ok=True)
+        self.graph_path.parent.mkdir(exist_ok=True)
         if self.graph_path.exists():
             self.load()
         else:

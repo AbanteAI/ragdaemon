@@ -6,6 +6,7 @@ import chromadb
 import networkx as nx
 
 from ragdaemon.llm import embedding_function
+from ragdaemon.utils import mentat_dir_path
 
 MAX_TOKENS_PER_EMBEDDING = 8192
 
@@ -14,7 +15,9 @@ _collection: ContextVar = ContextVar("_collection", default=None)
 
 
 def set_db(cwd: Path):
-    db_path = Path(cwd) / ".ragdaemon" / "chroma"
+    db_path = mentat_dir_path / "chroma"
+    db_path.mkdir(parents=True, exist_ok=True)
+
     global _collection
     _client = chromadb.PersistentClient(path=str(db_path))
     name = f"ragdaemon-{Path(cwd).name}"

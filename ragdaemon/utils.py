@@ -7,6 +7,9 @@ from pathlib import Path
 from ragdaemon.errors import RagdaemonError
 
 
+mentat_dir_path = Path.home() / ".mentat"
+
+
 def hash_str(string: str) -> str:
     """Return the MD5 hash of the input string."""
     return hashlib.md5(string.encode()).hexdigest()
