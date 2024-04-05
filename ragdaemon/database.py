@@ -44,7 +44,10 @@ class LiteDB:
         if where:
             filtered_records = list[dict[str, Any]]()
             for record in records:
-                selected = all(record.get("metadatas", {}).get(key) == value for key, value in where.items())
+                selected = all(
+                    record.get("metadatas", {}).get(key) == value
+                    for key, value in where.items()
+                )
                 if selected:
                     filtered_records.append(record)
             records = filtered_records

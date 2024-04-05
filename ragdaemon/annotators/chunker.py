@@ -1,3 +1,20 @@
+"""
+Chunk data a list of objects following [
+    {id: path/to/file:class.method, start_line: int, end_line: int} 
+]
+
+It's stored on the file node as data['chunks'] and json.dumped into the database.
+
+A chunker annotator:
+1. Is complete when all files (with matching extensions) have a 'chunks' field
+2. Generates chunks using a subclass method (llm, ctags..)
+3. Adds that data to each file's graph node and database record
+4. Add graph nodes (and db records) for each of those chunks
+5. Add hierarchy edges connecting everything back to cwd
+
+The Chunker base class below handles everything except step 2.
+"""
+
 import asyncio
 import json
 from pathlib import Path
@@ -7,66 +24,7 @@ from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import get_db
-from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import acompletion
 from ragdaemon.utils import get_document, hash_str
-
-chunker_prompt = """\
-Split the provided code file into chunks.
-Return a list of functions, classes and methods in this code file as JSON data.
-Each item in the list should contain:
-1. `id` - the complete call path, e.g. `path/to/file:class.method`
-2. `start_line` - where the function, class or method begins
-3. `end_line` - where it ends - INCLUSIVE
-
-If there are no chunks, return an empty list.
-
-EXAMPLE:
---------------------------------------------------------------------------------
-src/graph.py
-1:import pathlib as Path
-2:
-3:import networkx as nx
-4:
-5:
-6:class KnowledgeGraph:
-7:    def __init__(self, cwd: Path):
-8:        self.cwd = cwd
-9:
-10:_knowledge_graph = None
-11:def get_knowledge_graph():
-12:    global _knowledge_graph
-13:    if _knowledge_graph is None:
-14:        _knowledge_graph = KnowledgeGraph(Path.cwd())
-15:    return _knowledge_graph
-16:
-
-RESPONSE:
-{
-    "chunks": [
-        {"id": "src/graph.py:KnowledgeGraph", "start_line": 6, "end_line": 8},
-        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 7, "end_line": 8},
-        {"id": "src/graph.py:get_knowledge_graph", "start_line": 11, "end_line": 15}
-    ]
-}
---------------------------------------------------------------------------------
-"""
-
-
-semaphore = asyncio.Semaphore(50)
-
-
-async def get_llm_response(file_message: str) -> dict:
-    async with semaphore:
-        messages = [
-            {"role": "system", "content": chunker_prompt},
-            {"role": "user", "content": file_message},
-        ]
-        response = await acompletion(
-            messages=messages,
-            response_format={"type": "json_object"},
-        )
-        return json.loads(response)
 
 
 def is_chunk_valid(chunk: dict) -> bool:
@@ -79,30 +37,22 @@ def is_chunk_valid(chunk: dict) -> bool:
     # A chunk name is specified
     if not len(chunk["id"].split(":")[1]):
         return False
+    # TODO: Validate the ref, i.e. a parent chunk exists
 
     return True
 
 
-async def get_file_chunk_data(cwd, node, data, verbose: bool = False) -> list[dict]:
+async def get_file_chunk_data(
+    cwd, node, data, chunk_function: callable, verbose: bool = False
+) -> list[dict]:
     """Get or add chunk data to database, load into file data"""
     file_lines = (cwd / Path(node)).read_text().splitlines()
     if len(file_lines) == 0:
         chunks = []
     else:
-        tries = 1
-        for tries in range(tries, 0, -1):
-            tries -= 1
-            numbered_lines = "\n".join(
-                f"{i+1}:{line}" for i, line in enumerate(file_lines)
-            )
-            file_message = f"{node}\n{numbered_lines}"
-            response = await get_llm_response(file_message)
-            chunks = response.get("chunks", [])
-            if not chunks or all(is_chunk_valid(chunk) for chunk in chunks):
-                break
-            if verbose:
-                print(f"Error with chunker response:\n{response}.\n{tries} tries left.")
-            chunks = []
+        chunks = await chunk_function(cwd, node, file_lines, verbose)
+        if not all(is_chunk_valid(chunk) for chunk in chunks):
+            raise ValueError(f"Invalid chunk data: {chunks}")
     if chunks:
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))
@@ -184,7 +134,7 @@ def add_file_chunks_to_graph(
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(record)
-        except RagdaemonError as e:
+        except Exception as e:
             if verbose:
                 print(f"Error processing chunk {chunk}: {e}")
             continue
@@ -215,13 +165,55 @@ class Chunker(Annotator):
 
     def __init__(self, *args, chunk_extensions: list[str] = None, **kwargs):
         super().__init__(*args, **kwargs)
+        if chunk_extensions is None:
+            chunk_extensions = [
+                ".py",
+                ".js",
+                ".java",
+                ".html",
+                ".css",
+                ".sql",
+                ".php",
+                ".rb",
+                ".sh",
+                ".c",
+                ".cpp",
+                ".h",
+                ".hpp",
+                ".cs",
+                ".go",
+                ".ts",
+                ".jsx",
+                ".tsx",
+                ".scss",
+            ]
         self.chunk_extensions = chunk_extensions
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         for _, data in graph.nodes(data=True):
             if data.get("type") == "file" and data.get("chunks", None) is None:
-                return False
+                if self.chunk_extensions is None:
+                    return False
+                extension = Path(data["ref"]).suffix
+                if extension in self.chunk_extensions:
+                    return False
         return True
+
+    async def chunk_file(
+        self, cwd: Path, file: str, file_lines: str, verbose: bool = False
+    ) -> list[dict[str, str]]:
+        """Return a list of {id, start_line, end_line}'s for the given file.
+
+        Args:
+            file (str): The file name
+            file_lines (list[str]): The file content as a list of lines
+
+        Returns (for each chunk):
+            id (str): The complete call path, e.g. `path/to/file:class.method`
+            start_line (int): Where the function, class or method begins
+            end_line (int): Where it ends - INCLUSIVE
+        """
+        raise NotImplementedError()
 
     async def annotate(
         self, graph: nx.MultiDiGraph, refresh: bool = False
@@ -242,7 +234,11 @@ class Chunker(Annotator):
         tasks = []
         for node, data in file_nodes:
             if refresh or data.get("chunks", None) is None:
-                tasks.append(get_file_chunk_data(cwd, node, data))
+                tasks.append(
+                    get_file_chunk_data(
+                        cwd, node, data, self.chunk_file, verbose=self.verbose
+                    )
+                )
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Chunking files...")

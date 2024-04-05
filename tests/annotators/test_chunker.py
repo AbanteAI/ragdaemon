@@ -4,7 +4,7 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from ragdaemon.annotators.chunker import Chunker
+from ragdaemon.annotators import Chunker, ChunkerLLM
 from ragdaemon.daemon import Daemon
 
 
@@ -40,14 +40,15 @@ def test_chunker_is_complete(cwd):
 
 
 @pytest.mark.asyncio
-async def test_chunker_annotate(cwd, mock_get_llm_response):
+async def test_chunker_llm_annotate(cwd, mock_get_llm_response):
     daemon = Daemon(
         cwd=cwd,
         annotators={"hierarchy": {}},
         graph_path=(Path.cwd() / "tests/data/hierarchy_graph.json"),
     )
-    actual = await Chunker().annotate(daemon.graph)
+    chunker = ChunkerLLM()
+    actual = await chunker.annotate(daemon.graph)
 
     for node, data in actual.nodes(data=True):
-        if data["type"] == "file":
+        if data["type"] == "file" and Path(node).suffix in chunker.chunk_extensions:
             assert "chunks" in data, f"File {node} is missing chunks"
