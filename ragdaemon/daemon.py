@@ -8,15 +8,14 @@ import networkx as nx
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import get_db, query_graph, set_db
+from ragdaemon.database import get_db, set_db
 from ragdaemon.llm import token_counter
-from ragdaemon.utils import get_document, get_non_gitignored_files
+from ragdaemon.utils import get_non_gitignored_files
 
 
 def default_annotators():
     return {
         "hierarchy": {},
-        # "chunker_llm": {},
         "chunker_line": {"lines_per_chunk": 30},
         "diff": {},
     }
@@ -36,6 +35,11 @@ class Daemon:
     ):
         self.cwd = cwd
         self.verbose = verbose
+        if graph_path is not None:
+            self.graph_path = (cwd / graph_path).resolve()
+        else:
+            self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
+        self.graph_path.parent.mkdir(exist_ok=True)
 
         # Establish a dedicated database client for this instance
         set_db(self.cwd)
@@ -43,19 +47,11 @@ class Daemon:
         if self.verbose:
             print(f"Initialized database with {count} records.")
 
-        # Load or initialize graph
-        if graph_path is not None:
-            self.graph_path = (cwd / graph_path).resolve()
-        else:
-            self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
-        self.graph_path.parent.mkdir(exist_ok=True)
-        if self.graph_path.exists():
-            self.load()
-        else:
-            self.graph = nx.MultiDiGraph()
-            self.graph.graph["cwd"] = self.cwd.as_posix()
-            if self.verbose:
-                print("Initialized empty graph.")
+        # Initialize an empty graph
+        self.graph = nx.MultiDiGraph()
+        self.graph.graph["cwd"] = self.cwd.as_posix()
+        if self.verbose:
+            print("Initialized empty graph.")
 
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:
@@ -72,30 +68,6 @@ class Daemon:
             json.dump(data, f, indent=4)
         if self.verbose:
             print(f"Saved updated graph to {self.graph_path}")
-
-    def load(self):
-        """Load the graph from disk."""
-        with open(self.graph_path, "r") as f:
-            data = json.load(f)
-            self.graph = nx.readwrite.json_graph.node_link_graph(data)
-        self.graph.graph["cwd"] = self.cwd.as_posix()
-        # Make sure all records are in db, otherwise add them.
-        for node, data in self.graph.nodes(data=True):
-            if "checksum" not in data:
-                continue
-            if get_db(self.cwd).get(data["checksum"])["ids"] == []:
-                id = data["checksum"]
-                try:
-                    document = get_document(data["ref"], self.cwd, type=data["type"])
-                except FileNotFoundError:
-                    # If a file was deleted or renamed since the last save, it's not in
-                    # the active directory, so we can't add it to the graph. The node
-                    # will be removed as soon as the graph is updated.
-                    continue
-                metadatas = data
-                if "chunks" in data:
-                    metadatas["chunks"] = json.dumps(data["chunks"])
-                get_db(self.cwd).upsert(ids=id, documents=document, metadatas=metadatas)
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
@@ -131,7 +103,7 @@ class Daemon:
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
-        return query_graph(query, self.graph, n=n)
+        return get_db(self.cwd).query_graph(query, self.graph, n=n)
 
     def get_context(
         self,

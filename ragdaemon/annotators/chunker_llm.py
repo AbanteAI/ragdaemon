@@ -1,8 +1,10 @@
 import asyncio
 import json
 
+from spice import Spice
+
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
-from ragdaemon.llm import acompletion
 
 chunker_prompt = """\
 Split the provided code file into chunks.
@@ -49,21 +51,27 @@ RESPONSE:
 semaphore = asyncio.Semaphore(50)
 
 
-async def get_llm_response(file_message: str) -> dict:
-    async with semaphore:
-        messages = [
-            {"role": "system", "content": chunker_prompt},
-            {"role": "user", "content": file_message},
-        ]
-        response = await acompletion(
-            messages=messages,
-            response_format={"type": "json_object"},
-        )
-        return json.loads(response)
-
-
 class ChunkerLLM(Chunker):
     name = "chunker_llm"
+    def __init__(self, *args, chunker_model: str = DEFAULT_COMPLETION_MODEL, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.chunker_model = chunker_model
+        self.completions_client = Spice()
+
+    async def get_llm_response(self, file_message: str) -> dict:
+        global semaphore
+        async with semaphore:
+            messages = [
+                {"role": "system", "content": chunker_prompt},
+                {"role": "user", "content": file_message},
+            ]
+            response = await self.completions_client.call_llm(
+                messages=messages,
+                model=self.chunker_model,
+                stream=False,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.text)
 
     async def chunk_file(
         self, file_id: str, file_lines: list[str], verbose=False, tries=1
@@ -74,7 +82,7 @@ class ChunkerLLM(Chunker):
                 f"{i+1}:{line}" for i, line in enumerate(file_lines)
             )
             file_message = f"{file_id}\n{numbered_lines}"
-            response = await get_llm_response(file_message)
+            response = await self.get_llm_response(file_message)
             chunks = response.get("chunks", [])
             if not chunks or all(is_chunk_valid(chunk) for chunk in chunks):
                 return chunks

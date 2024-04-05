@@ -20,7 +20,7 @@ def cwd():
 @pytest.fixture
 def mock_get_llm_response():
     with patch(
-        "ragdaemon.annotators.chunker_llm.get_llm_response", return_value={"chunks": []}
+        "ragdaemon.annotators.chunker_llm.ChunkerLLM.get_llm_response", return_value={"chunks": []}
     ) as mock:
         yield mock
 
