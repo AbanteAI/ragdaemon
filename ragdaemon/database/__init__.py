@@ -2,6 +2,8 @@ import os
 from contextvars import ContextVar
 from pathlib import Path
 
+from spice import SpiceError
+
 from ragdaemon.database.database import Database
 from ragdaemon.database.chroma_database import ChromaDB
 from ragdaemon.database.lite_database import LiteDB
@@ -17,8 +19,13 @@ def set_db(cwd: Path):
     global _db
     db_path = mentat_dir_path / "chroma"
     db_path.mkdir(parents=True, exist_ok=True)
-    db_class = LiteDB if "PYTEST_CURRENT_TEST" in os.environ else ChromaDB
-    _db.set(db_class(cwd=cwd, db_path=db_path))
+    if "PYTEST_CURRENT_TEST" not in os.environ:
+        try:
+            _db.set(ChromaDB(cwd=cwd, db_path=db_path))
+            return
+        except SpiceError:
+            pass
+    _db.set(LiteDB(cwd=cwd, db_path=db_path))
 
 
 def get_db(cwd: Path) -> Database:
