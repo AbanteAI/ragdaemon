@@ -36,7 +36,8 @@ class Daemon:
         self.cwd = cwd
         self.verbose = verbose
 
-        # Load or setup db
+        # Establish a dedicated database client for this instance
+        set_db(self.cwd)
         count = get_db(Path(self.cwd)).count()
         if self.verbose:
             print(f"Initialized database with {count} records.")
@@ -54,9 +55,6 @@ class Daemon:
             self.graph.graph["cwd"] = self.cwd.as_posix()
             if self.verbose:
                 print("Initialized empty graph.")
-
-        # Establish a dedicated database client for this instance
-        set_db(self.cwd)
 
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose:

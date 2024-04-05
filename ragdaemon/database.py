@@ -16,20 +16,23 @@ class LiteDB:
     def __init__(self):
         self.db = dict[str, dict[str, Any]]()
 
-    def get(self, checksum: str) -> dict:
-        match = self.db.get(checksum)
-        if match is None:
-            return {"ids": [], "metadatas": [], "documents": []}
-        return {
-            "ids": [checksum],
-            "metadatas": [match["metadata"]],
-            "documents": [match["document"]],
-        }
+    def get(self, ids: list[str] | str) -> dict:
+        if isinstance(ids, str):
+            ids = [ids]
+        output = {"ids": [], "metadatas": [], "documents": []}
+        for id in ids:
+            if id in self.db:
+                output["ids"].append(id)
+                output["metadatas"].append(self.db[id]["metadata"])
+                output["documents"].append(self.db[id]["document"])
+        return output
 
     def count(self) -> int:
         return len(self.db)
 
-    def update(self, ids: list[str], metadatas: list[dict]):
+    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
+        ids = [ids] if isinstance(ids, str) else ids
+        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
         for checksum, metadata in zip(ids, metadatas):
             if checksum not in self.db:
                 raise ValueError(f"Record {checksum} does not exist.")
@@ -79,8 +82,14 @@ class LiteDB:
         return output
 
     def upsert(
-        self, ids: list[str], metadatas: list[dict], documents: list[str]
+        self,
+        ids: list[str] | str,
+        metadatas: list[dict] | dict,
+        documents: list[str] | str,
     ) -> list[str]:
+        ids = [ids] if isinstance(ids, str) else ids
+        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
+        documents = [documents] if isinstance(documents, str) else documents
         for checksum, metadata, document in zip(ids, metadatas, documents):
             existing_metadata = self.db.get(checksum, {}).get("metadata", {})
             metadata = {**existing_metadata, **metadata}
@@ -111,6 +120,7 @@ def set_db(cwd: Path):
 
 
 def get_db(cwd: Path) -> chromadb.Collection:
+    global _collection
     collection = _collection.get()
     if collection is None:
         set_db(cwd)
