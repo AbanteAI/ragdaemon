@@ -50,7 +50,7 @@ async def get_file_chunk_data(
     if len(file_lines) == 0:
         chunks = []
     else:
-        chunks = await chunk_function(cwd, node, file_lines, verbose)
+        chunks = await chunk_function(node, file_lines, verbose)
         if not all(is_chunk_valid(chunk) for chunk in chunks):
             raise ValueError(f"Invalid chunk data: {chunks}")
     if chunks:
@@ -200,7 +200,7 @@ class Chunker(Annotator):
         return True
 
     async def chunk_file(
-        self, cwd: Path, file: str, file_lines: str, verbose: bool = False
+        self, file: str, file_lines: str, verbose: bool = False
     ) -> list[dict[str, str]]:
         """Return a list of {id, start_line, end_line}'s for the given file.
 

@@ -37,7 +37,7 @@ chunk_extensions = None if args.chunk_extensions is None else set(args.chunk_ext
 diff = args.diff
 annotators = {
     "hierarchy": {},
-    "chunker": {"chunk_extensions": chunk_extensions},
+    "chunker_llm": {"chunk_extensions": chunk_extensions},
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }

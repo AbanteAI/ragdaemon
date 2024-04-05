@@ -1,6 +1,5 @@
 import asyncio
 import json
-from pathlib import Path
 
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
 from ragdaemon.llm import acompletion
@@ -67,7 +66,7 @@ class ChunkerLLM(Chunker):
     name = "chunker_llm"
 
     async def chunk_file(
-        cwd: Path, file_id: str, file_lines: list[str], verbose=False, tries=1
+        self, file_id: str, file_lines: list[str], verbose=False, tries=1
     ) -> list[dict[str, str]]:
         for tries in range(tries, 0, -1):
             tries -= 1

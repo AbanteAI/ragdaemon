@@ -16,7 +16,8 @@ from ragdaemon.utils import get_document, get_non_gitignored_files
 def default_annotators():
     return {
         "hierarchy": {},
-        "chunker": {"chunk_extensions": [".py", ".js", ".ts"]},
+        # "chunker_llm": {},
+        "chunker_line": {"lines_per_chunk": 30},
         "diff": {},
     }
 

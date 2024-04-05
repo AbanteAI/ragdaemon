@@ -53,9 +53,7 @@ async def test_diff_annotate(git_history):
 
 @pytest.mark.asyncio
 async def test_diff_render(git_history):
-    annotators = default_annotators()
-    del annotators["chunker"]
-    daemon = Daemon(cwd=git_history, annotators=annotators)
+    daemon = Daemon(cwd=git_history)
     await daemon.update(refresh=True)
 
     # Only diffs
