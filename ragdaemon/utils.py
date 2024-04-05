@@ -77,12 +77,12 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             text = diff
         ref = f"git diff{'' if diff_ref == 'DEFAULT' else f' {diff_ref}'}"
 
-    elif type == "file":
+    elif type in {"file", "chunk"}:
         path, lines = parse_path_ref(ref)
         if lines:
             text = ""
             with open(cwd / path, "r") as f:
-                file_lines = f.readlines()
+                file_lines = f.read().split("\n")
             for line in sorted(lines):
                 text += f"{line}:{file_lines[line - 1]}\n"
         else:

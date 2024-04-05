@@ -23,7 +23,7 @@ class LiteDB:
         for id in ids:
             if id in self.db:
                 output["ids"].append(id)
-                output["metadatas"].append(self.db[id]["metadata"])
+                output["metadatas"].append(self.db[id]["metadatas"])
                 output["documents"].append(self.db[id]["document"])
         return output
 
@@ -36,15 +36,25 @@ class LiteDB:
         for checksum, metadata in zip(ids, metadatas):
             if checksum not in self.db:
                 raise ValueError(f"Record {checksum} does not exist.")
-            self.db[checksum]["metadata"] = metadata
+            self.db[checksum]["metadatas"] = metadata
 
     def query(self, query_texts: list[str] | str, where: dict, n_results: int) -> dict:
         # Select active/filtered records
         records = [{"id": id, **data} for id, data in self.db.items()]
         if where:
-            records = [
-                r for r in records if all(r.get(k) == v for k, v in where.items())
-            ]
+            filtered_records = list[dict[str, Any]]()
+            for record in records:
+                selected = all(record.get("metadatas", {}).get(key) == value for key, value in where.items())
+                if selected:
+                    filtered_records.append(record)
+            records = filtered_records
+        if not query_texts:
+            return {
+                "ids": [r["id"] for r in records],
+                "metadatas": [r["metadatas"] for r in records],
+                "documents": [r["document"] for r in records],
+                "distances": [0] * len(records),
+            }
         if isinstance(query_texts, str):
             query_texts = [query_texts]
 
@@ -52,30 +62,31 @@ class LiteDB:
         strings_to_compare = dict[str, list[tuple[str, float]]]()
         for record in records:
             stc = list[tuple]()  # string, category_weight
-            path, _ = parse_path_ref(record["ref"])
-            if record["type"] == "diff" and ":" in path:
-                path = path.split(":")[1]
-            name = Path(path).name
-            stc.append((name, 2))
-            stc.append((path, 1))
+            data = record["metadatas"]
+            if data["type"] == "diff" and ":" in data["ref"]:
+                path = Path(path.split(":")[1])
+            else:
+                path, _ = parse_path_ref(data["ref"])
+            stc.append((path.name, 2))
+            stc.append((path.as_posix(), 1))
             stc.append((record["document"], 0.5))
             strings_to_compare[record["id"]] = stc
 
         output = {"ids": [], "metadatas": [], "documents": [], "distances": []}
         for text in query_texts:
             # Compare each query text against each records' strings
-            distances = tuple[str, float]()
+            distances = list[tuple[str, float]]()
             for id, stc in strings_to_compare.items():
                 score = 0
                 for string, weight in stc:
                     if string in text or text in string:
                         score += weight
-                distance = 1 / score
+                distance = 10 if not score else 1 / score
                 distances.append((id, distance))
             # Sort by distance
             ids, distances = zip(*sorted(distances, key=lambda x: x[1]))
             output["ids"].append(ids)
-            output["metadatas"].append([self.db[id]["metadata"] for id in ids])
+            output["metadatas"].append([self.db[id]["metadatas"] for id in ids])
             output["documents"].append([self.db[id]["document"] for id in ids])
             output["distances"].append(distances)
 
@@ -91,9 +102,9 @@ class LiteDB:
         metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
         documents = [documents] if isinstance(documents, str) else documents
         for checksum, metadata, document in zip(ids, metadatas, documents):
-            existing_metadata = self.db.get(checksum, {}).get("metadata", {})
+            existing_metadata = self.db.get(checksum, {}).get("metadatas", {})
             metadata = {**existing_metadata, **metadata}
-            self.db[checksum] = {"metadata": metadata, "document": document}
+            self.db[checksum] = {"metadatas": metadata, "document": document}
         return ids
 
 
