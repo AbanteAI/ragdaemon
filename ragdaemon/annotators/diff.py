@@ -146,7 +146,7 @@ class Diff(Annotator):
                     visited.add(successor)
                     edge = (chunk_id, successor)
                     _data = graph.nodes[successor]
-                    if _data["type"] not in ["file", "chunk"]:
+                    if _data.get("type") not in ["file", "chunk"]:
                         continue
                     _, _lines = parse_path_ref(_data["ref"])
                     if lines and _lines and lines.intersection(_lines):

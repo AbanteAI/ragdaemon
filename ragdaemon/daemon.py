@@ -5,11 +5,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 import networkx as nx
+from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import get_db, set_db
-from ragdaemon.llm import token_counter
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db, set_db
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL, token_counter
 from ragdaemon.utils import get_non_gitignored_files
 
 
@@ -32,8 +33,7 @@ class Daemon:
         annotators: Optional[dict[str, dict]] = None,
         verbose: bool = False,
         graph_path: Optional[Path] = None,
-        embedding_model: Optional[str] = None,
-        embedding_provider: Optional[str] = None,
+        spice_client: Optional[Spice] = None,
     ):
         self.cwd = cwd
         self.verbose = verbose
@@ -42,13 +42,15 @@ class Daemon:
         else:
             self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
         self.graph_path.parent.mkdir(exist_ok=True)
+        if spice_client is None:
+            spice_client = Spice(
+                default_text_model=DEFAULT_COMPLETION_MODEL,
+                default_embeddings_model=DEFAULT_EMBEDDING_MODEL,
+            )
+        self.spice_client = spice_client
 
         # Establish a dedicated database client for this instance
-        set_db(
-            self.cwd,
-            embedding_model=embedding_model,
-            embedding_provider=embedding_provider,
-        )
+        set_db(self.cwd, spice_client=spice_client)
         count = get_db(Path(self.cwd)).count()
         if self.verbose:
             print(f"Initialized database with {count} records.")
@@ -63,7 +65,7 @@ class Daemon:
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
         self.pipeline: dict[str, Annotator] = {
-            ann: annotators_map[ann](**kwargs, verbose=self.verbose)
+            ann: annotators_map[ann](**kwargs, verbose=self.verbose, spice_client=spice_client)
             for ann, kwargs in annotators.items()
         }
 

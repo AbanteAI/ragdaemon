@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import networkx as nx
 import pytest
@@ -46,7 +47,7 @@ async def test_chunker_llm_annotate(cwd, mock_get_llm_response):
         annotators={"hierarchy": {}},
         graph_path=(Path.cwd() / "tests/data/hierarchy_graph.json"),
     )
-    chunker = ChunkerLLM()
+    chunker = ChunkerLLM(spice_client=AsyncMock())
     actual = await chunker.annotate(daemon.graph)
 
     for node, data in actual.nodes(data=True):

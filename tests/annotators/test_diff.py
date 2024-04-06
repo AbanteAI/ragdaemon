@@ -5,7 +5,7 @@ import pytest
 
 from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
-from ragdaemon.daemon import Daemon, default_annotators
+from ragdaemon.daemon import Daemon
 from ragdaemon.utils import get_git_diff
 
 
@@ -34,7 +34,7 @@ def test_diff_parse_diff_id():
 
 
 @pytest.mark.asyncio
-async def test_diff_annotate(git_history):
+async def test_diff_annotate(git_history, mock_set_db):
     with open("tests/data/chunker_graph.json", "r") as f:
         data = json.load(f)
         graph = nx.readwrite.json_graph.node_link_graph(data)

@@ -2,19 +2,21 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-"""
-NOTE: Some of the functions require a DB record to be present. This means the
-tests will fail the first time, then will pass. This is not ideal.
-"""
+from ragdaemon.database import set_db
 
 
 @pytest.fixture
 def cwd():
     return Path("tests/sample")
+
+
+@pytest.fixture
+def mock_set_db(cwd):
+    set_db(cwd, AsyncMock())
 
 
 @pytest.fixture

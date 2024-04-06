@@ -1,9 +1,6 @@
 import asyncio
 import json
 
-from spice import Spice
-
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
 
 chunker_prompt = """\
@@ -54,11 +51,6 @@ semaphore = asyncio.Semaphore(50)
 class ChunkerLLM(Chunker):
     name = "chunker_llm"
 
-    def __init__(self, *args, chunker_model: str = DEFAULT_COMPLETION_MODEL, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.chunker_model = chunker_model
-        self.completions_client = Spice()
-
     async def get_llm_response(self, file_message: str) -> dict:
         global semaphore
         async with semaphore:
@@ -66,10 +58,8 @@ class ChunkerLLM(Chunker):
                 {"role": "system", "content": chunker_prompt},
                 {"role": "user", "content": file_message},
             ]
-            response = await self.completions_client.call_llm(
+            response = await self.spice_client.get_response(
                 messages=messages,
-                model=self.chunker_model,
-                stream=False,
                 response_format={"type": "json_object"},
             )
             return json.loads(response.text)
