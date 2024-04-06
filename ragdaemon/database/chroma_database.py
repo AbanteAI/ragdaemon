@@ -8,13 +8,14 @@ from spice import SpiceEmbeddings
 from ragdaemon.database.database import Database
 
 
-def _get_chroma_collection(cwd: Path, db_path: Path) -> Collection:
-
-    embedding_client = SpiceEmbeddings()
+def _get_chroma_collection(
+    cwd: Path, db_path: Path, embedding_model: str, embedding_provider: str
+) -> Collection:
+    embedding_client = SpiceEmbeddings(provider=embedding_provider)
 
     class RagdaemonEmbeddingFunction(EmbeddingFunction[Embeddable]):
         def __call__(self, input: Embeddable) -> Embeddings:
-            return embedding_client.get_embeddings(input)
+            return embedding_client.get_embeddings(input, embedding_model)
 
     embedding_function = RagdaemonEmbeddingFunction()
 
@@ -27,7 +28,11 @@ def _get_chroma_collection(cwd: Path, db_path: Path) -> Collection:
 
 
 class ChromaDB(Database):
-    def __init__(self, cwd: Path, db_path: Path) -> None:
+    def __init__(
+        self, cwd: Path, db_path: Path, embedding_model: str, embedding_provider: str
+    ) -> None:
         self.cwd = cwd
         self.db_path = db_path
-        self._collection = _get_chroma_collection(cwd, db_path)
+        self._collection = _get_chroma_collection(
+            cwd, db_path, embedding_model, embedding_provider
+        )

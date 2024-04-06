@@ -53,6 +53,7 @@ semaphore = asyncio.Semaphore(50)
 
 class ChunkerLLM(Chunker):
     name = "chunker_llm"
+
     def __init__(self, *args, chunker_model: str = DEFAULT_COMPLETION_MODEL, **kwargs):
         super().__init__(*args, **kwargs)
         self.chunker_model = chunker_model

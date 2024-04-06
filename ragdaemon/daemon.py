@@ -32,6 +32,8 @@ class Daemon:
         annotators: Optional[dict[str, dict]] = None,
         verbose: bool = False,
         graph_path: Optional[Path] = None,
+        embedding_model: Optional[str] = None,
+        embedding_provider: Optional[str] = None,
     ):
         self.cwd = cwd
         self.verbose = verbose
@@ -42,7 +44,11 @@ class Daemon:
         self.graph_path.parent.mkdir(exist_ok=True)
 
         # Establish a dedicated database client for this instance
-        set_db(self.cwd)
+        set_db(
+            self.cwd,
+            embedding_model=embedding_model,
+            embedding_provider=embedding_provider,
+        )
         count = get_db(Path(self.cwd)).count()
         if self.verbose:
             print(f"Initialized database with {count} records.")

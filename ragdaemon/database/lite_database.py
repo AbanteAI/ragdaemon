@@ -14,14 +14,15 @@ class LiteDB(Database):
         self._collection = LiteCollection()
 
 
-class LiteCollection():
+class LiteCollection:
     """A fast alternative to ChromaDB for testing (and anything else).
-    
+
     Matches the chroma Collection API except:
     - No embeddings
     - In-memory
     - A basic hand-coded search algo
     """
+
     def __init__(self):
         self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
 
