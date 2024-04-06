@@ -5,7 +5,7 @@ Jinja2==3.1.3
 networkx==3.2.1
 pytest==8.0.2
 pytest-asyncio==0.23.5
-spiceai==0.1.7
+spiceai>=0.1.8
 starlette==0.36.3
 tqdm==4.66.2
 uvicorn==0.27.1
