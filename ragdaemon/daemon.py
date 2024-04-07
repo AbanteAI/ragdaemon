@@ -65,7 +65,9 @@ class Daemon:
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
         self.pipeline: dict[str, Annotator] = {
-            ann: annotators_map[ann](**kwargs, verbose=self.verbose, spice_client=spice_client)
+            ann: annotators_map[ann](
+                **kwargs, verbose=self.verbose, spice_client=spice_client
+            )
             for ann, kwargs in annotators.items()
         }
 

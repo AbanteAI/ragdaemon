@@ -77,7 +77,7 @@ class LiteCollection:
             stc = list[tuple]()  # string, category_weight
             data = record["metadatas"]
             if data["type"] == "diff" and ":" in data["ref"]:
-                path = Path(path.split(":")[1])
+                path = Path(data["ref"].split(":")[1])
             else:
                 path, _ = parse_path_ref(data["ref"])
             stc.append((path.name, 2))

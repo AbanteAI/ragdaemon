@@ -77,10 +77,8 @@ async def get_file_chunk_data(
         else:
             base_chunk_refs = []
         # Replace with standardized fields
-        base_chunk = {
-            "id": f"{node}:BASE",
-            "ref": f"{node}{':' + ','.join(base_chunk_refs) if base_chunk_refs else ''}",
-        }
+        lines_str = ":" + ",".join(base_chunk_refs) if base_chunk_refs else ""
+        base_chunk = {"id": f"{node}:BASE", "ref": f"{node}{lines_str}"}
         chunks = [
             {
                 "id": chunk["id"],
@@ -191,12 +189,21 @@ class Chunker(Annotator):
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         for _, data in graph.nodes(data=True):
-            if data.get("type") == "file" and data.get("chunks", None) is None:
+            if data.get("type") != "file":
+                continue
+            chunks = data.get("chunks", None)
+            if chunks is None:
                 if self.chunk_extensions is None:
                     return False
                 extension = Path(data["ref"]).suffix
                 if extension in self.chunk_extensions:
                     return False
+            else:
+                if not isinstance(chunks, list):
+                    chunks = json.loads(chunks)
+                for chunk in chunks:
+                    if chunk["id"] not in graph:
+                        return False
         return True
 
     async def chunk_file(
@@ -218,6 +225,11 @@ class Chunker(Annotator):
     async def annotate(
         self, graph: nx.MultiDiGraph, refresh: bool = False
     ) -> nx.MultiDiGraph:
+        # Remove any existing chunk nodes from the graph
+        for node, data in graph.nodes(data=True):
+            if data.get("type") == "chunk":
+                graph.remove_node(node)
+
         cwd = Path(graph.graph["cwd"])
         file_nodes = [
             (file, data)

@@ -9,8 +9,11 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from spice import Spice
 from starlette.templating import Jinja2Templates
 
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL
 from ragdaemon.daemon import Daemon
 
 # Load daemon with command line arguments and visualization annotators
@@ -23,6 +26,16 @@ parser.add_argument(
     "-c",
     nargs="*",
     help="List of file extensions to chunk, e.g., .py .js",
+)
+parser.add_argument(
+    "--chunk-model",
+    default=DEFAULT_COMPLETION_MODEL,
+    help="Spice-compatible LLM  to use for ChunkerLLM.",
+)
+parser.add_argument(
+    "--embeddings-model",
+    default=DEFAULT_EMBEDDING_MODEL,
+    help="Spice-compatible embeddings model to use for Chroma database.",
 )
 parser.add_argument(
     "--diff",
@@ -41,6 +54,11 @@ annotators = {
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }
+chunk_model = args.chunk_model
+embeddings_model = args.embeddings_model
+spice_client = Spice(
+    default_text_model=chunk_model, default_embeddings_model=embeddings_model
+)
 daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 
 
