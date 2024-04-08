@@ -7,6 +7,9 @@ from spice import Spice
 from ragdaemon.database.database import Database
 
 
+MAX_INPUTS_PER_CALL = 2048
+
+
 class ChromaDB(Database):
     def __init__(self, cwd: Path, db_path: Path, spice_client: Spice) -> None:
         self.cwd = cwd
@@ -17,7 +20,15 @@ class ChromaDB(Database):
             def __call__(self, input_texts: Embeddable) -> Embeddings:
                 if isinstance(input_texts, str):
                     input_texts = [input_texts]
-                return spice_client.get_embeddings_sync(input_texts=input_texts)
+                # Embed in batches
+                _inputs = input_texts
+                outputs = list[list[float]]()
+                while _inputs:
+                    inputs = _inputs[:MAX_INPUTS_PER_CALL]
+                    _inputs = _inputs[MAX_INPUTS_PER_CALL:]
+                    embeddings = spice_client.get_embeddings_sync(input_texts=inputs)
+                    outputs.extend(embeddings)
+                return outputs
 
         embedding_function = SpiceEmbeddingFunction()
 

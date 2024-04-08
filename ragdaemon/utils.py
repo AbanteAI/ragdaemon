@@ -15,20 +15,39 @@ def hash_str(string: str) -> str:
     return hashlib.md5(string.encode()).hexdigest()
 
 
-def get_non_gitignored_files(cwd: Path) -> set[Path]:
-    return set(  # All non-ignored and untracked files
+# Copied directly from Mentat
+def get_non_gitignored_files(root: Path, visited: set[Path] = set()) -> set[Path]:
+    paths = set(
+        # git returns / separated paths even on windows, convert so we can remove
+        # glob_excluded_files, which have windows paths on windows
         Path(os.path.normpath(p))
         for p in filter(
             lambda p: p != "",
             subprocess.check_output(
+                # -c shows cached (regular) files, -o shows other (untracked/new) files
                 ["git", "ls-files", "-c", "-o", "--exclude-standard"],
-                cwd=cwd,
+                cwd=root,
                 text=True,
                 stderr=subprocess.DEVNULL,
             ).split("\n"),
         )
-        if (Path(cwd) / p).exists() and not p.startswith(".ragdaemon")
+        # windows-safe check if p exists in path
+        if Path(root / p).exists()
     )
+
+    file_paths: set[Path] = set()
+    # We use visited to make sure we break out of any infinite loops symlinks might cause
+    visited.add(root.resolve())
+    for path in paths:
+        # git ls-files returns directories if the directory is itself a git project;
+        # so we recursively run this function on any directories it returns.
+        if (root / path).is_dir():
+            if (root / path).resolve() in visited:
+                continue
+            file_paths.update(root / path / inner_path for inner_path in get_non_gitignored_files(root / path, visited))
+        else:
+            file_paths.add(path)
+    return file_paths
 
 
 def get_git_diff(diff_args: str, cwd: str) -> str:
@@ -86,9 +105,11 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             for line in sorted(lines):
                 text += f"{line}:{file_lines[line - 1]}\n"
         else:
-            with open(cwd / path, "r") as f:
-                text = f.read()
-
+            try:
+                with open(cwd / path, "r") as f:
+                    text = f.read()
+            except UnicodeDecodeError:
+                raise RagdaemonError(f"Not a text file: {path}")
     else:
         raise RagdaemonError(f"Invalid type: {type}")
 
