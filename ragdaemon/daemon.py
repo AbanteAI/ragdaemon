@@ -121,7 +121,7 @@ class Daemon:
         context_builder: Optional[ContextBuilder] = None,
         max_tokens: int = 8000,
         auto_tokens: int = 0,
-    ):
+    ) -> ContextBuilder:
         if context_builder is None:
             context = ContextBuilder(self.graph, self.verbose)
         else:

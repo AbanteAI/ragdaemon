@@ -44,7 +44,10 @@ def get_non_gitignored_files(root: Path, visited: set[Path] = set()) -> set[Path
         if (root / path).is_dir():
             if (root / path).resolve() in visited:
                 continue
-            file_paths.update(root / path / inner_path for inner_path in get_non_gitignored_files(root / path, visited))
+            file_paths.update(
+                root / path / inner_path
+                for inner_path in get_non_gitignored_files(root / path, visited)
+            )
         else:
             file_paths.add(path)
     return file_paths

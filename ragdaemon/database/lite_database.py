@@ -4,8 +4,6 @@ from typing import Any
 from ragdaemon.database.database import Database
 from ragdaemon.utils import parse_path_ref
 
-MAX_TOKENS_PER_EMBEDDING = 8192
-
 
 class LiteDB(Database):
     def __init__(self, cwd: Path, db_path: Path):
