@@ -59,7 +59,7 @@ def get_active_checksums(
             if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
                 continue
             checksum = hash_str(document)
-            existing_record = len(get_db(cwd).get(checksum)["ids"]) > 0
+            existing_record = len(get_db().get(checksum)["ids"]) > 0
             if refresh or not existing_record:
                 # add new items to db (will generate embeddings)
                 metadatas = {
@@ -79,7 +79,7 @@ def get_active_checksums(
             if verbose:
                 print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
-        get_db(cwd).upsert(**add_to_db)
+        get_db().upsert(**add_to_db)
     return checksums
 
 
@@ -118,7 +118,7 @@ class Hierarchy(Annotator):
         for path, checksum in checksums.items():
             # add db reecord
             id = path.as_posix()
-            results = get_db(cwd).get(checksum)
+            results = get_db().get(checksum)
             data = results["metadatas"][0]
             graph.add_node(id, **data)
 

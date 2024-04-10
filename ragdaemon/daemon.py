@@ -49,12 +49,6 @@ class Daemon:
             )
         self.spice_client = spice_client
 
-        # Establish a dedicated database client for this instance
-        set_db(self.cwd, spice_client=spice_client)
-        count = get_db(Path(self.cwd)).count()
-        if self.verbose:
-            print(f"Initialized database with {count} records.")
-
         # Initialize an empty graph
         self.graph = nx.MultiDiGraph()
         self.graph.graph["cwd"] = self.cwd.as_posix()
@@ -81,6 +75,11 @@ class Daemon:
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
+
+        # Establish a dedicated database client for this instance
+        if get_db() is None:
+            set_db(self.cwd, spice_client=self.spice_client)
+
         _graph = self.graph.copy()
         self.graph.graph["refreshing"] = True
         for annotator in self.pipeline.values():
@@ -113,7 +112,7 @@ class Daemon:
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
-        return get_db(self.cwd).query_graph(query, self.graph, n=n)
+        return get_db().query_graph(query, self.graph, n=n)
 
     def get_context(
         self,

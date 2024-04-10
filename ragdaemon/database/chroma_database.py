@@ -1,13 +1,15 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
+from timeit import default_timer
 
-import chromadb
-from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings
 from spice import Spice
 
 from ragdaemon.database.database import Database
 
-
 MAX_INPUTS_PER_CALL = 2048
+
+if TYPE_CHECKING:
+    from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings
 
 
 class ChromaDB(Database):
@@ -15,6 +17,9 @@ class ChromaDB(Database):
         self.cwd = cwd
         self.db_path = db_path
         self.model = spice_client._default_embeddings_model.name
+
+        import chromadb  # Imports are slow so do it lazily 
+        from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings
 
         class SpiceEmbeddingFunction(EmbeddingFunction[Embeddable]):
             def __call__(self, input_texts: Embeddable) -> Embeddings:
@@ -31,6 +36,7 @@ class ChromaDB(Database):
                 return outputs
 
         embedding_function = SpiceEmbeddingFunction()
+        
 
         _client = chromadb.PersistentClient(path=str(db_path))
         name = f"ragdaemon-{self.cwd.name}-{self.model}"

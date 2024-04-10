@@ -25,7 +25,7 @@ class ContextBuilder:
             document = ""
         else:
             checksum = self.graph.nodes[path_str]["checksum"]
-            document = get_db(cwd).get(checksum)["documents"][0]
+            document = get_db().get(checksum)["documents"][0]
         message = {
             "lines": set(),
             "tags": set(),
@@ -121,7 +121,7 @@ class ContextBuilder:
         cwd = self.graph.graph["cwd"]
         for id in sorted(ids):
             checksum = self.graph.nodes[id]["checksum"]
-            document = get_db(cwd).get(checksum)["documents"][0]
+            document = get_db().get(checksum)["documents"][0]
             # TODO: Add line numbers
             without_git_command = "\n".join(document.splitlines()[1:])
             output += without_git_command + "\n"

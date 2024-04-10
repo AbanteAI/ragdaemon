@@ -29,10 +29,6 @@ def set_db(cwd: Path, spice_client: Spice):
     _db.set(LiteDB(cwd=cwd, db_path=db_path))
 
 
-def get_db(cwd: Path) -> Database:
+def get_db() -> Database:
     global _db
-    db = _db.get()
-    if db is None:
-        set_db(cwd)
-        db = _db.get()
-    return db
+    return _db.get()

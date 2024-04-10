@@ -91,7 +91,7 @@ class Diff(Annotator):
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
-        existing_records = get_db(cwd).get(checksum)
+        existing_records = get_db().get(checksum)
         if refresh or len(existing_records["ids"]) == 0:
             chunks = get_chunks_from_diff(id=self.id, diff=document)
             data = {
@@ -116,7 +116,7 @@ class Diff(Annotator):
                         f"Truncated full diff by {1 - truncate_ratio:.2%} for embedding."
                     )
 
-            get_db(cwd).upsert(ids=checksum, documents=document, metadatas=data)
+            get_db().upsert(ids=checksum, documents=document, metadatas=data)
         else:
             data = existing_records["metadatas"][0]
         data["chunks"] = json.loads(data["chunks"])
@@ -128,7 +128,7 @@ class Diff(Annotator):
         for chunk_id, chunk_ref in data["chunks"].items():
             document = get_document(chunk_ref, cwd, type="diff")
             chunk_checksum = hash_str(document)
-            existing_records = get_db(cwd).get(chunk_checksum)
+            existing_records = get_db().get(chunk_checksum)
             if refresh or len(existing_records["ids"]) == 0:
                 data = {
                     "id": chunk_id,
@@ -173,6 +173,6 @@ class Diff(Annotator):
         for source, origin in edges_to_add:
             graph.add_edge(source, origin, type="diff")
         if len(add_to_db["ids"]) > 0:
-            get_db(cwd).upsert(**add_to_db)
+            get_db().upsert(**add_to_db)
 
         return graph
