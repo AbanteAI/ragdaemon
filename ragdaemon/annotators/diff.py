@@ -63,7 +63,7 @@ def parse_diff_id(id: str) -> tuple[str, Path, set[int] | None]:
 
 
 class Diff(Annotator):
-    name: str = "base_annotator"
+    name: str = "diff"
 
     def __init__(self, *args, diff: str = "", **kwargs):
         if ":" in diff:

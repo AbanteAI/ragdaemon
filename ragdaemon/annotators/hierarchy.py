@@ -83,6 +83,18 @@ def get_active_checksums(
     return checksums
 
 
+def files_checksum(cwd: Path, ignore_patterns: list[str] = []) -> str:
+    timestamps = ""
+    for path in get_non_gitignored_files(cwd):
+        if match_path_with_patterns(path, cwd, ignore_patterns):
+            continue
+        try:
+            timestamps += str(path.stat().st_mtime)
+        except FileNotFoundError:
+            pass
+    return hash_str(timestamps)
+
+
 class Hierarchy(Annotator):
     name = "hierarchy"
 
@@ -92,11 +104,7 @@ class Hierarchy(Annotator):
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = Path(graph.graph["cwd"])
-        checksums = get_active_checksums(
-            cwd, verbose=self.verbose, ignore_patterns=self.ignore_patterns
-        )
-        files_checksum = hash_str("".join(sorted(checksums.values())))
-        return graph.graph.get("files_checksum") == files_checksum
+        return graph.graph.get("files_checksum") == files_checksum(cwd, self.ignore_patterns)
 
     async def annotate(
         self, old_graph: nx.MultiDiGraph, refresh: bool = False
@@ -109,7 +117,7 @@ class Hierarchy(Annotator):
             verbose=self.verbose,
             ignore_patterns=self.ignore_patterns,
         )
-        files_checksum = hash_str("".join(sorted(checksums.values())))
+        _files_checksum = files_checksum(cwd, self.ignore_patterns)
 
         # Initialize an empty graph. We'll build it from scratch.
         graph = nx.MultiDiGraph()
@@ -140,5 +148,5 @@ class Hierarchy(Annotator):
                     graph.add_node(id, **record)
             graph.add_edge(source, target, type="hierarchy")
 
-        graph.graph["files_checksum"] = files_checksum
+        graph.graph["files_checksum"] = _files_checksum
         return graph
