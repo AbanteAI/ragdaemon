@@ -58,3 +58,32 @@ async def test_comment_render(git_history, mock_db):
             21:    return math.sqrt(a)
             """
     ))
+    context.remove_comments("src/operations.py")
+    actual = context.render()
+    assert (
+        actual
+        == dedent("""\
+            src/operations.py
+            1:import math
+            2: #modified
+            3: #modified
+            4:def add(a, b): #modified
+            5:    return a + b
+            6:
+            7:
+            8:def subtract(a, b):
+            9:return a - b #modified
+            10:
+            11:
+            12:def multiply(a, b):
+            13:    return a * b
+            14:
+            15:
+            16:def divide(a, b):
+            17:    return a / b
+            18:
+            19:
+            20:def sqrt(a):
+            21:    return math.sqrt(a)
+            """
+    ))
