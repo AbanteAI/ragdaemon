@@ -104,7 +104,9 @@ class Hierarchy(Annotator):
 
     def is_complete(self, graph: nx.MultiDiGraph) -> bool:
         cwd = Path(graph.graph["cwd"])
-        return graph.graph.get("files_checksum") == files_checksum(cwd, self.ignore_patterns)
+        return graph.graph.get("files_checksum") == files_checksum(
+            cwd, self.ignore_patterns
+        )
 
     async def annotate(
         self, old_graph: nx.MultiDiGraph, refresh: bool = False

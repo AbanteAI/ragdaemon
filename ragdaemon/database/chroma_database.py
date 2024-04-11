@@ -18,7 +18,7 @@ class ChromaDB(Database):
         self.db_path = db_path
         self.model = spice_client._default_embeddings_model.name
 
-        import chromadb  # Imports are slow so do it lazily 
+        import chromadb  # Imports are slow so do it lazily
         from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings
 
         class SpiceEmbeddingFunction(EmbeddingFunction[Embeddable]):
@@ -36,7 +36,6 @@ class ChromaDB(Database):
                 return outputs
 
         embedding_function = SpiceEmbeddingFunction()
-        
 
         _client = chromadb.PersistentClient(path=str(db_path))
         name = f"ragdaemon-{self.cwd.name}-{self.model}"
