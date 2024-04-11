@@ -70,6 +70,7 @@ class ContextBuilder:
         start_delimiter: Optional[str] = None,
         end_delimiter: Optional[str] = None,
     ):
+        path_str = Path(path_str).as_posix()
         if not self.context.get(path_str):
             self._add_path(path_str)
         if not line:
