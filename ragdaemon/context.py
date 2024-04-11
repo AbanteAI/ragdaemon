@@ -4,7 +4,7 @@ from typing import Any, Optional
 import networkx as nx
 
 from ragdaemon.annotators.diff import parse_diff_id
-from ragdaemon.annotators.comment import Comment, CommentPosition, render_comments
+from ragdaemon.annotators.comment import Comment, NestedStrDict, render_comments
 from ragdaemon.database import Database
 from ragdaemon.utils import parse_path_ref
 
@@ -63,26 +63,17 @@ class ContextBuilder:
     def add_comment(
         self,
         path_str: str,
-        comment: str,
-        positioning: CommentPosition = CommentPosition.Below,
+        comment: NestedStrDict,
         line: Optional[int] = None,
-        end_line: Optional[int] = None,
-        start_delimiter: Optional[str] = None,
-        end_delimiter: Optional[str] = None,
     ):
         path_str = Path(path_str).as_posix()
         if not self.context.get(path_str):
             self._add_path(path_str)
         if not line:
-            line = 0 # file-level comment
+            line = 0  # file-level comment
         self.context[path_str]["comments"].setdefault(line, []).append(
             Comment(
                 content=comment,
-                positioning=positioning,
-                line=line,
-                end_line=end_line,
-                start_delimiter=start_delimiter,
-                end_delimiter=end_delimiter,
             )
         )
 
@@ -134,7 +125,7 @@ class ContextBuilder:
             tags = "" if not data["tags"] else f" ({', '.join(sorted(data['tags']))})"
             output += f"{path_str}{tags}\n"
             if 0 in data["comments"]:
-                output += render_comments(data["comments"][0])
+                output += render_comments(data["comments"][0]) + "\n"
             if data["lines"]:
                 file_lines = data["document"].splitlines()
                 last_rendered = 0
@@ -143,9 +134,7 @@ class ContextBuilder:
                         output += "...\n"
                     line_content = f"{line}:{file_lines[line]}"
                     if line in data["comments"]:
-                        line_content = render_comments(
-                            data["comments"][line], line_content
-                        )
+                        line_content += "\n" + render_comments(data["comments"][line])
                     output += line_content + "\n"
                     last_rendered = line
                 if last_rendered < len(file_lines) - 1:

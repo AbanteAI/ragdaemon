@@ -1,5 +1,4 @@
 from textwrap import dedent
-from ragdaemon.annotators.comment import CommentPosition
 
 import pytest
 from ragdaemon.context import ContextBuilder
@@ -12,19 +11,16 @@ async def test_comment_render(git_history, mock_db):
 
     context = ContextBuilder(daemon.graph, daemon.db)
     context.add_ref("src/operations.py")
-    context.add_comment("src/operations.py", "What is this file for?", positioning=CommentPosition.File)
-    context.add_comment("src/operations.py", "Thanks\nfor doing this",line=12,  positioning=CommentPosition.Above)
-    context.add_comment("src/operations.py", "ackj", line=12, positioning=CommentPosition.Below)
-    context.add_comment("src/operations.py", "Comment order preserved", line=12, positioning=CommentPosition.Below)
-    context.add_comment("src/operations.py", "smart ->",line=12,  positioning=CommentPosition.Start)
-    context.add_comment("src/operations.py", "<- idk",line=12,  positioning=CommentPosition.End)
+    context.add_comment("src/operations.py", "What is this file for?")
+    context.add_comment("src/operations.py", {"author": "bot", "content": "test"}, line=10)
+    context.add_comment("src/operations.py", {"author": "bot", "content": "Two comments on one line"}, line=10)
+    context.add_comment("src/operations.py", {"author": "bot", "content": "hello", "replies": [{"author": "replier", "content": "Look replies are easy!"}]}, line=20)
     actual = context.render()
     assert (
         actual
         == dedent("""\
             src/operations.py
-            What is this file for?
-            --------------------------------------------------------------------------------
+            <comment>What is this file for?</comment>
             1:import math
             2: #modified
             3: #modified
@@ -35,18 +31,16 @@ async def test_comment_render(git_history, mock_db):
             8:def subtract(a, b):
             9:return a - b #modified
             10:
+            <comment>
+                <author>bot</author>
+                <content>test</content>
+            </comment>
+            <comment>
+                <author>bot</author>
+                <content>Two comments on one line</content>
+            </comment>
             11:
-            --------------------------------------------------------------------------------
-            Thanks
-            for doing this
-            --------------------------------------------------------------------------------
-            smart ->: 12:def multiply(a, b): <- idk
-            --------------------------------------------------------------------------------
-            ackj
-            --------------------------------------------------------------------------------
-            --------------------------------------------------------------------------------
-            Comment order preserved
-            --------------------------------------------------------------------------------
+            12:def multiply(a, b):
             13:    return a * b
             14:
             15:
@@ -55,6 +49,14 @@ async def test_comment_render(git_history, mock_db):
             18:
             19:
             20:def sqrt(a):
+            <comment>
+                <author>bot</author>
+                <content>hello</content>
+                <replies>
+                    <author>replier</author>
+                    <content>Look replies are easy!</content>
+                </replies>
+            </comment>
             21:    return math.sqrt(a)
             """
     ))
