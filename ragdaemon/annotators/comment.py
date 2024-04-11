@@ -26,7 +26,7 @@ class Comment:
         assert (
             line or positioning == CommentPosition.File
         ), f"Comment positioned via {positioning} must set line number"
-        assert line or not end_line, "Comments with end_line must set line"
+        assert line or not end_line, "Comments with end_line must set start line"
         assert "\n" not in content or positioning not in [
             CommentPosition.Start,
             CommentPosition.End,

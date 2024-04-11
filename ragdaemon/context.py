@@ -74,7 +74,7 @@ class ContextBuilder:
         if not self.context.get(path_str):
             self._add_path(path_str)
         if not line:
-            line = 0
+            line = 0 # file-level comment
         self.context[path_str]["comments"].setdefault(line, []).append(
             Comment(
                 content=comment,
