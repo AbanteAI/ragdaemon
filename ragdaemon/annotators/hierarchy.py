@@ -2,11 +2,12 @@ import fnmatch
 from pathlib import Path
 
 import networkx as nx
+from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, Database
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import token_counter
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
 
 
@@ -56,7 +57,7 @@ def get_active_checksums(
             path_str = path.as_posix()
             ref = path_str
             document = get_document(ref, cwd)
-            tokens = token_counter(document)
+            tokens = Spice().count_tokens(document, DEFAULT_COMPLETION_MODEL)
             if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
                 continue
             checksum = hash_str(document)
