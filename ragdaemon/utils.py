@@ -6,7 +6,6 @@ from pathlib import Path
 
 from ragdaemon.errors import RagdaemonError
 
-
 mentat_dir_path = Path.home() / ".mentat"
 
 

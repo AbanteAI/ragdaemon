@@ -9,8 +9,8 @@ from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import Database, DEFAULT_EMBEDDING_MODEL, get_db
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL, token_counter
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_non_gitignored_files
 
 
@@ -128,7 +128,9 @@ class Daemon:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder
         include_context_message = context.render()
-        include_tokens = token_counter(include_context_message)
+        include_tokens = self.spice_client.count_tokens(
+            include_context_message, DEFAULT_COMPLETION_MODEL
+        )
         if not auto_tokens or include_tokens >= max_tokens:
             return context
 
@@ -140,7 +142,9 @@ class Daemon:
             else:
                 context.add_ref(node["ref"], tags=["search-result"])
             next_context_message = context.render()
-            next_tokens = token_counter(next_context_message)
+            next_tokens = self.spice_client.count_tokens(
+                next_context_message, DEFAULT_COMPLETION_MODEL
+            )
             if (next_tokens - include_tokens) > auto_tokens:
                 if node["type"] == "diff":
                     context.remove_diff(node["id"])
