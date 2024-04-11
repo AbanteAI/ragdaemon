@@ -15,6 +15,7 @@ async def test_comment_render(git_history, mock_db):
     context.add_comment("src/operations.py", {"author": "bot", "content": "test"}, line=10)
     context.add_comment("src/operations.py", {"author": "bot", "content": "Two comments on one line"}, line=10)
     context.add_comment("src/operations.py", {"author": "bot", "content": "hello", "replies": [{"author": "replier", "content": "Look replies are easy!"}]}, line=20)
+    context.add_comment("src/operations.py", "Not everyone will want our wrap", wrap=None, line=12)
     actual = context.render()
     assert (
         actual
@@ -41,6 +42,7 @@ async def test_comment_render(git_history, mock_db):
             </comment>
             11:
             12:def multiply(a, b):
+            Not everyone will want our wrap
             13:    return a * b
             14:
             15:
