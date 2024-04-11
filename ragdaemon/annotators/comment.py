@@ -1,4 +1,4 @@
-from typing import Union, Dict, Optional
+from typing import Union, Dict
 from dict2xml import dict2xml
 
 
@@ -9,13 +9,11 @@ class Comment:
     def __init__(
         self,
         content: NestedStrDict,
-        wrap: Optional[str] = "comment",
     ):
         self.content = content
-        self.wrap = wrap
 
     def render(self) -> str:
-        return dict2xml(self.content, wrap=self.wrap, indent="    ")
+        return dict2xml(self.content, indent="    ")
 
 
 def render_comments(comments: list[Comment]) -> str:

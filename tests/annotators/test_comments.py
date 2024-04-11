@@ -11,11 +11,11 @@ async def test_comment_render(git_history, mock_db):
 
     context = ContextBuilder(daemon.graph, daemon.db)
     context.add_ref("src/operations.py")
-    context.add_comment("src/operations.py", "What is this file for?")
-    context.add_comment("src/operations.py", {"author": "bot", "content": "test"}, line=10)
-    context.add_comment("src/operations.py", {"author": "bot", "content": "Two comments on one line"}, line=10)
+    context.add_comment("src/operations.py", {"comment": "What is this file for?"})
+    context.add_comment("src/operations.py", {"comment": {"author": "bot", "content": "test"}}, line=10)
+    context.add_comment("src/operations.py", {"comment": {"author": "bot", "content": "Two comments on one line"}}, line=10)
     context.add_comment("src/operations.py", {"author": "bot", "content": "hello", "replies": [{"author": "replier", "content": "Look replies are easy!"}]}, line=20)
-    context.add_comment("src/operations.py", "Not everyone will want our wrap", wrap=None, line=12)
+    context.add_comment("src/operations.py", "Comments can just be strings", line=12)
     actual = context.render()
     assert (
         actual
@@ -42,7 +42,7 @@ async def test_comment_render(git_history, mock_db):
             </comment>
             11:
             12:def multiply(a, b):
-            Not everyone will want our wrap
+            Comments can just be strings
             13:    return a * b
             14:
             15:
@@ -51,14 +51,12 @@ async def test_comment_render(git_history, mock_db):
             18:
             19:
             20:def sqrt(a):
-            <comment>
-                <author>bot</author>
-                <content>hello</content>
-                <replies>
-                    <author>replier</author>
-                    <content>Look replies are easy!</content>
-                </replies>
-            </comment>
+            <author>bot</author>
+            <content>hello</content>
+            <replies>
+                <author>replier</author>
+                <content>Look replies are easy!</content>
+            </replies>
             21:    return math.sqrt(a)
             """
     ))

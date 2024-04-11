@@ -64,7 +64,6 @@ class ContextBuilder:
         self,
         path_str: str,
         comment: NestedStrDict,
-        wrap: Optional[int] = "comment",
         line: Optional[int] = None,
     ):
         path_str = Path(path_str).as_posix()
@@ -75,7 +74,6 @@ class ContextBuilder:
         self.context[path_str]["comments"].setdefault(line, []).append(
             Comment(
                 content=comment,
-                wrap=wrap,
             )
         )
 
