@@ -25,23 +25,26 @@ import asyncio
 from pathlib import Path
 from ragdaemon.daemon import Daemon
 
-cwd = Path.cwd()
-daemon = Daemon(cwd)
-asyncio.run(daemon.update())
+async def main():
+    cwd = Path.cwd()
+    daemon = Daemon(cwd)
+    await daemon.update()
 
-# Search
-results = daemon.search("javascript")
-for result in results:
-    print(f"{result['distance']} | {result['id']}")
+    results = daemon.search("javascript")
+    for result in results:
+        print(f"{result['distance']} | {result['id']}")
 
-# RAG Context Selection
-query = "How do I run the tests?"
-context_builder = daemon.get_context(
-    query, 
-    include=["package.json"], 
-    auto_tokens=5000
-)
-context = context_builder.render()
-query += f"\nCODE CONTEXT\n{context}"
-...
+    query = "How do I run the tests?"
+    context_builder = daemon.get_context(
+        query, 
+        auto_tokens=5000
+    )
+    context = context_builder.render()
+    messages = [
+        {"role": "user", "content": query},
+        {"role": "user", "content": f"CODE CONTEXT\n{context}"}
+    ]
+    print(messages)
+
+asyncio.run(main())
 ```
