@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import networkx as nx
 
 from ragdaemon.annotators.diff import parse_diff_id
+from ragdaemon.annotators.comment import Comment, CommentPosition, render_comments
 from ragdaemon.database import Database
 from ragdaemon.utils import parse_path_ref
 
@@ -32,6 +33,7 @@ class ContextBuilder:
             "tags": set(),
             "document": document,
             "diffs": set(),
+            "comments": dict[int, list[Comment]](),
         }
         self.context[path_str] = message
 
@@ -57,6 +59,38 @@ class ContextBuilder:
             self._add_path(path_str)
         self.context[path_str]["diffs"].add(id)
         self.context[path_str]["tags"].add("diff")
+
+    def add_comment(
+        self,
+        path_str: str,
+        comment: str,
+        positioning: CommentPosition = CommentPosition.Below,
+        line: Optional[int] = None,
+        end_line: Optional[int] = None,
+        start_delimiter: Optional[str] = None,
+        end_delimiter: Optional[str] = None,
+    ):
+        if not self.context.get(path_str):
+            self._add_path(path_str)
+        if not line:
+            line = 0
+        self.context[path_str]["comments"].setdefault(line, []).append(
+            Comment(
+                content=comment,
+                positioning=positioning,
+                line=line,
+                end_line=end_line,
+                start_delimiter=start_delimiter,
+                end_delimiter=end_delimiter,
+            )
+        )
+
+    def remove_comments(self, path_str: str):
+        if path_str not in self.context:
+            if self.verbose:
+                print(f"Warning: no matching message found for {path_str}.")
+            return
+        self.context[path_str]["comments"] = dict[int, list[Comment]]()
 
     def remove_ref(self, ref: str, tags: list[str] = []):
         """Remove the given id from the context."""
@@ -98,13 +132,20 @@ class ContextBuilder:
                 output += "\n"
             tags = "" if not data["tags"] else f" ({', '.join(sorted(data['tags']))})"
             output += f"{path_str}{tags}\n"
+            if 0 in data["comments"]:
+                output += render_comments(data["comments"][0])
             if data["lines"]:
                 file_lines = data["document"].splitlines()
                 last_rendered = 0
                 for line in sorted(data["lines"]):
                     if line - last_rendered > 1:
                         output += "...\n"
-                    output += f"{line}:{file_lines[line]}\n"
+                    line_content = f"{line}:{file_lines[line]}"
+                    if line in data["comments"]:
+                        line_content = render_comments(
+                            data["comments"][line], line_content
+                        )
+                    output += line_content + "\n"
                     last_rendered = line
                 if last_rendered < len(file_lines) - 1:
                     output += "...\n"
