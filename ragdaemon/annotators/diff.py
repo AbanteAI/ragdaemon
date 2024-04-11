@@ -5,7 +5,11 @@ from pathlib import Path
 import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db, MAX_TOKENS_PER_EMBEDDING
+from ragdaemon.database import (
+    DEFAULT_EMBEDDING_MODEL,
+    Database,
+    MAX_TOKENS_PER_EMBEDDING,
+)
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
@@ -75,14 +79,14 @@ class Diff(Annotator):
     def id(self) -> str:
         return "DEFAULT" if not self.diff_args else self.diff_args
 
-    def is_complete(self, graph: nx.MultiDiGraph) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
         return self.id in graph and graph.nodes[self.id]["checksum"] == checksum
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
     ) -> nx.MultiDiGraph:
         graph_nodes = {
             node for node, data in graph.nodes(data=True) if data.get("type") == "diff"
@@ -91,7 +95,7 @@ class Diff(Annotator):
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
-        existing_records = get_db().get(checksum)
+        existing_records = db.get(checksum)
         if refresh or len(existing_records["ids"]) == 0:
             chunks = get_chunks_from_diff(id=self.id, diff=document)
             data = {
@@ -116,7 +120,7 @@ class Diff(Annotator):
                         f"Truncated full diff by {1 - truncate_ratio:.2%} for embedding."
                     )
 
-            get_db().upsert(ids=checksum, documents=document, metadatas=data)
+            db.upsert(ids=checksum, documents=document, metadatas=data)
         else:
             data = existing_records["metadatas"][0]
         data["chunks"] = json.loads(data["chunks"])
@@ -128,7 +132,7 @@ class Diff(Annotator):
         for chunk_id, chunk_ref in data["chunks"].items():
             document = get_document(chunk_ref, cwd, type="diff")
             chunk_checksum = hash_str(document)
-            existing_records = get_db().get(chunk_checksum)
+            existing_records = db.get(chunk_checksum)
             if refresh or len(existing_records["ids"]) == 0:
                 data = {
                     "id": chunk_id,
@@ -173,6 +177,6 @@ class Diff(Annotator):
         for source, origin in edges_to_add:
             graph.add_edge(source, origin, type="diff")
         if len(add_to_db["ids"]) > 0:
-            get_db().upsert(**add_to_db)
+            db.upsert(**add_to_db)
 
         return graph

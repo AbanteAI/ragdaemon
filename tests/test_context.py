@@ -6,12 +6,12 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.utils import get_document
 
 
-def test_daemon_render_context(cwd):
+def test_daemon_render_context(cwd, mock_db):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Base Chunk
-    context = ContextBuilder(nx.MultiDiGraph())
+    context = ContextBuilder(nx.MultiDiGraph(), mock_db)
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),
@@ -65,12 +65,12 @@ src/interface.py (test-flag)
     )
 
 
-def test_to_refs(cwd):
+def test_to_refs(cwd, mock_db):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Setup Context
-    context = ContextBuilder(nx.MultiDiGraph())
+    context = ContextBuilder(nx.MultiDiGraph(), mock_db)
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),

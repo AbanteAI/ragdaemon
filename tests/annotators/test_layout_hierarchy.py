@@ -37,11 +37,11 @@ def test_layout_hierarchy_is_complete(cwd):
 
 
 @pytest.mark.asyncio
-async def test_layout_hierarchy_annotate(cwd):
+async def test_layout_hierarchy_annotate(cwd, mock_db):
     with open("tests/data/hierarchy_graph.json", "r") as f:
         data = json.load(f)
         hierarchy_graph = nx.readwrite.json_graph.node_link_graph(data)
-    actual = await LayoutHierarchy().annotate(hierarchy_graph)
+    actual = await LayoutHierarchy().annotate(hierarchy_graph, mock_db)
 
     all_coordinates = set()
     for node, data in actual.nodes(data=True):

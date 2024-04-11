@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ragdaemon.database import set_db
+from ragdaemon.database import get_db
 
 
 @pytest.fixture
@@ -15,8 +15,8 @@ def cwd():
 
 
 @pytest.fixture
-def mock_set_db(cwd):
-    set_db(cwd, AsyncMock())
+def mock_db(cwd):
+    return get_db(cwd, spice_client=AsyncMock())
 
 
 @pytest.fixture

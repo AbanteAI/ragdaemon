@@ -34,13 +34,13 @@ def test_diff_parse_diff_id():
 
 
 @pytest.mark.asyncio
-async def test_diff_annotate(git_history, mock_set_db):
+async def test_diff_annotate(git_history, mock_db):
     with open("tests/data/chunker_graph.json", "r") as f:
         data = json.load(f)
         graph = nx.readwrite.json_graph.node_link_graph(data)
     graph.graph["cwd"] = git_history.as_posix()
     annotator = Diff()
-    actual = await annotator.annotate(graph)
+    actual = await annotator.annotate(graph, mock_db)
     actual_nodes = {n for n, d in actual.nodes(data=True) if d["type"] == "diff"}
 
     with open("tests/data/diff_graph.json", "r") as f:
@@ -52,12 +52,12 @@ async def test_diff_annotate(git_history, mock_set_db):
 
 
 @pytest.mark.asyncio
-async def test_diff_render(git_history):
+async def test_diff_render(git_history, mock_db):
     daemon = Daemon(cwd=git_history)
     await daemon.update(refresh=True)
 
     # Only diffs
-    context = ContextBuilder(graph=daemon.graph)
+    context = ContextBuilder(daemon.graph, daemon.db)
     context.add_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_diff("DEFAULT:src/operations.py:8-10")

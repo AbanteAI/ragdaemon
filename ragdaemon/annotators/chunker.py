@@ -23,7 +23,7 @@ import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import get_db
+from ragdaemon.database import Database
 from ragdaemon.utils import get_document, hash_str
 
 
@@ -43,7 +43,7 @@ def is_chunk_valid(chunk: dict) -> bool:
 
 
 async def get_file_chunk_data(
-    cwd, node, data, chunk_function: callable, verbose: bool = False
+    cwd, node, data, chunk_function: callable, db: Database, verbose: bool = False
 ) -> list[dict]:
     """Get or add chunk data to database, load into file data"""
     file_lines = (cwd / Path(node)).read_text().splitlines()
@@ -87,9 +87,9 @@ async def get_file_chunk_data(
             for chunk in chunks
         ] + [base_chunk]
     # Save to db and graph
-    metadatas = get_db().get(data["checksum"])["metadatas"][0]
+    metadatas = db.get(data["checksum"])["metadatas"][0]
     metadatas["chunks"] = json.dumps(chunks)
-    get_db().update(data["checksum"], metadatas=metadatas)
+    db.update(data["checksum"], metadatas=metadatas)
     data["chunks"] = chunks
 
 
@@ -97,6 +97,7 @@ def add_file_chunks_to_graph(
     file: str,
     data: dict,
     graph: nx.MultiDiGraph,
+    db: Database,
     refresh: bool = False,
     verbose: bool = False,
 ) -> dict[str:list]:
@@ -118,7 +119,7 @@ def add_file_chunks_to_graph(
             ref = chunk["ref"]
             document = get_document(ref, cwd)
             checksum = hash_str(document)
-            records = get_db().get(checksum)["metadatas"]
+            records = db.get(checksum)["metadatas"]
             if not refresh and len(records) > 0:
                 record = records[0]
             else:
@@ -187,7 +188,7 @@ class Chunker(Annotator):
             ]
         self.chunk_extensions = chunk_extensions
 
-    def is_complete(self, graph: nx.MultiDiGraph) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
         for _, data in graph.nodes(data=True):
             if data.get("type") != "file":
                 continue
@@ -223,7 +224,7 @@ class Chunker(Annotator):
         raise NotImplementedError()
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
     ) -> nx.MultiDiGraph:
         # Remove any existing chunk nodes from the graph
         for node, data in graph.nodes(data=True):
@@ -248,7 +249,7 @@ class Chunker(Annotator):
             if refresh or data.get("chunks", None) is None:
                 tasks.append(
                     get_file_chunk_data(
-                        cwd, node, data, self.chunk_file, verbose=self.verbose
+                        cwd, node, data, self.chunk_file, db, verbose=self.verbose
                     )
                 )
         if len(tasks) > 0:
@@ -260,10 +261,10 @@ class Chunker(Annotator):
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
             _add_to_db = add_file_chunks_to_graph(
-                file, data, graph, verbose=self.verbose
+                file, data, graph, db, verbose=self.verbose
             )
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:
-            get_db().upsert(**add_to_db)
+            db.upsert(**add_to_db)
         return graph

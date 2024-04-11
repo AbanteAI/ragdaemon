@@ -1,5 +1,4 @@
 import os
-from contextvars import ContextVar
 from pathlib import Path
 
 from spice import Spice, SpiceError
@@ -13,22 +12,12 @@ MAX_TOKENS_PER_EMBEDDING = 8192
 DEFAULT_EMBEDDING_MODEL = "text-embedding-ada-002"
 
 
-_db: ContextVar = ContextVar("_db", default=None)
-
-
-def set_db(cwd: Path, spice_client: Spice):
-    global _db
+def get_db(cwd: Path, spice_client: Spice) -> Database:
     db_path = mentat_dir_path / "chroma"
     db_path.mkdir(parents=True, exist_ok=True)
     if "PYTEST_CURRENT_TEST" not in os.environ:
         try:
-            _db.set(ChromaDB(cwd=cwd, db_path=db_path, spice_client=spice_client))
-            return
+            return ChromaDB(cwd=cwd, db_path=db_path, spice_client=spice_client)
         except SpiceError:
             pass
-    _db.set(LiteDB(cwd=cwd, db_path=db_path))
-
-
-def get_db() -> Database:
-    global _db
-    return _db.get()
+    return LiteDB(cwd=cwd, db_path=db_path)

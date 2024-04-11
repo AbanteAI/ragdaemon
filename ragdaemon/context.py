@@ -4,15 +4,16 @@ from typing import Any
 import networkx as nx
 
 from ragdaemon.annotators.diff import parse_diff_id
-from ragdaemon.database import get_db
+from ragdaemon.database import Database
 from ragdaemon.utils import parse_path_ref
 
 
 class ContextBuilder:
     """Renders items from a graph into an llm-readable string."""
 
-    def __init__(self, graph: nx.MultiDiGraph, verbose: bool = False):
+    def __init__(self, graph: nx.MultiDiGraph, db: Database, verbose: bool = False):
         self.graph = graph
+        self.db = db
         self.verbose = verbose
         self.context = dict[
             str, dict[str, Any]
@@ -25,7 +26,7 @@ class ContextBuilder:
             document = ""
         else:
             checksum = self.graph.nodes[path_str]["checksum"]
-            document = get_db().get(checksum)["documents"][0]
+            document = self.db.get(checksum)["documents"][0]
         message = {
             "lines": set(),
             "tags": set(),
@@ -121,7 +122,7 @@ class ContextBuilder:
         cwd = self.graph.graph["cwd"]
         for id in sorted(ids):
             checksum = self.graph.nodes[id]["checksum"]
-            document = get_db().get(checksum)["documents"][0]
+            document = self.db.get(checksum)["documents"][0]
             # TODO: Add line numbers
             without_git_command = "\n".join(document.splitlines()[1:])
             output += without_git_command + "\n"

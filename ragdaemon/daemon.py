@@ -9,7 +9,7 @@ from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db, set_db
+from ragdaemon.database import Database, DEFAULT_EMBEDDING_MODEL, get_db
 from ragdaemon.llm import DEFAULT_COMPLETION_MODEL, token_counter
 from ragdaemon.utils import get_non_gitignored_files
 
@@ -26,6 +26,7 @@ class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
     graph: nx.MultiDiGraph
+    db: Database = None
 
     def __init__(
         self,
@@ -77,14 +78,14 @@ class Daemon:
         """Iteratively build the knowledge graph"""
 
         # Establish a dedicated database client for this instance
-        if get_db() is None:
-            set_db(self.cwd, spice_client=self.spice_client)
+        if self.db is None:
+            self.db = get_db(self.cwd, spice_client=self.spice_client)
 
         _graph = self.graph.copy()
         self.graph.graph["refreshing"] = True
         for annotator in self.pipeline.values():
-            if refresh or not annotator.is_complete(_graph):
-                _graph = await annotator.annotate(_graph, refresh=refresh)
+            if refresh or not annotator.is_complete(_graph, self.db):
+                _graph = await annotator.annotate(_graph, self.db, refresh=refresh)
         self.graph = _graph
         self.save()
 
@@ -112,7 +113,7 @@ class Daemon:
 
     def search(self, query: str, n: Optional[int] = None) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
-        return get_db().query_graph(query, self.graph, n=n)
+        return self.db.query_graph(query, self.graph, n=n)
 
     def get_context(
         self,
@@ -122,7 +123,7 @@ class Daemon:
         auto_tokens: int = 0,
     ) -> ContextBuilder:
         if context_builder is None:
-            context = ContextBuilder(self.graph, self.verbose)
+            context = ContextBuilder(self.graph, self.db, self.verbose)
         else:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder

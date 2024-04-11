@@ -2,6 +2,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
+from ragdaemon.database import Database
 from ragdaemon.annotators.base_annotator import Annotator
 
 
@@ -83,7 +84,7 @@ def fruchterman_reingold_3d(
 class LayoutHierarchy(Annotator):
     name = "layout_hierarchy"
 
-    def is_complete(self, graph: nx.MultiDiGraph) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
         # Check that they have data.layout.hierarchy
         for _, data in graph.nodes(data=True):
             if not data.get("layout", {}).get("hierarchy"):
@@ -93,6 +94,7 @@ class LayoutHierarchy(Annotator):
     async def annotate(
         self,
         graph: nx.MultiDiGraph,
+        db: Database = None,
         refresh: bool = False,
         iterations: int = 40,
     ) -> nx.MultiDiGraph:

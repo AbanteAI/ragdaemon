@@ -3,7 +3,7 @@
     "multigraph": true,
     "graph": {
         "cwd": "tests/sample",
-        "files_checksum": "d34ece149f913efdba94210433303988"
+        "files_checksum": "1ea8cdd83015d2a76755b20f648206e7"
     },
     "nodes": [
         {

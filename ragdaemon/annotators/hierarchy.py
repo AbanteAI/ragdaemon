@@ -4,7 +4,7 @@ from pathlib import Path
 import networkx as nx
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, get_db
+from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, Database
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
@@ -37,6 +37,7 @@ def match_path_with_patterns(path: Path, cwd: Path, patterns: list[str] = []) ->
 
 def get_active_checksums(
     cwd: Path,
+    db: Database,
     refresh: bool = False,
     verbose: bool = False,
     ignore_patterns: list[str] = [],
@@ -59,7 +60,7 @@ def get_active_checksums(
             if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
                 continue
             checksum = hash_str(document)
-            existing_record = len(get_db().get(checksum)["ids"]) > 0
+            existing_record = len(db.get(checksum)["ids"]) > 0
             if refresh or not existing_record:
                 # add new items to db (will generate embeddings)
                 metadatas = {
@@ -79,7 +80,7 @@ def get_active_checksums(
             if verbose:
                 print(f"Error processing path {path}: {e}")
     if len(add_to_db["ids"]) > 0:
-        get_db().upsert(**add_to_db)
+        db.upsert(**add_to_db)
     return checksums
 
 
@@ -102,19 +103,20 @@ class Hierarchy(Annotator):
         self.ignore_patterns = ignore_patterns
         super().__init__(*args, **kwargs)
 
-    def is_complete(self, graph: nx.MultiDiGraph) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
         cwd = Path(graph.graph["cwd"])
         return graph.graph.get("files_checksum") == files_checksum(
             cwd, self.ignore_patterns
         )
 
     async def annotate(
-        self, old_graph: nx.MultiDiGraph, refresh: bool = False
+        self, old_graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
     ) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         cwd = Path(old_graph.graph["cwd"])
         checksums = get_active_checksums(
             cwd,
+            db,
             refresh=refresh,
             verbose=self.verbose,
             ignore_patterns=self.ignore_patterns,
@@ -128,7 +130,7 @@ class Hierarchy(Annotator):
         for path, checksum in checksums.items():
             # add db reecord
             id = path.as_posix()
-            results = get_db().get(checksum)
+            results = db.get(checksum)
             data = results["metadatas"][0]
             graph.add_node(id, **data)
 

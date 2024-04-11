@@ -41,14 +41,14 @@ def test_chunker_is_complete(cwd):
 
 
 @pytest.mark.asyncio
-async def test_chunker_llm_annotate(cwd, mock_get_llm_response):
+async def test_chunker_llm_annotate(cwd, mock_get_llm_response, mock_db):
     daemon = Daemon(
         cwd=cwd,
         annotators={"hierarchy": {}},
         graph_path=(Path.cwd() / "tests/data/hierarchy_graph.json"),
     )
     chunker = ChunkerLLM(spice_client=AsyncMock())
-    actual = await chunker.annotate(daemon.graph)
+    actual = await chunker.annotate(daemon.graph, mock_db)
 
     for node, data in actual.nodes(data=True):
         if data["type"] == "file" and Path(node).suffix in chunker.chunk_extensions:
