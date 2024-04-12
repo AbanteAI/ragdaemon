@@ -3,15 +3,15 @@ import re
 from pathlib import Path
 
 import networkx as nx
+from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import (
     DEFAULT_EMBEDDING_MODEL,
-    Database,
     MAX_TOKENS_PER_EMBEDDING,
+    Database,
 )
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
 
@@ -109,9 +109,7 @@ class Diff(Annotator):
 
             # If the full diff is too long to embed, it is truncated. Anything
             # removed will be captured in chunks.
-            tokens = token_counter(
-                document, model=DEFAULT_EMBEDDING_MODEL, full_message=False
-            )
+            tokens = Spice().count_tokens(document, model=DEFAULT_EMBEDDING_MODEL)
             if tokens > MAX_TOKENS_PER_EMBEDDING:
                 truncate_ratio = (MAX_TOKENS_PER_EMBEDDING / tokens) * 0.99
                 document = document[: int(len(document) * truncate_ratio)]

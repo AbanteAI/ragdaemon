@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -64,3 +65,9 @@ def git_history(cwd):
             f.write("print('Hello, world!')\n")
 
         yield tmpdir_path
+
+
+# We have to set the key since counting tokens with an openai model loads the openai client
+@pytest.fixture(autouse=True)
+def mock_openai_api_key():
+    os.environ["OPENAI_API_KEY"] = "fake_key"

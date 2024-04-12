@@ -12,9 +12,9 @@ from fastapi.staticfiles import StaticFiles
 from spice import Spice
 from starlette.templating import Jinja2Templates
 
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL
 from ragdaemon.daemon import Daemon
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 
 # Load daemon with command line arguments and visualization annotators
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
