@@ -18,8 +18,10 @@ class Comment:
     def __init__(
         self,
         content: NestedStrDict,
+        tags: list[str] = [],
     ):
         self.content = content
+        self.tags = tags
 
     def render(self) -> str:
         return dict2xml(self.content, indent="    ")
@@ -85,6 +87,7 @@ class ContextBuilder:
         path_str: str,
         comment: NestedStrDict,
         line: Optional[int] = None,
+        tags: list[str] = [],
     ):
         path_str = Path(path_str).as_posix()
         if not self.context.get(path_str):
@@ -94,15 +97,22 @@ class ContextBuilder:
         self.context[path_str]["comments"].setdefault(line, []).append(
             Comment(
                 content=comment,
+                tags=tags,
             )
         )
 
-    def remove_comments(self, path_str: str):
+    def remove_comments(self, path_str: str, tags: list[str] = []):
         if path_str not in self.context:
             if self.verbose:
                 print(f"Warning: no matching message found for {path_str}.")
             return
-        self.context[path_str]["comments"] = dict[int, list[Comment]]()
+        if tags:
+            for line, comments in self.context[path_str]["comments"].items():
+                self.context[path_str]["comments"][line] = [
+                    comment for comment in comments if not set(tags) & set(comment.tags)
+                ]
+        else:
+            self.context[path_str]["comments"] = dict[int, list[Comment]]()
 
     def remove_ref(self, ref: str, tags: list[str] = []):
         """Remove the given id from the context."""
