@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ragdaemon.database import get_db
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def cwd():
 
 @pytest.fixture
 def mock_db(cwd):
-    return get_db(cwd, spice_client=AsyncMock())
+    return get_db(cwd, spice_client=AsyncMock(), model=DEFAULT_EMBEDDING_MODEL)
 
 
 @pytest.fixture

@@ -35,6 +35,8 @@ class Daemon:
         verbose: bool = False,
         graph_path: Optional[Path] = None,
         spice_client: Optional[Spice] = None,
+        model: str = DEFAULT_EMBEDDING_MODEL,
+        provider: Optional[str] = None,
     ):
         self.cwd = cwd
         self.verbose = verbose
@@ -49,6 +51,8 @@ class Daemon:
                 default_embeddings_model=DEFAULT_EMBEDDING_MODEL,
             )
         self.spice_client = spice_client
+        self.model = model
+        self.provider = provider
 
         # Initialize an empty graph
         self.graph = nx.MultiDiGraph()
@@ -79,7 +83,12 @@ class Daemon:
 
         # Establish a dedicated database client for this instance
         if self.db is None:
-            self.db = get_db(self.cwd, spice_client=self.spice_client)
+            self.db = get_db(
+                self.cwd,
+                spice_client=self.spice_client,
+                model=self.model,
+                provider=self.provider,
+            )
 
         _graph = self.graph.copy()
         self.graph.graph["refreshing"] = True
