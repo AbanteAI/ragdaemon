@@ -4,9 +4,29 @@ from typing import Any, Optional
 import networkx as nx
 
 from ragdaemon.annotators.diff import parse_diff_id
-from ragdaemon.annotators.comment import Comment, NestedStrDict, render_comments
 from ragdaemon.database import Database
 from ragdaemon.utils import parse_path_ref
+
+
+from typing import Union, Dict
+from dict2xml import dict2xml
+
+NestedStrDict = Union[str, Dict[str, "NestedStrDict"]]
+
+
+class Comment:
+    def __init__(
+        self,
+        content: NestedStrDict,
+    ):
+        self.content = content
+
+    def render(self) -> str:
+        return dict2xml(self.content, indent="    ")
+
+
+def render_comments(comments: list[Comment]) -> str:
+    return "\n".join(comment.render() for comment in comments)
 
 
 class ContextBuilder:
