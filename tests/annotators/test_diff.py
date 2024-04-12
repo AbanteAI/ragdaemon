@@ -28,8 +28,9 @@ def test_diff_parse_diff_id():
     ]
     for id, expected_ref, expected_path, expected_lines in tests:
         actual_ref, actual_path, actual_lines = parse_diff_id(id)
+        actual_path = actual_path.as_posix() if actual_path else "None"
         assert actual_ref == expected_ref
-        assert str(actual_path) == expected_path
+        assert actual_path == expected_path
         assert actual_lines == expected_lines
 
 
