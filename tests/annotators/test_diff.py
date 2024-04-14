@@ -2,7 +2,9 @@ import json
 
 import networkx as nx
 import pytest
+from typing import cast
 
+from networkx.readwrite import json_graph
 from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
 from ragdaemon.daemon import Daemon
@@ -28,8 +30,9 @@ def test_diff_parse_diff_id():
     ]
     for id, expected_ref, expected_path, expected_lines in tests:
         actual_ref, actual_path, actual_lines = parse_diff_id(id)
+        actual_path = actual_path.as_posix() if actual_path else "None"
         assert actual_ref == expected_ref
-        assert str(actual_path) == expected_path
+        assert actual_path == expected_path
         assert actual_lines == expected_lines
 
 
@@ -37,16 +40,17 @@ def test_diff_parse_diff_id():
 async def test_diff_annotate(git_history, mock_db):
     with open("tests/data/chunker_graph.json", "r") as f:
         data = json.load(f)
-        graph = nx.readwrite.json_graph.node_link_graph(data)
+        graph = json_graph.node_link_graph(data)
+    graph = cast(nx.MultiDiGraph, graph)
     graph.graph["cwd"] = git_history.as_posix()
     annotator = Diff()
     actual = await annotator.annotate(graph, mock_db)
-    actual_nodes = {n for n, d in actual.nodes(data=True) if d["type"] == "diff"}
+    actual_nodes = {n for n, d in actual.nodes(data=True) if d and d["type"] == "diff"}
 
     with open("tests/data/diff_graph.json", "r") as f:
         data = json.load(f)
-        expected = nx.readwrite.json_graph.node_link_graph(data)
-    expected_nodes = {n for n, d in expected.nodes(data=True) if d["type"] == "diff"}
+        expected = json_graph.node_link_graph(data)
+    expected_nodes = {n for n, d in expected.nodes(data=True) if d and d["type"] == "diff"}
 
     assert actual_nodes == expected_nodes
 

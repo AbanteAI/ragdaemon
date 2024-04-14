@@ -3,26 +3,27 @@ import re
 from pathlib import Path
 
 import networkx as nx
+from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import (
     DEFAULT_EMBEDDING_MODEL,
-    Database,
     MAX_TOKENS_PER_EMBEDDING,
+    Database,
 )
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import token_counter
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
 
-def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
+def get_chunks_from_diff(id: str, diff: str) -> dict[str, str]:
     # Match files and line numbers
     file_regex = re.compile(r"^diff --git a/(.+) b/(.+)$")
     hunk_header_regex = re.compile(r"^@@ -\d+,\d+ \+(\d+),(\d+) @@.*$")
 
     chunks = {}
     file = None
-    chunk_id = None
+    i = None
+    chunk_id: str | None = None
     chunk_ref_start = None
     for i, line in enumerate(diff.split("\n")):
         file_match = file_regex.match(line)
@@ -49,7 +50,7 @@ def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
             else:
                 lines_ref = ""
             chunk_id = f"{id}:{file}{lines_ref}"
-    if file and chunk_id and chunk_ref_start:
+    if i and file and chunk_id and chunk_ref_start:
         chunk_ref_end = i
         chunk_ref = f"{id}:{chunk_ref_start}-{chunk_ref_end}"
         chunks[chunk_id] = chunk_ref
@@ -57,7 +58,7 @@ def get_chunks_from_diff(id: str, diff: str) -> list[dict[str, str]]:
     return chunks
 
 
-def parse_diff_id(id: str) -> tuple[str, Path, set[int] | None]:
+def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
     if ":" in id:
         diff_ref, path_ref = id.split(":", 1)
         path, lines = parse_path_ref(path_ref)
@@ -79,17 +80,19 @@ class Diff(Annotator):
     def id(self) -> str:
         return "DEFAULT" if not self.diff_args else self.diff_args
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
         cwd = graph.graph["cwd"]
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
         return self.id in graph and graph.nodes[self.id]["checksum"] == checksum
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
     ) -> nx.MultiDiGraph:
         graph_nodes = {
-            node for node, data in graph.nodes(data=True) if data.get("type") == "diff"
+            node
+            for node, data in graph.nodes(data=True)
+            if data and data.get("type") == "diff"
         }
         graph.remove_nodes_from(graph_nodes)
         cwd = graph.graph["cwd"]
@@ -109,9 +112,7 @@ class Diff(Annotator):
 
             # If the full diff is too long to embed, it is truncated. Anything
             # removed will be captured in chunks.
-            tokens = token_counter(
-                document, model=DEFAULT_EMBEDDING_MODEL, full_message=False
-            )
+            tokens = Spice().count_tokens(document, model=DEFAULT_EMBEDDING_MODEL)
             if tokens > MAX_TOKENS_PER_EMBEDDING:
                 truncate_ratio = (MAX_TOKENS_PER_EMBEDDING / tokens) * 0.99
                 document = document[: int(len(document) * truncate_ratio)]

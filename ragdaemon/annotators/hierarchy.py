@@ -2,11 +2,12 @@ import fnmatch
 from pathlib import Path
 
 import networkx as nx
+from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, Database
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import token_counter
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
 
 
@@ -41,8 +42,8 @@ def get_active_checksums(
     refresh: bool = False,
     verbose: bool = False,
     ignore_patterns: list[str] = [],
-) -> dict[Path:str]:
-    checksums: dict[Path:str] = {}
+) -> dict[Path, str]:
+    checksums: dict[Path, str] = {}
     git_paths = get_non_gitignored_files(cwd)
     add_to_db = {
         "ids": [],
@@ -56,7 +57,7 @@ def get_active_checksums(
             path_str = path.as_posix()
             ref = path_str
             document = get_document(ref, cwd)
-            tokens = token_counter(document)
+            tokens = Spice().count_tokens(document, DEFAULT_COMPLETION_MODEL)
             if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
                 continue
             checksum = hash_str(document)
@@ -103,17 +104,17 @@ class Hierarchy(Annotator):
         self.ignore_patterns = ignore_patterns
         super().__init__(*args, **kwargs)
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
         cwd = Path(graph.graph["cwd"])
         return graph.graph.get("files_checksum") == files_checksum(
             cwd, self.ignore_patterns
         )
 
     async def annotate(
-        self, old_graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
     ) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
-        cwd = Path(old_graph.graph["cwd"])
+        cwd = Path(graph.graph["cwd"])
         checksums = get_active_checksums(
             cwd,
             db,

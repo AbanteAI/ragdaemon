@@ -11,6 +11,19 @@ class LiteDB(Database):
         self.db_path = db_path
         self._collection = LiteCollection()
 
+    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
+        response = self._collection.query(query, active_checksums)
+        results = [
+            {**data, "document": document, "distance": distance}
+            for data, document, distance in zip(
+                response["metadatas"][0],
+                response["documents"][0],
+                response["distances"][0],
+            )
+        ]
+        results = sorted(results, key=lambda x: x["distance"])
+        return results
+
 
 class LiteCollection:
     """A fast alternative to ChromaDB for testing (and anything else).
@@ -46,31 +59,19 @@ class LiteCollection:
                 raise ValueError(f"Record {checksum} does not exist.")
             self.data[checksum]["metadatas"] = metadata
 
-    def query(self, query_texts: list[str] | str, where: dict, n_results: int) -> dict:
+    def query(self, query: str, active_checksums: list[str]) -> dict[str, list[Any]]:
         # Select active/filtered records
-        records = [{"id": id, **data} for id, data in self.data.items()]
-        if where:
-            filtered_records = list[dict[str, Any]]()
-            for record in records:
-                selected = all(
-                    record.get("metadatas", {}).get(key) == value
-                    for key, value in where.items()
-                )
-                if selected:
-                    filtered_records.append(record)
-            records = filtered_records
-        if not query_texts:
+        records = [{"id": k, **v} for k, v in self.data.items() if k in active_checksums]
+        if not query:
             return {
                 "ids": [r["id"] for r in records],
                 "metadatas": [r["metadatas"] for r in records],
                 "documents": [r["document"] for r in records],
                 "distances": [0] * len(records),
             }
-        if isinstance(query_texts, str):
-            query_texts = [query_texts]
 
         # Pull out some fields to string match against
-        strings_to_compare = dict[str, list[tuple[str, float]]]()
+        strings_to_compare = dict[str, list[tuple]]()
         for record in records:
             stc = list[tuple]()  # string, category_weight
             data = record["metadatas"]
@@ -84,22 +85,20 @@ class LiteCollection:
             strings_to_compare[record["id"]] = stc
 
         output = {"ids": [], "metadatas": [], "documents": [], "distances": []}
-        for text in query_texts:
-            # Compare each query text against each records' strings
-            distances = list[tuple[str, float]]()
-            for id, stc in strings_to_compare.items():
-                score = 0
-                for string, weight in stc:
-                    if string in text or text in string:
-                        score += weight
-                distance = 10 if not score else 1 / score
-                distances.append((id, distance))
-            # Sort by distance
-            ids, distances = zip(*sorted(distances, key=lambda x: x[1]))
-            output["ids"].append(ids)
-            output["metadatas"].append([self.data[id]["metadatas"] for id in ids])
-            output["documents"].append([self.data[id]["document"] for id in ids])
-            output["distances"].append(distances)
+        distances = list[tuple[str, float]]()
+        for id, stc in strings_to_compare.items():
+            score = 0
+            for string, weight in stc:
+                if string in query or query in string:
+                    score += weight
+            distance = 10 if not score else 1 / score
+            distances.append((id, distance))
+        # Sort by distance
+        ids, distances = zip(*sorted(distances, key=lambda x: x[1]))
+        output["ids"].append(ids)
+        output["metadatas"].append([self.data[id]["metadatas"] for id in ids])
+        output["documents"].append([self.data[id]["document"] for id in ids])
+        output["distances"].append(distances)
 
         return output
 

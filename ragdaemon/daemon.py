@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Any, Optional
 
 import networkx as nx
+from networkx.readwrite import json_graph
 from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import Database, DEFAULT_EMBEDDING_MODEL, get_db
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL, token_counter
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_non_gitignored_files
 
 
@@ -26,7 +27,7 @@ class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
     graph: nx.MultiDiGraph
-    db: Database = None
+    _db: Database
 
     def __init__(
         self,
@@ -35,6 +36,8 @@ class Daemon:
         verbose: bool = False,
         graph_path: Optional[Path] = None,
         spice_client: Optional[Spice] = None,
+        model: str = DEFAULT_EMBEDDING_MODEL,
+        provider: Optional[str] = None,
     ):
         self.cwd = cwd
         self.verbose = verbose
@@ -49,6 +52,8 @@ class Daemon:
                 default_embeddings_model=DEFAULT_EMBEDDING_MODEL,
             )
         self.spice_client = spice_client
+        self.model = model
+        self.provider = provider
 
         # Initialize an empty graph
         self.graph = nx.MultiDiGraph()
@@ -66,9 +71,20 @@ class Daemon:
             for ann, kwargs in annotators.items()
         }
 
+    @property
+    def db(self) -> Database:
+        if not hasattr(self, "_db"):
+            self._db = get_db(
+                self.cwd,
+                spice_client=self.spice_client,
+                model=self.model,
+                provider=self.provider,
+            )
+        return self._db
+
     def save(self):
         """Saves the graph to disk."""
-        data = nx.readwrite.json_graph.node_link_data(self.graph)
+        data = json_graph.node_link_data(self.graph)
         with open(self.graph_path, "w") as f:
             json.dump(data, f, indent=4)
         if self.verbose:
@@ -76,13 +92,7 @@ class Daemon:
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
-
-        # Establish a dedicated database client for this instance
-        if self.db is None:
-            self.db = get_db(self.cwd, spice_client=self.spice_client)
-
         _graph = self.graph.copy()
-        self.graph.graph["refreshing"] = True
         for annotator in self.pipeline.values():
             if refresh or not annotator.is_complete(_graph, self.db):
                 _graph = await annotator.annotate(_graph, self.db, refresh=refresh)
@@ -128,7 +138,9 @@ class Daemon:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder
         include_context_message = context.render()
-        include_tokens = token_counter(include_context_message)
+        include_tokens = self.spice_client.count_tokens(
+            include_context_message, DEFAULT_COMPLETION_MODEL
+        )
         if not auto_tokens or include_tokens >= max_tokens:
             return context
 
@@ -140,7 +152,9 @@ class Daemon:
             else:
                 context.add_ref(node["ref"], tags=["search-result"])
             next_context_message = context.render()
-            next_tokens = token_counter(next_context_message)
+            next_tokens = self.spice_client.count_tokens(
+                next_context_message, DEFAULT_COMPLETION_MODEL
+            )
             if (next_tokens - include_tokens) > auto_tokens:
                 if node["type"] == "diff":
                     context.remove_diff(node["id"])

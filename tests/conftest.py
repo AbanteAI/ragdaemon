@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -6,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from ragdaemon.database import get_db
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
 
 
 @pytest.fixture
@@ -16,7 +17,7 @@ def cwd():
 
 @pytest.fixture
 def mock_db(cwd):
-    return get_db(cwd, spice_client=AsyncMock())
+    return get_db(cwd, spice_client=AsyncMock(), model=DEFAULT_EMBEDDING_MODEL)
 
 
 @pytest.fixture
@@ -64,3 +65,9 @@ def git_history(cwd):
             f.write("print('Hello, world!')\n")
 
         yield tmpdir_path
+
+
+# We have to set the key since counting tokens with an openai model loads the openai client
+@pytest.fixture(autouse=True)
+def mock_openai_api_key():
+    os.environ["OPENAI_API_KEY"] = "fake_key"

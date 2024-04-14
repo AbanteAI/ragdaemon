@@ -4,6 +4,7 @@ import socket
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -12,9 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from spice import Spice
 from starlette.templating import Jinja2Templates
 
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL
 from ragdaemon.daemon import Daemon
+from ragdaemon.database import DEFAULT_EMBEDDING_MODEL
+from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 
 # Load daemon with command line arguments and visualization annotators
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
@@ -86,11 +87,14 @@ templates = Jinja2Templates(directory=app_dir / "templates")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     # Serialize graph and send to frontend
-    nodes = [{"id": node, **data} for node, data in daemon.graph.nodes(data=True)]
-    edges = [
-        {"source": source, "target": target, **data}
-        for source, target, data in daemon.graph.edges(data=True)
-    ]
+    nodes = [{"id": node, **data} for node, data in daemon.graph.nodes(data=True) if data]
+    edges = list[dict[str, Any]]()
+    for edge in daemon.graph.edges(data=True, keys=True):
+        source = edge[0]
+        target = edge[1]
+        data = edge[-1]
+        if data:
+            edges.append({"source": source, "target": target, **data})
     metadata = daemon.graph.graph
     return templates.TemplateResponse(
         "index.html",

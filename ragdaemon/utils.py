@@ -6,7 +6,6 @@ from pathlib import Path
 
 from ragdaemon.errors import RagdaemonError
 
-
 mentat_dir_path = Path.home() / ".mentat"
 
 
@@ -74,6 +73,8 @@ def parse_lines_ref(ref: str) -> set[int] | None:
 
 def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
     match = re.match(r"^(.*?)(?::([0-9,\-]+))?$", ref)
+    if not match:
+        return Path(ref), None
     groups = match.groups()
     if len(groups) == 2 and all(groups):
         path_str, lines_ref = match.group(1), match.group(2)
@@ -90,7 +91,7 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             lines = parse_lines_ref(lines_ref)
         else:
             diff_ref, lines = ref, None
-        diff = get_git_diff(diff_ref, cwd)
+        diff = get_git_diff(diff_ref, str(cwd))
         if lines:
             text = "\n".join(
                 [line for i, line in enumerate(diff.split("\n")) if i + 1 in lines]
