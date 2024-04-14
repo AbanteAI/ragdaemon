@@ -42,8 +42,8 @@ def get_active_checksums(
     refresh: bool = False,
     verbose: bool = False,
     ignore_patterns: list[str] = [],
-) -> dict[Path:str]:
-    checksums: dict[Path:str] = {}
+) -> dict[Path, str]:
+    checksums: dict[Path, str] = {}
     git_paths = get_non_gitignored_files(cwd)
     add_to_db = {
         "ids": [],
@@ -104,17 +104,17 @@ class Hierarchy(Annotator):
         self.ignore_patterns = ignore_patterns
         super().__init__(*args, **kwargs)
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
         cwd = Path(graph.graph["cwd"])
         return graph.graph.get("files_checksum") == files_checksum(
             cwd, self.ignore_patterns
         )
 
     async def annotate(
-        self, old_graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
     ) -> nx.MultiDiGraph:
         """Build a graph of active files and directories with hierarchy edges."""
-        cwd = Path(old_graph.graph["cwd"])
+        cwd = Path(graph.graph["cwd"])
         checksums = get_active_checksums(
             cwd,
             db,

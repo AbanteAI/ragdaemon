@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any
 
 import networkx as nx
@@ -21,7 +20,6 @@ class ContextBuilder:
 
     def _add_path(self, path_str: str):
         """Create a new record in the context for the given path."""
-        cwd = self.graph.graph["cwd"]
         if path_str not in self.graph:  # e.g. deleted file
             document = ""
         else:
@@ -79,6 +77,8 @@ class ContextBuilder:
     def remove_diff(self, id: str):
         """Remove the given id from the context."""
         _, path, _ = parse_diff_id(id)
+        if not path:  # e.g. diff 'parent' nodes
+            return
         path_str = path.as_posix()
         if path_str not in self.context:
             if self.verbose:
@@ -119,7 +119,6 @@ class ContextBuilder:
         if diff_str != "DEFAULT":
             git_command += f" {diff_str}"
         output += f"{git_command}\n"
-        cwd = self.graph.graph["cwd"]
         for id in sorted(ids):
             checksum = self.graph.nodes[id]["checksum"]
             document = self.db.get(checksum)["documents"][0]
@@ -130,7 +129,7 @@ class ContextBuilder:
 
     def to_refs(self) -> list[str]:
         """Return a list of path:interval,interval for everything in current context."""
-        refs = dict[Path, str]()
+        refs = dict[str, str]()
         for path, data in self.context.items():
             if len(data["lines"]) == 0:
                 continue

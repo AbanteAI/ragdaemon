@@ -17,7 +17,7 @@ async def test_daemon_get_context(cwd):
     del annotators["diff"]
     daemon = Daemon(cwd.resolve(), annotators=annotators)
     await daemon.update()
-    actual = daemon.get_context("test", max_tokens=1e6).render()
+    actual = daemon.get_context("test", max_tokens=1000).render()
 
     with open("tests/data/context_message.txt", "r") as f:
         expected = f.read()
@@ -32,7 +32,7 @@ async def test_daemon_get_context(cwd):
         == """\
 src/interface.py (user-included)
 ...
-11:    match = re.match(r"(\d+)(\D)(\d+)", args.operation)
+11:    match = re.match(r"(\\d+)(\\D)(\\d+)", args.operation)
 12:    if match is None:
 ...
 """

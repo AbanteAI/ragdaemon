@@ -56,7 +56,7 @@ src/interface.py (test-flag)
 8:    args = parser.parse_args()
 9:
 10:    # use re to parse symbol, nubmer before, nubmer after
-11:    match = re.match(r"(\d+)(\D)(\d+)", args.operation)
+11:    match = re.match(r"(\\d+)(\\D)(\\d+)", args.operation)
 12:    if match is None:
 13:        raise ValueError("Invalid operation")
 14:    return int(match.group(1)), match.group(2), int(match.group(3))
