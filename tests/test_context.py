@@ -18,6 +18,7 @@ def test_daemon_render_context(cwd, mock_db):
             "tags": ["test-flag"],
             "document": get_document(ref, cwd),
             "diffs": set(),
+            "comments": dict(),
         }
     }
     actual = context.render()
@@ -42,6 +43,7 @@ src/interface.py (test-flag)
             "tags": ["test-flag"],
             "document": get_document(ref, cwd),
             "diffs": set(),
+            "comments": dict(),
         }
     }
     actual = context.render()
@@ -77,6 +79,7 @@ def test_to_refs(cwd, mock_db):
             "tags": ["test-flag"],
             "document": get_document(ref, cwd),
             "diffs": set(),
+            "comments": dict(),
         }
     }
     expected_refs = [f"{path_str}:1-4,15-15"]

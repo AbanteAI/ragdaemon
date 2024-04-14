@@ -1,10 +1,34 @@
-from typing import Any
+from pathlib import Path
+from typing import Any, Optional
 
 import networkx as nx
 
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
 from ragdaemon.utils import parse_path_ref
+
+
+from typing import Union, Dict
+from dict2xml import dict2xml
+
+NestedStrDict = Union[str, Dict[str, "NestedStrDict"]]
+
+
+class Comment:
+    def __init__(
+        self,
+        content: NestedStrDict,
+        tags: list[str] = [],
+    ):
+        self.content = content
+        self.tags = tags
+
+    def render(self) -> str:
+        return dict2xml(self.content, indent="    ")
+
+
+def render_comments(comments: list[Comment]) -> str:
+    return "\n".join(comment.render() for comment in comments)
 
 
 class ContextBuilder:
@@ -30,6 +54,7 @@ class ContextBuilder:
             "tags": set(),
             "document": document,
             "diffs": set(),
+            "comments": dict[int, list[Comment]](),
         }
         self.context[path_str] = message
 
@@ -55,6 +80,38 @@ class ContextBuilder:
             self._add_path(path_str)
         self.context[path_str]["diffs"].add(id)
         self.context[path_str]["tags"].add("diff")
+
+    def add_comment(
+        self,
+        path_str: str,
+        comment: NestedStrDict,
+        line: Optional[int] = None,
+        tags: list[str] = [],
+    ):
+        path_str = Path(path_str).as_posix()
+        if not self.context.get(path_str):
+            self._add_path(path_str)
+        if not line:
+            line = 0  # file-level comment
+        self.context[path_str]["comments"].setdefault(line, []).append(
+            Comment(
+                content=comment,
+                tags=tags,
+            )
+        )
+
+    def remove_comments(self, path_str: str, tags: list[str] = []):
+        if path_str not in self.context:
+            if self.verbose:
+                print(f"Warning: no matching message found for {path_str}.")
+            return
+        if tags:
+            for line, comments in self.context[path_str]["comments"].items():
+                self.context[path_str]["comments"][line] = [
+                    comment for comment in comments if not set(tags) & set(comment.tags)
+                ]
+        else:
+            self.context[path_str]["comments"] = dict[int, list[Comment]]()
 
     def remove_ref(self, ref: str, tags: list[str] = []):
         """Remove the given id from the context."""
@@ -98,13 +155,18 @@ class ContextBuilder:
                 output += "\n"
             tags = "" if not data["tags"] else f" ({', '.join(sorted(data['tags']))})"
             output += f"{path_str}{tags}\n"
+            if 0 in data["comments"]:
+                output += render_comments(data["comments"][0]) + "\n"
             if data["lines"]:
                 file_lines = data["document"].splitlines()
                 last_rendered = 0
                 for line in sorted(data["lines"]):
                     if line - last_rendered > 1:
                         output += "...\n"
-                    output += f"{line}:{file_lines[line]}\n"
+                    line_content = f"{line}:{file_lines[line]}"
+                    if line in data["comments"]:
+                        line_content += "\n" + render_comments(data["comments"][line])
+                    output += line_content + "\n"
                     last_rendered = line
                 if last_rendered < len(file_lines) - 1:
                     output += "...\n"
