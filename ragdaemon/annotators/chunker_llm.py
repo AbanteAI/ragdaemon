@@ -2,6 +2,8 @@ import asyncio
 import json
 
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
+from ragdaemon.errors import RagdaemonError
+from spice import SpiceMessage
 
 chunker_prompt = """\
 Split the provided code file into chunks.
@@ -52,9 +54,11 @@ class ChunkerLLM(Chunker):
     name = "chunker_llm"
 
     async def get_llm_response(self, file_message: str) -> dict:
+        if self.spice_client is None:
+            raise RagdaemonError("Spice client is not initialized.")
         global semaphore
         async with semaphore:
-            messages = [
+            messages: list[SpiceMessage] = [
                 {"role": "system", "content": chunker_prompt},
                 {"role": "user", "content": file_message},
             ]
@@ -65,14 +69,15 @@ class ChunkerLLM(Chunker):
             return json.loads(response.text)
 
     async def chunk_file(
-        self, file_id: str, file_lines: list[str], verbose=False, tries=1
+        self, file: str, file_lines: list[str], verbose: bool
     ) -> list[dict[str, str]]:
+        tries: int = 1
         for tries in range(tries, 0, -1):
             tries -= 1
             numbered_lines = "\n".join(
                 f"{i+1}:{line}" for i, line in enumerate(file_lines)
             )
-            file_message = f"{file_id}\n{numbered_lines}"
+            file_message = f"{file}\n{numbered_lines}"
             response = await self.get_llm_response(file_message)
             chunks = response.get("chunks", [])
             if not chunks or all(is_chunk_valid(chunk) for chunk in chunks):

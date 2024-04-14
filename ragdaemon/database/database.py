@@ -13,7 +13,12 @@ class Database:
     def __getattr__(self, name):
         """Delegate attribute access to the collection."""
         return getattr(self._collection, name)
-
+    
+    def query(
+        self, query: str, active_checksums: list[str]
+    ) -> list[dict]:
+        raise NotImplementedError
+    
     def query_graph(
         self, query: str, graph: nx.MultiDiGraph, n: Optional[int] = None
     ) -> list[dict]:
@@ -22,37 +27,12 @@ class Database:
         Chroma's default search covers all records, including inactive ones, so we
         manually flag the active records, query them, and then unflag them.
         """
-        metadatas = self._collection.get(
-            [
-                data["checksum"]
-                for _, data in graph.nodes(data=True)
-                if "checksum" in data
-            ]
-        )["metadatas"]
-        metadatas = [{**data, "active": True} for data in metadatas]
-        if len(metadatas) == 0:
-            return []
-        self._collection.update(
-            ids=[m["checksum"] for m in metadatas], metadatas=metadatas
-        )
-        response = self._collection.query(
-            query_texts=query,
-            where={"active": True},
-            n_results=len(metadatas),
-        )
-        metadatas = [{**data, "active": False} for data in metadatas]
-        self._collection.update(
-            ids=[m["checksum"] for m in metadatas], metadatas=metadatas
-        )
-        results = [
-            {**data, "document": document, "distance": distance}
-            for data, document, distance in zip(
-                response["metadatas"][0],
-                response["documents"][0],
-                response["distances"][0],
-            )
+        active_checksums = [
+            data["checksum"]
+            for _, data in graph.nodes(data=True)
+            if data and "checksum" in data
         ]
-        results = sorted(results, key=lambda x: x["distance"])
+        results = self.query(query, active_checksums)
         if n:
             results = results[:n]
         return results

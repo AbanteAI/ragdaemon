@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import networkx as nx
+from networkx.readwrite import json_graph
 from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
@@ -26,7 +27,7 @@ class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
     graph: nx.MultiDiGraph
-    db: Database = None
+    _db: Database
 
     def __init__(
         self,
@@ -70,9 +71,20 @@ class Daemon:
             for ann, kwargs in annotators.items()
         }
 
+    @property
+    def db(self) -> Database:
+        if not hasattr(self, "_db"):
+            self._db = get_db(
+                self.cwd,
+                spice_client=self.spice_client,
+                model=self.model,
+                provider=self.provider,
+            )
+        return self._db
+
     def save(self):
         """Saves the graph to disk."""
-        data = nx.readwrite.json_graph.node_link_data(self.graph)
+        data = json_graph.node_link_data(self.graph)
         with open(self.graph_path, "w") as f:
             json.dump(data, f, indent=4)
         if self.verbose:
@@ -80,18 +92,7 @@ class Daemon:
 
     async def update(self, refresh=False):
         """Iteratively build the knowledge graph"""
-
-        # Establish a dedicated database client for this instance
-        if self.db is None:
-            self.db = get_db(
-                self.cwd,
-                spice_client=self.spice_client,
-                model=self.model,
-                provider=self.provider,
-            )
-
         _graph = self.graph.copy()
-        self.graph.graph["refreshing"] = True
         for annotator in self.pipeline.values():
             if refresh or not annotator.is_complete(_graph, self.db):
                 _graph = await annotator.annotate(_graph, self.db, refresh=refresh)

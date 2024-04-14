@@ -9,7 +9,7 @@ class ChunkerLine(Chunker):
         self.n = lines_per_chunk
 
     async def chunk_file(
-        self, file_id: str, file_lines: list[str], verbose=False
+        self, file: str, file_lines: list[str], verbose: bool
     ) -> list[dict[str, str]]:
         """Split text files into chunks N lines long.
 
@@ -19,13 +19,13 @@ class ChunkerLine(Chunker):
         """
         if len(file_lines) < self.n:
             return []
-        chunks = []
+        chunks = list[dict[str, str]]()
         for i, start_line in enumerate(range(self.n, len(file_lines), self.n)):
             chunks.append(
                 {
-                    "id": f"{file_id}:chunk_{i + 1}",
-                    "start_line": start_line,
-                    "end_line": min(start_line + self.n - 1, len(file_lines)),
+                    "id": f"{file}:chunk_{i + 1}",
+                    "start_line": str(start_line),
+                    "end_line": str(min(start_line + self.n - 1, len(file_lines))),
                 }
             )
         return chunks

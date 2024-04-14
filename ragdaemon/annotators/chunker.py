@@ -18,12 +18,14 @@ The Chunker base class below handles everything except step 2.
 import asyncio
 import json
 from pathlib import Path
+from typing import Any, Coroutine, Callable, Optional
 
 import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str
 
 
@@ -43,8 +45,15 @@ def is_chunk_valid(chunk: dict) -> bool:
 
 
 async def get_file_chunk_data(
-    cwd, node, data, chunk_function: callable, db: Database, verbose: bool = False
-) -> list[dict]:
+    cwd,
+    node,
+    data,
+    chunk_function: Callable[
+        [str, list[str], bool], Coroutine[Any, Any, list[dict[str, str]]]
+    ],
+    db: Database,
+    verbose: bool = False,
+):
     """Get or add chunk data to database, load into file data"""
     file_lines = (cwd / Path(node)).read_text().splitlines()
     if len(file_lines) == 0:
@@ -57,7 +66,7 @@ async def get_file_chunk_data(
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))
         for chunk in chunks:
-            for i in range(chunk["start_line"], chunk["end_line"] + 1):
+            for i in range(int(chunk["start_line"]), int(chunk["end_line"]) + 1):
                 base_chunk_lines.discard(i)
         if len(base_chunk_lines) > 0:
             base_chunk_lines_sorted = sorted(list(base_chunk_lines))
@@ -100,7 +109,7 @@ def add_file_chunks_to_graph(
     db: Database,
     refresh: bool = False,
     verbose: bool = False,
-) -> dict[str:list]:
+) -> dict[str, list[Any]]:
     """Load chunks from file data into db/graph"""
     cwd = Path(graph.graph["cwd"])
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
@@ -162,7 +171,7 @@ def add_file_chunks_to_graph(
 class Chunker(Annotator):
     name = "chunker"
 
-    def __init__(self, *args, chunk_extensions: list[str] = None, **kwargs):
+    def __init__(self, *args, chunk_extensions: Optional[list[str]] = None, **kwargs):
         super().__init__(*args, **kwargs)
         if chunk_extensions is None:
             chunk_extensions = [
@@ -188,8 +197,10 @@ class Chunker(Annotator):
             ]
         self.chunk_extensions = chunk_extensions
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database = None) -> bool:
-        for _, data in graph.nodes(data=True):
+    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
+        for node, data in graph.nodes(data=True):
+            if data is None:
+                raise RagdaemonError(f"Node {node} has no data.")
             if data.get("type") != "file":
                 continue
             chunks = data.get("chunks", None)
@@ -208,7 +219,7 @@ class Chunker(Annotator):
         return True
 
     async def chunk_file(
-        self, file: str, file_lines: str, verbose: bool = False
+        self, file: str, file_lines: list[str], verbose: bool
     ) -> list[dict[str, str]]:
         """Return a list of {id, start_line, end_line}'s for the given file.
 
@@ -224,10 +235,12 @@ class Chunker(Annotator):
         raise NotImplementedError()
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database = None, refresh: bool = False
+        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
     ) -> nx.MultiDiGraph:
         # Remove any existing chunk nodes from the graph
         for node, data in graph.nodes(data=True):
+            if data is None:
+                raise RagdaemonError(f"Node {node} has no data.")
             if data.get("type") == "chunk":
                 graph.remove_node(node)
 
@@ -235,7 +248,7 @@ class Chunker(Annotator):
         file_nodes = [
             (file, data)
             for file, data in graph.nodes(data=True)
-            if data.get("type") == "file"
+            if data is not None and data.get("type") == "file"
         ]
         if self.chunk_extensions is not None:
             file_nodes = [
