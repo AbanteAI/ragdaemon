@@ -83,7 +83,7 @@ class ChromaDB(Database):
             response["documents"] is None or
             response["distances"] is None
         ):
-            return results
+            return []
         _metadatas = response["metadatas"][0]
         _documents = response["documents"][0]
         _distances = response["distances"][0]
