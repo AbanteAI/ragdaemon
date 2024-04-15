@@ -1,9 +1,9 @@
-import networkx as nx
 import numpy as np
 from tqdm import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 
 
@@ -85,7 +85,7 @@ def fruchterman_reingold_3d(
 class LayoutHierarchy(Annotator):
     name = "layout_hierarchy"
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
+    def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         # Check that they have data.layout.hierarchy
         for node, data in graph.nodes(data=True):
             if data is None:
@@ -96,11 +96,11 @@ class LayoutHierarchy(Annotator):
 
     async def annotate(
         self,
-        graph: nx.MultiDiGraph,
+        graph: KnowledgeGraph,
         db: Database,
         refresh: bool = False,
         iterations: int = 40,
-    ) -> nx.MultiDiGraph:
+    ) -> KnowledgeGraph:
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes

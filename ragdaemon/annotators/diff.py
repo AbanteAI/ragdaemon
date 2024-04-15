@@ -2,7 +2,6 @@ import json
 import re
 from pathlib import Path
 
-import networkx as nx
 from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -11,6 +10,7 @@ from ragdaemon.database import (
     MAX_TOKENS_PER_EMBEDDING,
     Database,
 )
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
@@ -80,22 +80,22 @@ class Diff(Annotator):
     def id(self) -> str:
         return "DEFAULT" if not self.diff_args else self.diff_args
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
-        cwd = graph.graph["cwd"]
+    def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
+        cwd = Path(graph.graph["cwd"])
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
         return self.id in graph and graph.nodes[self.id]["checksum"] == checksum
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
-    ) -> nx.MultiDiGraph:
+        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+    ) -> KnowledgeGraph:
         graph_nodes = {
             node
             for node, data in graph.nodes(data=True)
             if data and data.get("type") == "diff"
         }
         graph.remove_nodes_from(graph_nodes)
-        cwd = graph.graph["cwd"]
+        cwd = Path(graph.graph["cwd"])
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
         existing_records = db.get(checksum)

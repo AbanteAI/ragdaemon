@@ -1,9 +1,9 @@
 from typing import Optional
 
-import networkx as nx
 from spice import Spice
 
 from ragdaemon.database import Database
+from ragdaemon.graph import KnowledgeGraph
 
 
 class Annotator:
@@ -14,10 +14,10 @@ class Annotator:
         self.spice_client = spice_client
         pass
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
+    def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         raise NotImplementedError()
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
-    ) -> nx.MultiDiGraph:
+        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+    ) -> KnowledgeGraph:
         raise NotImplementedError()

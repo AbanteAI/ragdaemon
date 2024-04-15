@@ -20,27 +20,25 @@ EXAMPLE:
 src/graph.py
 1:import pathlib as Path
 2:
-3:import networkx as nx
-4:
-5:
-6:class KnowledgeGraph:
-7:    def __init__(self, cwd: Path):
-8:        self.cwd = cwd
-9:
-10:_knowledge_graph = None
-11:def get_knowledge_graph():
-12:    global _knowledge_graph
-13:    if _knowledge_graph is None:
-14:        _knowledge_graph = KnowledgeGraph(Path.cwd())
-15:    return _knowledge_graph
-16:
+3:
+4:class KnowledgeGraph:
+5:    def __init__(self, cwd: Path):
+6:        self.cwd = cwd
+7:
+8:_knowledge_graph = None
+9:def get_knowledge_graph():
+10:    global _knowledge_graph
+11:    if _knowledge_graph is None:
+12:        _knowledge_graph = KnowledgeGraph(Path.cwd())
+13:    return _knowledge_graph
+14:
 
 RESPONSE:
 {
     "chunks": [
-        {"id": "src/graph.py:KnowledgeGraph", "start_line": 6, "end_line": 8},
-        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 7, "end_line": 8},
-        {"id": "src/graph.py:get_knowledge_graph", "start_line": 11, "end_line": 15}
+        {"id": "src/graph.py:KnowledgeGraph", "start_line": 4, "end_line": 6},
+        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 5, "end_line": 6},
+        {"id": "src/graph.py:get_knowledge_graph", "start_line": 9, "end_line": 13}
     ]
 }
 --------------------------------------------------------------------------------

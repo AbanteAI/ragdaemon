@@ -87,12 +87,14 @@ templates = Jinja2Templates(directory=app_dir / "templates")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     # Serialize graph and send to frontend
-    nodes = [{"id": node, **data} for node, data in daemon.graph.nodes(data=True) if data]
+    nodes = [
+        {"id": node, **data} for node, data in daemon.graph.nodes(data=True) if data
+    ]
     edges = list[dict[str, Any]]()
-    for edge in daemon.graph.edges(data=True, keys=True):
+    for edge in daemon.graph.edges():
         source = edge[0]
         target = edge[1]
-        data = edge[-1]
+        data = daemon.graph.get_edge_data(*edge)
         if data:
             edges.append({"source": source, "target": target, **data})
     metadata = daemon.graph.graph

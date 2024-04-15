@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-import networkx as nx
+from ragdaemon.graph import KnowledgeGraph
 
 
 class Database:
@@ -13,14 +13,12 @@ class Database:
     def __getattr__(self, name):
         """Delegate attribute access to the collection."""
         return getattr(self._collection, name)
-    
-    def query(
-        self, query: str, active_checksums: list[str]
-    ) -> list[dict]:
+
+    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
         raise NotImplementedError
-    
+
     def query_graph(
-        self, query: str, graph: nx.MultiDiGraph, n: Optional[int] = None
+        self, query: str, graph: KnowledgeGraph, n: Optional[int] = None
     ) -> list[dict]:
         """Return documents, metadatas and distances, sorted, for nodes in the graph.
 

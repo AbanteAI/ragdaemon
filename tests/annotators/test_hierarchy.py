@@ -1,12 +1,11 @@
 import json
 from pathlib import Path
-from typing import cast
 
-import networkx as nx
 from networkx.readwrite import json_graph
 import pytest
 
 from ragdaemon.annotators.hierarchy import Hierarchy, get_active_checksums
+from ragdaemon.graph import KnowledgeGraph
 
 
 def test_get_active_checksums(cwd, mock_db):
@@ -17,10 +16,7 @@ def test_get_active_checksums(cwd, mock_db):
         isinstance(v, str) for v in checksums.values()
     ), "Values are not all strings"
 
-    with open("tests/data/hierarchy_graph.json", "r") as f:
-        data = json.load(f)
-        hierarchy_graph = json_graph.node_link_graph(data)
-    hierarchy_graph = cast(nx.MultiDiGraph, hierarchy_graph)
+    hierarchy_graph = KnowledgeGraph.load(cwd / ".ragdaemon" / "graph.json")
     expected = {
         (node, data["checksum"])
         for node, data in hierarchy_graph.nodes(data=True)
@@ -31,7 +27,7 @@ def test_get_active_checksums(cwd, mock_db):
 
 
 def test_hierarchy_is_complete(cwd, mock_db):
-    empty_graph = nx.MultiDiGraph()
+    empty_graph = KnowledgeGraph()
     empty_graph.graph["cwd"] = cwd.as_posix()
     hierarchy = Hierarchy()
 
@@ -40,7 +36,8 @@ def test_hierarchy_is_complete(cwd, mock_db):
     ), "Empty graph should not be complete."
     incomplete_graph = empty_graph.copy()
     path_str = cwd.as_posix()
-    incomplete_graph.add_node(path_str, path=path_str, type="directory", id=path_str)
+    record = {"id": path_str, "type": "directory", "ref": path_str}
+    incomplete_graph.add_node(path_str, **record)
     assert not hierarchy.is_complete(
         incomplete_graph, mock_db
     ), "Incomplete graph should not be complete"
@@ -48,7 +45,7 @@ def test_hierarchy_is_complete(cwd, mock_db):
 
 @pytest.mark.asyncio
 async def test_hierarchy_annotate(cwd, mock_db):
-    graph = nx.MultiDiGraph()
+    graph = KnowledgeGraph()
     graph.graph["cwd"] = cwd.as_posix()
     hierarchy = Hierarchy()
     actual = await hierarchy.annotate(graph, mock_db)

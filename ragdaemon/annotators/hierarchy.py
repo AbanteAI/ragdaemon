@@ -1,11 +1,11 @@
 import fnmatch
 from pathlib import Path
 
-import networkx as nx
 from spice import Spice
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, Database
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
@@ -104,15 +104,15 @@ class Hierarchy(Annotator):
         self.ignore_patterns = ignore_patterns
         super().__init__(*args, **kwargs)
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
+    def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         cwd = Path(graph.graph["cwd"])
         return graph.graph.get("files_checksum") == files_checksum(
             cwd, self.ignore_patterns
         )
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
-    ) -> nx.MultiDiGraph:
+        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+    ) -> KnowledgeGraph:
         """Build a graph of active files and directories with hierarchy edges."""
         cwd = Path(graph.graph["cwd"])
         checksums = get_active_checksums(
@@ -125,7 +125,7 @@ class Hierarchy(Annotator):
         _files_checksum = files_checksum(cwd, self.ignore_patterns)
 
         # Initialize an empty graph. We'll build it from scratch.
-        graph = nx.MultiDiGraph()
+        graph = KnowledgeGraph()
         graph.graph["cwd"] = str(cwd)
         edges_to_add = set()
         for path, checksum in checksums.items():

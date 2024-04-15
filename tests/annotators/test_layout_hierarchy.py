@@ -1,25 +1,18 @@
-import json
-from typing import cast
-
-import networkx as nx
 import pytest
-from networkx.readwrite import json_graph
 
 from ragdaemon.annotators.layout_hierarchy import LayoutHierarchy
+from ragdaemon.graph import KnowledgeGraph
 
 
 def test_layout_hierarchy_is_complete(cwd, mock_db):
     layout_hierarchy = LayoutHierarchy()
 
-    empty_graph = nx.MultiDiGraph()
+    empty_graph = KnowledgeGraph()
     assert layout_hierarchy.is_complete(
         empty_graph, mock_db
     ), "Empty graph is complete."
 
-    with open("tests/data/hierarchy_graph.json", "r") as f:
-        data = json.load(f)
-        hierarchy_graph = json_graph.node_link_graph(data)
-    hierarchy_graph = cast(nx.MultiDiGraph, hierarchy_graph)
+    hierarchy_graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
     assert not layout_hierarchy.is_complete(
         hierarchy_graph, mock_db
     ), "Hierarchy graph should not be complete."
@@ -33,10 +26,9 @@ def test_layout_hierarchy_is_complete(cwd, mock_db):
         incomplete_graph, mock_db
     ), "Incomplete graph should not be complete"
 
-    with open("tests/data/layout_hierarchy_graph.json", "r") as f:
-        data = json.load(f)
-        layout_hierarchy_graph = json_graph.node_link_graph(data)
-    layout_hierarchy_graph = cast(nx.MultiDiGraph, layout_hierarchy_graph)
+    layout_hierarchy_graph = KnowledgeGraph.load(
+        "tests/data/layout_hierarchy_graph.json"
+    )
     assert layout_hierarchy.is_complete(
         layout_hierarchy_graph, mock_db
     ), "Layout hierarchy graph should be complete."
@@ -44,10 +36,7 @@ def test_layout_hierarchy_is_complete(cwd, mock_db):
 
 @pytest.mark.asyncio
 async def test_layout_hierarchy_annotate(cwd, mock_db):
-    with open("tests/data/hierarchy_graph.json", "r") as f:
-        data = json.load(f)
-        hierarchy_graph = json_graph.node_link_graph(data)
-    hierarchy_graph = cast(nx.MultiDiGraph, hierarchy_graph)
+    hierarchy_graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
     actual = await LayoutHierarchy().annotate(hierarchy_graph, mock_db)
 
     all_coordinates = set()

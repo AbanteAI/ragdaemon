@@ -1,13 +1,12 @@
 import json
 
-import networkx as nx
 import pytest
-from typing import cast
 
 from networkx.readwrite import json_graph
 from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
 from ragdaemon.daemon import Daemon
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_git_diff
 
 
@@ -38,10 +37,7 @@ def test_diff_parse_diff_id():
 
 @pytest.mark.asyncio
 async def test_diff_annotate(git_history, mock_db):
-    with open("tests/data/chunker_graph.json", "r") as f:
-        data = json.load(f)
-        graph = json_graph.node_link_graph(data)
-    graph = cast(nx.MultiDiGraph, graph)
+    graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
     graph.graph["cwd"] = git_history.as_posix()
     annotator = Diff()
     actual = await annotator.annotate(graph, mock_db)
@@ -50,7 +46,9 @@ async def test_diff_annotate(git_history, mock_db):
     with open("tests/data/diff_graph.json", "r") as f:
         data = json.load(f)
         expected = json_graph.node_link_graph(data)
-    expected_nodes = {n for n, d in expected.nodes(data=True) if d and d["type"] == "diff"}
+    expected_nodes = {
+        n for n, d in expected.nodes(data=True) if d and d["type"] == "diff"
+    }
 
     assert actual_nodes == expected_nodes
 

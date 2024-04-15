@@ -9,7 +9,10 @@ from ragdaemon.errors import RagdaemonError
 MAX_INPUTS_PER_CALL = 2048
 
 if TYPE_CHECKING:
-    from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings, Metadata, GetResult # noqa: F401
+    from chromadb.api.types import (
+        Metadata,
+        GetResult,
+    )  # noqa: F401
 
 
 class ChromaDB(Database):
@@ -78,10 +81,10 @@ class ChromaDB(Database):
         self._collection.update(**updates)
         # Parse results. Return results for the 'first query' only
         if (
-            response is None or
-            response["metadatas"] is None or
-            response["documents"] is None or
-            response["distances"] is None
+            response is None
+            or response["metadatas"] is None
+            or response["documents"] is None
+            or response["distances"] is None
         ):
             return []
         _metadatas = response["metadatas"][0]

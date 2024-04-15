@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Any, Optional
 
-import networkx as nx
-
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import parse_path_ref
 
 
@@ -34,7 +33,7 @@ def render_comments(comments: list[Comment]) -> str:
 class ContextBuilder:
     """Renders items from a graph into an llm-readable string."""
 
-    def __init__(self, graph: nx.MultiDiGraph, db: Database, verbose: bool = False):
+    def __init__(self, graph: KnowledgeGraph, db: Database, verbose: bool = False):
         self.graph = graph
         self.db = db
         self.verbose = verbose

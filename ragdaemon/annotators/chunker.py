@@ -1,6 +1,6 @@
 """
 Chunk data a list of objects following [
-    {id: path/to/file:class.method, start_line: int, end_line: int} 
+    {id: path/to/file:class.method, start_line: int, end_line: int}
 ]
 
 It's stored on the file node as data['chunks'] and json.dumped into the database.
@@ -20,11 +20,11 @@ import json
 from pathlib import Path
 from typing import Any, Coroutine, Callable, Optional
 
-import networkx as nx
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str
 
@@ -105,13 +105,12 @@ async def get_file_chunk_data(
 def add_file_chunks_to_graph(
     file: str,
     data: dict,
-    graph: nx.MultiDiGraph,
+    graph: KnowledgeGraph,
     db: Database,
     refresh: bool = False,
     verbose: bool = False,
 ) -> dict[str, list[Any]]:
     """Load chunks from file data into db/graph"""
-    cwd = Path(graph.graph["cwd"])
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
     if not isinstance(data["chunks"], list):
         data["chunks"] = json.loads(data["chunks"])
@@ -126,7 +125,7 @@ def add_file_chunks_to_graph(
             # Get the checksum record from database
             id = chunk["id"]
             ref = chunk["ref"]
-            document = get_document(ref, cwd)
+            document = get_document(ref, Path(graph.graph["cwd"]))
             checksum = hash_str(document)
             records = db.get(checksum)["metadatas"]
             if not refresh and len(records) > 0:
@@ -197,7 +196,7 @@ class Chunker(Annotator):
             ]
         self.chunk_extensions = chunk_extensions
 
-    def is_complete(self, graph: nx.MultiDiGraph, db: Database) -> bool:
+    def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         for node, data in graph.nodes(data=True):
             if data is None:
                 raise RagdaemonError(f"Node {node} has no data.")
@@ -235,8 +234,8 @@ class Chunker(Annotator):
         raise NotImplementedError()
 
     async def annotate(
-        self, graph: nx.MultiDiGraph, db: Database, refresh: bool = False
-    ) -> nx.MultiDiGraph:
+        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+    ) -> KnowledgeGraph:
         # Remove any existing chunk nodes from the graph
         for node, data in graph.nodes(data=True):
             if data is None:

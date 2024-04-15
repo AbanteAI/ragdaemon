@@ -4,13 +4,13 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-import networkx as nx
 from networkx.readwrite import json_graph
 from spice import Spice
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
 from ragdaemon.utils import get_non_gitignored_files
 
@@ -26,7 +26,7 @@ def default_annotators():
 class Daemon:
     """Build and maintain a searchable knowledge graph of codebase."""
 
-    graph: nx.MultiDiGraph
+    graph: KnowledgeGraph
     _db: Database
 
     def __init__(
@@ -56,7 +56,7 @@ class Daemon:
         self.provider = provider
 
         # Initialize an empty graph
-        self.graph = nx.MultiDiGraph()
+        self.graph = KnowledgeGraph()
         self.graph.graph["cwd"] = self.cwd.as_posix()
         if self.verbose:
             print("Initialized empty graph.")

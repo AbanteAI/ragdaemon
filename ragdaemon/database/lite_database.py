@@ -61,7 +61,9 @@ class LiteCollection:
 
     def query(self, query: str, active_checksums: list[str]) -> dict[str, list[Any]]:
         # Select active/filtered records
-        records = [{"id": k, **v} for k, v in self.data.items() if k in active_checksums]
+        records = [
+            {"id": k, **v} for k, v in self.data.items() if k in active_checksums
+        ]
         if not query:
             return {
                 "ids": [r["id"] for r in records],
