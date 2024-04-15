@@ -76,15 +76,20 @@ class ChromaDB(Database):
         # Remove flags
         updates["metadatas"] = [{**metadata, "active": False} for metadata in metadatas]
         self._collection.update(**updates)
-        # Parse results
-        data = response["metadatas"]
-        documents = response["documents"]
-        distances = response["distances"]
-        if not data or not documents or not distances:
-            raise RagdaemonError("Missing field in response.")
+        # Parse results. Return results for the 'first query' only
+        if (
+            response is None or
+            response["metadatas"] is None or
+            response["documents"] is None or
+            response["distances"] is None
+        ):
+            return results
+        _metadatas = response["metadatas"][0]
+        _documents = response["documents"][0]
+        _distances = response["distances"][0]
         results = [
-            {**metadata, "document": document, "distance": distance}
-            for metadata, document, distance in zip(metadatas, documents, distances)
+            {**m, "document": do, "distance": di}
+            for m, do, di in zip(_metadatas, _documents, _distances)
         ]
         results = sorted(results, key=lambda x: x["distance"])
         return results
