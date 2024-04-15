@@ -67,6 +67,16 @@ def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
     return diff_ref, path, lines
 
 
+def truncate(document) -> tuple[str, float]:
+    """Return an embeddable document, and what fraction was removed."""
+    tokens = Spice().count_tokens(document, model=DEFAULT_EMBEDDING_MODEL)
+    if tokens > MAX_TOKENS_PER_EMBEDDING:
+        truncate_ratio = (MAX_TOKENS_PER_EMBEDDING / tokens) * 0.99
+        document = document[: int(len(document) * truncate_ratio)]
+        return document, 1 - truncate_ratio
+    return document, 0
+
+
 class Diff(Annotator):
     name: str = "diff"
 
@@ -112,15 +122,9 @@ class Diff(Annotator):
 
             # If the full diff is too long to embed, it is truncated. Anything
             # removed will be captured in chunks.
-            tokens = Spice().count_tokens(document, model=DEFAULT_EMBEDDING_MODEL)
-            if tokens > MAX_TOKENS_PER_EMBEDDING:
-                truncate_ratio = (MAX_TOKENS_PER_EMBEDDING / tokens) * 0.99
-                document = document[: int(len(document) * truncate_ratio)]
-                if self.verbose:
-                    print(
-                        f"Truncated full diff by {1 - truncate_ratio:.2%} for embedding."
-                    )
-
+            document, truncate_ratio = truncate(document)
+            if truncate_ratio > 0 and self.verbose:
+                print(f"Truncated diff by {truncate_ratio:.2%}")
             db.upsert(ids=checksum, documents=document, metadatas=data)
         else:
             data = existing_records["metadatas"][0]
@@ -142,6 +146,9 @@ class Diff(Annotator):
                     "checksum": chunk_checksum,
                     "active": False,
                 }
+                document, truncate_ratio = truncate(document)
+                if truncate_ratio < 1 and self.verbose:
+                    print(f"Truncated chunk {chunk_id} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(chunk_checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(data)
