@@ -96,8 +96,8 @@ async def home(request: Request):
         target = edge[1]
         data = daemon.graph.get_edge_data(*edge)
         if data:
-            edges.append({"source": source, "target": target, **data})
-    metadata = daemon.graph.graph
+            edges.append({"source": source, "target": target, **data[0]})
+    metadata = dict(daemon.graph.graph)
     return templates.TemplateResponse(
         "index.html",
         {"request": request, "nodes": nodes, "edges": edges, "metadata": metadata},
