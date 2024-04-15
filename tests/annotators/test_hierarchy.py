@@ -16,7 +16,7 @@ def test_get_active_checksums(cwd, mock_db):
         isinstance(v, str) for v in checksums.values()
     ), "Values are not all strings"
 
-    hierarchy_graph = KnowledgeGraph.load(cwd / ".ragdaemon" / "graph.json")
+    hierarchy_graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
     expected = {
         (node, data["checksum"])
         for node, data in hierarchy_graph.nodes(data=True)
