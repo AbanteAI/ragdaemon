@@ -4,7 +4,8 @@ from typing import Any, Optional
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import parse_path_ref
+from ragdaemon.errors import RagdaemonError
+from ragdaemon.utils import parse_path_ref, get_document, hash_str
 
 
 from typing import Union, Dict
@@ -44,7 +45,15 @@ class ContextBuilder:
     def _add_path(self, path_str: str):
         """Create a new record in the context for the given path."""
         if path_str not in self.graph:  # e.g. deleted file
-            document = ""
+            try:
+                # Could be an ignored file, in which case load it into graph/db
+                # TODO: Add ignored files to the graph/database
+                cwd = Path(self.graph.graph["cwd"])
+                document = get_document(path_str, cwd, type="file")
+            except FileNotFoundError:
+                # Or could be deleted but have a diff
+                document = f"{path_str}\n[DELETED]"
+            checksum = hash_str(document)
         else:
             checksum = self.graph.nodes[path_str]["checksum"]
             document = self.db.get(checksum)["documents"][0]

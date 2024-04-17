@@ -12,7 +12,7 @@ from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
 
 @pytest.fixture
 def cwd():
-    return Path("tests/sample")
+    return Path("tests/sample").resolve()
 
 
 @pytest.fixture
