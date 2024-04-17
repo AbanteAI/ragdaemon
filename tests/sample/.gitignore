@@ -1,0 +1,4 @@
+.ragdaemon
+**/.*
+**/__pycache__
+!.gitignore
