@@ -1,39 +1,15 @@
-import fnmatch
 from pathlib import Path
 
-from spice import Spice
-
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import MAX_TOKENS_PER_EMBEDDING, Database
+from ragdaemon.database import (
+    DEFAULT_EMBEDDING_MODEL,
+    MAX_TOKENS_PER_EMBEDDING,
+    Database,
+)
+from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
-from ragdaemon.utils import get_document, get_non_gitignored_files, hash_str
-
-
-def match_path_with_patterns(path: Path, cwd: Path, patterns: list[str] = []) -> bool:
-    """Check if the given absolute path matches any of the patterns.
-
-    Args:
-        `path` - An absolute path
-        `patterns` - A set of absolute paths/glob patterns
-
-    Return:
-        A boolean flag indicating if the path matches any of the patterns
-    """
-    if not path.is_absolute():
-        path = cwd / path
-    for pattern in patterns:
-        # Check if the pattern is a glob pattern match
-        if fnmatch.fnmatch(str(path), str(pattern)):
-            return True
-        pattern = Path(pattern)
-        if not pattern.is_absolute():
-            pattern = cwd / pattern
-        # Check if the path is relative to the pattern
-        if path.is_relative_to(pattern):
-            return True
-    return False
+from ragdaemon.utils import get_document, hash_str, truncate
 
 
 def get_active_checksums(
@@ -41,25 +17,20 @@ def get_active_checksums(
     db: Database,
     refresh: bool = False,
     verbose: bool = False,
-    ignore_patterns: list[str] = [],
+    ignore_patterns: set[Path] = set(),
 ) -> dict[Path, str]:
     checksums: dict[Path, str] = {}
-    git_paths = get_non_gitignored_files(cwd)
+    paths = get_paths_for_directory(cwd, exclude_patterns=ignore_patterns)
     add_to_db = {
         "ids": [],
         "documents": [],
         "metadatas": [],
     }
-    for path in git_paths:
-        if match_path_with_patterns(path, cwd, ignore_patterns):
-            continue
+    for path in paths:
         try:
             path_str = path.as_posix()
             ref = path_str
             document = get_document(ref, cwd)
-            tokens = Spice().count_tokens(document, DEFAULT_COMPLETION_MODEL)
-            if tokens > MAX_TOKENS_PER_EMBEDDING:  # e.g. package-lock.json
-                continue
             checksum = hash_str(document)
             existing_record = len(db.get(checksum)["ids"]) > 0
             if refresh or not existing_record:
@@ -71,6 +42,13 @@ def get_active_checksums(
                     "checksum": checksum,
                     "active": False,
                 }
+                document, truncate_ratio = truncate(
+                    document,
+                    model=DEFAULT_EMBEDDING_MODEL,
+                    max_tokens=MAX_TOKENS_PER_EMBEDDING,
+                )
+                if truncate_ratio > 0 and verbose:
+                    print(f"Truncated {path_str} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(metadatas)
@@ -85,11 +63,9 @@ def get_active_checksums(
     return checksums
 
 
-def files_checksum(cwd: Path, ignore_patterns: list[str] = []) -> str:
+def files_checksum(cwd: Path, ignore_patterns: set[Path] = set()) -> str:
     timestamps = ""
-    for path in get_non_gitignored_files(cwd):
-        if match_path_with_patterns(path, cwd, ignore_patterns):
-            continue
+    for path in get_paths_for_directory(cwd, exclude_patterns=ignore_patterns):
         try:
             timestamps += str(path.stat().st_mtime)
         except FileNotFoundError:
@@ -100,8 +76,9 @@ def files_checksum(cwd: Path, ignore_patterns: list[str] = []) -> str:
 class Hierarchy(Annotator):
     name = "hierarchy"
 
-    def __init__(self, *args, ignore_patterns: list[str] = [], **kwargs):
-        self.ignore_patterns = ignore_patterns
+    def __init__(self, *args, ignore_patterns: set[Path] = set(), **kwargs):
+        # match_path_with_patterns expects type abs_path, even if it's a glob
+        self.ignore_patterns = {Path(p).resolve() for p in ignore_patterns}
         super().__init__(*args, **kwargs)
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:

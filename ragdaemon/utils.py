@@ -4,6 +4,8 @@ import re
 import subprocess
 from pathlib import Path
 
+from spice import Spice
+
 from ragdaemon.errors import RagdaemonError
 
 mentat_dir_path = Path.home() / ".mentat"
@@ -12,44 +14,6 @@ mentat_dir_path = Path.home() / ".mentat"
 def hash_str(string: str) -> str:
     """Return the MD5 hash of the input string."""
     return hashlib.md5(string.encode()).hexdigest()
-
-
-# Copied directly from Mentat
-def get_non_gitignored_files(root: Path, visited: set[Path] = set()) -> set[Path]:
-    paths = set(
-        # git returns / separated paths even on windows, convert so we can remove
-        # glob_excluded_files, which have windows paths on windows
-        Path(os.path.normpath(p))
-        for p in filter(
-            lambda p: p != "",
-            subprocess.check_output(
-                # -c shows cached (regular) files, -o shows other (untracked/new) files
-                ["git", "ls-files", "-c", "-o", "--exclude-standard"],
-                cwd=root,
-                text=True,
-                stderr=subprocess.DEVNULL,
-            ).split("\n"),
-        )
-        # windows-safe check if p exists in path
-        if Path(root / p).exists()
-    )
-
-    file_paths: set[Path] = set()
-    # We use visited to make sure we break out of any infinite loops symlinks might cause
-    visited.add(root.resolve())
-    for path in paths:
-        # git ls-files returns directories if the directory is itself a git project;
-        # so we recursively run this function on any directories it returns.
-        if (root / path).is_dir():
-            if (root / path).resolve() in visited:
-                continue
-            file_paths.update(
-                root / path / inner_path
-                for inner_path in get_non_gitignored_files(root / path, visited)
-            )
-        else:
-            file_paths.add(path)
-    return file_paths
 
 
 def get_git_diff(diff_args: str, cwd: str) -> str:
@@ -118,3 +82,17 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
         raise RagdaemonError(f"Invalid type: {type}")
 
     return f"{ref}\n{text}"
+
+
+def truncate(document, model: str, max_tokens: int) -> tuple[str, float]:
+    """Return an embeddable document, and what fraction was removed."""
+    tokens = Spice().count_tokens(document, model=model)
+    original_tokens = tokens
+    while tokens > max_tokens:
+        truncate_ratio = (max_tokens / tokens) * 0.99
+        document = document[: int(len(document) * truncate_ratio)]
+        tokens = Spice().count_tokens(document, model=model)
+    truncate_ratio = 1 - tokens / original_tokens
+    if truncate_ratio > 0:
+        document += "\n[TRUNCATED]"
+    return document, truncate_ratio

@@ -10,9 +10,9 @@ from spice import Spice
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
-from ragdaemon.utils import get_non_gitignored_files
 
 
 def default_annotators():
@@ -101,13 +101,13 @@ class Daemon:
 
     async def watch(self, interval=2, debounce=5):
         """Calls self.update interval debounce seconds after a file is modified."""
-        git_paths = get_non_gitignored_files(self.cwd)
+        paths = get_paths_for_directory(self.cwd)
         last_updated = 0
         _update_task = None
         while True:
             await asyncio.sleep(interval)
-            git_paths = get_non_gitignored_files(self.cwd)
-            _last_updated = max((self.cwd / path).stat().st_mtime for path in git_paths)
+            paths = get_paths_for_directory(self.cwd)
+            _last_updated = max((self.cwd / path).stat().st_mtime for path in paths)
             if (
                 _last_updated > last_updated
                 and (time.time() - _last_updated) > debounce

@@ -2,8 +2,8 @@
     "directed": true,
     "multigraph": true,
     "graph": {
-        "cwd": "tests/sample",
-        "files_checksum": "1ea8cdd83015d2a76755b20f648206e7"
+        "cwd": "/Users/granthawkins/ragdaemon/tests/sample",
+        "files_checksum": "c5f632fbdf805bf130459d9c8f4a5939"
     },
     "nodes": [
         {
@@ -42,6 +42,13 @@
             "type": "file"
         },
         {
+            "active": false,
+            "checksum": "39611184a249763e91b60432ae324486",
+            "id": ".gitignore",
+            "ref": ".gitignore",
+            "type": "file"
+        },
+        {
             "id": "ROOT",
             "type": "directory",
             "ref": "ROOT"
@@ -57,6 +64,12 @@
             "type": "hierarchy",
             "source": "ROOT",
             "target": "src",
+            "key": 0
+        },
+        {
+            "type": "hierarchy",
+            "source": "ROOT",
+            "target": ".gitignore",
             "key": 0
         },
         {
