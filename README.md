@@ -13,7 +13,7 @@ Install locally to visualize and query the knowledge graph directly.
 Install using `pip install ragdaemon`, and run in your codebase's directory, e.g. `ragdaemon`. This will start a Daemon on your codebase, and an interface at `localhost:5001`. Options:
 - `--chunk-extensions <ext>[..<ext>]`: Which file extensions to chunk. If not specified, defaults to the top 20 most common code file extensions.
 - `--chunk-model`: OpenAI's `gpt-4-0215-preview` by default.
-- `--embeddings-model`: OpenAI's `text-embedding-ada-002` by default.
+- `--embeddings-model`: OpenAI's `text-embedding-3-large` by default.
 - `--diff`: A git diff to include in the knowledge graph. By default, the active diff (if any) is included with each code feature.
 
 ## 3. **Use ragdaemon Python API** 

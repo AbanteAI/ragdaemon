@@ -49,11 +49,11 @@ class Daemon:
         if spice_client is None:
             spice_client = Spice(
                 default_text_model=DEFAULT_COMPLETION_MODEL,
-                default_embeddings_model=DEFAULT_EMBEDDING_MODEL,
+                default_embeddings_model=model,
             )
         self.spice_client = spice_client
-        self.model = model
-        self.provider = provider
+        self.embedding_model = model
+        self.embedding_provider = provider
 
         # Initialize an empty graph
         self.graph = KnowledgeGraph()
@@ -77,8 +77,8 @@ class Daemon:
             self._db = get_db(
                 self.cwd,
                 spice_client=self.spice_client,
-                model=self.model,
-                provider=self.provider,
+                embedding_model=self.embedding_model,
+                embedding_provider=self.embedding_provider,
             )
         return self._db
 
@@ -131,6 +131,7 @@ class Daemon:
         context_builder: Optional[ContextBuilder] = None,
         max_tokens: int = 8000,
         auto_tokens: int = 0,
+        model: str = DEFAULT_COMPLETION_MODEL,
     ) -> ContextBuilder:
         if context_builder is None:
             context = ContextBuilder(self.graph, self.db, self.verbose)
@@ -139,7 +140,7 @@ class Daemon:
             context = context_builder
         include_context_message = context.render()
         include_tokens = self.spice_client.count_tokens(
-            include_context_message, DEFAULT_COMPLETION_MODEL
+            include_context_message, model
         )
         if not auto_tokens or include_tokens >= max_tokens:
             return context
@@ -153,7 +154,7 @@ class Daemon:
                 context.add_ref(node["ref"], tags=["search-result"])
             next_context_message = context.render()
             next_tokens = self.spice_client.count_tokens(
-                next_context_message, DEFAULT_COMPLETION_MODEL
+                next_context_message, model
             )
             if (next_tokens - include_tokens) > auto_tokens:
                 if node["type"] == "diff":

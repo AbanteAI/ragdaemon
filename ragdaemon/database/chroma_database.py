@@ -21,12 +21,12 @@ class ChromaDB(Database):
         cwd: Path,
         db_path: Path,
         spice_client: Spice,
-        model: str,
-        provider: Optional[str] = None,
+        embedding_model: str,
+        embedding_provider: Optional[str] = None,
     ) -> None:
         self.cwd = cwd
         self.db_path = db_path
-        self.model = model
+        self.embedding_model = embedding_model
 
         import chromadb  # Imports are slow so do it lazily
         from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings  # noqa: F811
@@ -44,8 +44,8 @@ class ChromaDB(Database):
                     end = min((batch + 1) * MAX_INPUTS_PER_CALL, len(input_texts))
                     embeddings = spice_client.get_embeddings_sync(
                         input_texts=input_texts[start:end],
-                        model=model,
-                        provider=provider,
+                        model=embedding_model,
+                        provider=embedding_provider,
                     ).embeddings
                     output.extend(embeddings)
                 return output
@@ -53,7 +53,7 @@ class ChromaDB(Database):
         embedding_function = SpiceEmbeddingFunction()
 
         _client = chromadb.PersistentClient(path=str(db_path))
-        name = f"ragdaemon-{self.cwd.name}-{self.model}"
+        name = f"ragdaemon-{self.cwd.name}-{self.embedding_model}"
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,

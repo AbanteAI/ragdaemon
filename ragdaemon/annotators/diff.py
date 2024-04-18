@@ -3,11 +3,7 @@ import re
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import (
-    DEFAULT_EMBEDDING_MODEL,
-    MAX_TOKENS_PER_EMBEDDING,
-    Database,
-)
+from ragdaemon.database import Database
 from ragdaemon.get_paths import get_git_root_for_path
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
@@ -117,11 +113,7 @@ class Diff(Annotator):
 
             # If the full diff is too long to embed, it is truncated. Anything
             # removed will be captured in chunks.
-            document, truncate_ratio = truncate(
-                document,
-                model=DEFAULT_EMBEDDING_MODEL,
-                max_tokens=MAX_TOKENS_PER_EMBEDDING,
-            )
+            document, truncate_ratio = truncate(document, db.embedding_model)
             if truncate_ratio > 0 and self.verbose:
                 print(f"Truncated diff by {truncate_ratio:.2%}")
             db.upsert(ids=checksum, documents=document, metadatas=data)
@@ -145,11 +137,7 @@ class Diff(Annotator):
                     "checksum": chunk_checksum,
                     "active": False,
                 }
-                document, truncate_ratio = truncate(
-                    document,
-                    model=DEFAULT_EMBEDDING_MODEL,
-                    max_tokens=MAX_TOKENS_PER_EMBEDDING,
-                )
+                document, truncate_ratio = truncate(document, db.embedding_model)
                 if truncate_ratio < 1 and self.verbose:
                     print(f"Truncated diff chunk {chunk_id} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(chunk_checksum)

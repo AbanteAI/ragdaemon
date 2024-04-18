@@ -1,11 +1,7 @@
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import (
-    DEFAULT_EMBEDDING_MODEL,
-    MAX_TOKENS_PER_EMBEDDING,
-    Database,
-)
+from ragdaemon.database import Database
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
@@ -42,11 +38,7 @@ def get_active_checksums(
                     "checksum": checksum,
                     "active": False,
                 }
-                document, truncate_ratio = truncate(
-                    document,
-                    model=DEFAULT_EMBEDDING_MODEL,
-                    max_tokens=MAX_TOKENS_PER_EMBEDDING,
-                )
+                document, truncate_ratio = truncate(document, db.embedding_model)
                 if truncate_ratio > 0 and verbose:
                     print(f"Truncated {path_str} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)

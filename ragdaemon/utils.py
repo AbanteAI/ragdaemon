@@ -5,6 +5,8 @@ import subprocess
 from pathlib import Path
 
 from spice import Spice
+from spice.models import UnknownModel
+from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
 
@@ -84,15 +86,24 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
     return f"{ref}\n{text}"
 
 
-def truncate(document, model: str, max_tokens: int) -> tuple[str, float]:
+def truncate(document, embedding_model: str | None) -> tuple[str, float]:
     """Return an embeddable document, and what fraction was removed."""
-    tokens = Spice().count_tokens(document, model=model)
+    if embedding_model is None:
+        return document, 0
+    spice_model = get_model_from_name(embedding_model)
+    if isinstance(spice_model, UnknownModel):
+        raise RagdaemonError(f"Unrecognized embedding model: {embedding_model}")
+    max_tokens = spice_model.context_length
+    if max_tokens is None:
+        return document, 0
+    tokens = Spice().count_tokens(document, model=spice_model.name)
     original_tokens = tokens
     while tokens > max_tokens:
-        truncate_ratio = (max_tokens / tokens) * 0.99
+        truncate_ratio = (max_tokens / tokens) * 0.98  # Saw some errors with .99
         document = document[: int(len(document) * truncate_ratio)]
-        tokens = Spice().count_tokens(document, model=model)
+        tokens = Spice().count_tokens(document, model=spice_model.name)
     truncate_ratio = 1 - tokens / original_tokens
     if truncate_ratio > 0:
-        document += "\n[TRUNCATED]"
+        label = "\n[TRUNCATED]"
+        document = document[: -len(label)] + label
     return document, truncate_ratio

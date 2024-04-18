@@ -5,6 +5,7 @@ from ragdaemon.graph import KnowledgeGraph
 
 
 class Database:
+    embedding_model: str | None = None
     _collection = None  # Collection | LiteDB
 
     def __init__(self, cwd: Path, db_path: Path) -> None:
