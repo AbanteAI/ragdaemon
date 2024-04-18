@@ -20,13 +20,17 @@ def get_db(
     db_path.mkdir(parents=True, exist_ok=True)
     if embedding_model is not None and "PYTEST_CURRENT_TEST" not in os.environ:
         try:
-            return ChromaDB(
+            db = ChromaDB(
                 cwd=cwd,
                 db_path=db_path,
                 spice_client=spice_client,
                 embedding_model=embedding_model,
                 embedding_provider=embedding_provider,
             )
-        except SpiceError:
+            # In case the api key is wrong, try to embed something to trigger an error.
+            _ = db.add(ids='test', documents='test doc')
+            db.delete(ids='test')
+            return db
+        except Exception:
             pass
     return LiteDB(cwd=cwd, db_path=db_path)
