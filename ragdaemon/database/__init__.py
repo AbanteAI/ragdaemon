@@ -14,7 +14,10 @@ DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
 
 
 def get_db(
-    cwd: Path, spice_client: Spice, embedding_model: str | None = None, embedding_provider: Optional[str] = None
+    cwd: Path,
+    spice_client: Spice,
+    embedding_model: str | None = None,
+    embedding_provider: Optional[str] = None,
 ) -> Database:
     db_path = mentat_dir_path / "chroma"
     db_path.mkdir(parents=True, exist_ok=True)
@@ -28,8 +31,8 @@ def get_db(
                 embedding_provider=embedding_provider,
             )
             # In case the api key is wrong, try to embed something to trigger an error.
-            _ = db.add(ids='test', documents='test doc')
-            db.delete(ids='test')
+            _ = db.add(ids="test", documents="test doc")
+            db.delete(ids="test")
             return db
         except Exception:
             pass

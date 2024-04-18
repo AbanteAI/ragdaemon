@@ -139,9 +139,7 @@ class Daemon:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder
         include_context_message = context.render()
-        include_tokens = self.spice_client.count_tokens(
-            include_context_message, model
-        )
+        include_tokens = self.spice_client.count_tokens(include_context_message, model)
         if not auto_tokens or include_tokens >= max_tokens:
             return context
 
@@ -153,9 +151,7 @@ class Daemon:
             else:
                 context.add_ref(node["ref"], tags=["search-result"])
             next_context_message = context.render()
-            next_tokens = self.spice_client.count_tokens(
-                next_context_message, model
-            )
+            next_tokens = self.spice_client.count_tokens(next_context_message, model)
             if (next_tokens - include_tokens) > auto_tokens:
                 if node["type"] == "diff":
                     context.remove_diff(node["id"])

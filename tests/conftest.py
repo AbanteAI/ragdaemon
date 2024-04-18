@@ -17,7 +17,9 @@ def cwd():
 
 @pytest.fixture
 def mock_db(cwd):
-    return get_db(cwd, spice_client=AsyncMock(), embedding_model=DEFAULT_EMBEDDING_MODEL)
+    return get_db(
+        cwd, spice_client=AsyncMock(), embedding_model=DEFAULT_EMBEDDING_MODEL
+    )
 
 
 @pytest.fixture
