@@ -125,6 +125,11 @@ class Daemon:
         """Return a sorted list of nodes that match the query."""
         return self.db.query_graph(query, self.graph, n=n)
 
+    def get_document(self, filename: str):
+        checksum = self.graph.nodes[filename]["checksum"]
+        document = self.db.get(checksum)["documents"][0]
+        return document
+
     def get_context(
         self,
         query: str,
