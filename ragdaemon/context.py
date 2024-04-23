@@ -40,7 +40,13 @@ class ContextBuilder:
 
     def _add_path(self, path_str: str):
         """Create a new record in the context for the given path."""
-        if path_str not in self.graph:  # e.g. deleted file
+        document = None
+        if path_str in self.graph:
+            checksum = self.graph.nodes[path_str]["checksum"]
+            document = self.db.get(checksum)["documents"][0]
+            if document.endswith("[TRUNCATED]"):
+                document = None
+        if document is None:  # Truncated or deleted
             try:
                 # Could be an ignored file, in which case load it into graph/db
                 # TODO: Add ignored files to the graph/database
@@ -50,9 +56,6 @@ class ContextBuilder:
                 # Or could be deleted but have a diff
                 document = f"{path_str}\n[DELETED]"
             checksum = hash_str(document)
-        else:
-            checksum = self.graph.nodes[path_str]["checksum"]
-            document = self.db.get(checksum)["documents"][0]
         message = {
             "lines": set(),
             "tags": set(),
