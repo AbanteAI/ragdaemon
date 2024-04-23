@@ -20,7 +20,7 @@ def test_daemon_render_context(cwd, mock_db):
             "comments": dict(),
         }
     }
-    actual = context.render()
+    actual = context.render(use_tags=True)
     assert (
         actual
         == """\
@@ -45,7 +45,7 @@ src/interface.py (test-flag)
             "comments": dict(),
         }
     }
-    actual = context.render()
+    actual = context.render(use_tags=True)
     assert (
         actual
         == """\
