@@ -1,8 +1,8 @@
 import json
 
 import pytest
-
 from networkx.readwrite import json_graph
+
 from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
 from ragdaemon.daemon import Daemon
@@ -63,7 +63,7 @@ async def test_diff_render(git_history, mock_db):
     context.add_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_diff("DEFAULT:src/operations.py:8-10")
-    actual = context.render()
+    actual = context.render(use_tags=True)
     assert (
         actual
         == """\
@@ -117,7 +117,7 @@ src/operations.py (diff)
     context.remove_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_ref("src/operations.py", tags=["user-included"])
-    actual = context.render()
+    actual = context.render(use_tags=True)
     assert (
         actual
         == """\
