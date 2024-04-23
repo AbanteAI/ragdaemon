@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from dict2xml import dict2xml
-
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
@@ -152,7 +151,7 @@ class ContextBuilder:
             del self.context[path_str]
         return id
 
-    def render(self, use_xml=False, use_tags=False) -> str:
+    def render(self, use_xml: bool = False, use_tags: bool = False) -> str:
         """Return a formatted context message for the given nodes."""
         output = ""
         for path_str, data in self.context.items():
