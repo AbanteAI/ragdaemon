@@ -1,15 +1,11 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Union
 
+from dict2xml import dict2xml
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import parse_path_ref, get_document, hash_str
-
-
-from typing import Union, Dict
-from dict2xml import dict2xml
+from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
 NestedStrDict = Union[str, Dict[str, "NestedStrDict"]]
 
@@ -155,14 +151,23 @@ class ContextBuilder:
             del self.context[path_str]
         return id
 
-    def render(self) -> str:
+    def render(self, use_xml: bool = False, use_tags: bool = False) -> str:
         """Return a formatted context message for the given nodes."""
         output = ""
         for path_str, data in self.context.items():
             if output:
                 output += "\n"
-            tags = "" if not data["tags"] else f" ({', '.join(sorted(data['tags']))})"
-            output += f"{path_str}{tags}\n"
+
+            if use_tags and data["tags"]:
+                tags = f" ({', '.join(sorted(data['tags']))})"
+            else:
+                tags = ""
+
+            if use_xml:
+                output += f"<{path_str}>{tags}\n"
+            else:
+                output += f"{path_str}{tags}\n"
+
             if 0 in data["comments"]:
                 output += render_comments(data["comments"][0]) + "\n"
             if data["lines"]:
@@ -180,6 +185,8 @@ class ContextBuilder:
                     output += "...\n"
             if data["diffs"]:
                 output += self.render_diffs(data["diffs"])
+            if use_xml:
+                output += f"</{path_str}>\n"
         return output
 
     def render_diffs(self, ids: set[str]) -> str:
