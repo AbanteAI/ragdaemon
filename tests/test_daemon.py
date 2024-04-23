@@ -17,7 +17,7 @@ async def test_daemon_get_context(cwd):
     del annotators["diff"]
     daemon = Daemon(cwd.resolve(), annotators=annotators)
     await daemon.update()
-    actual = daemon.get_context("test", max_tokens=1000).render()
+    actual = daemon.get_context("test", max_tokens=1000).render(use_tags=True)
 
     with open("tests/data/context_message.txt", "r") as f:
         expected = f.read()
@@ -26,7 +26,9 @@ async def test_daemon_get_context(cwd):
     # Included Files
     context = daemon.get_context("test")
     context.add_ref("src/interface.py:11-12", tags=["user-included"])
-    actual = daemon.get_context("test", context_builder=context, auto_tokens=0).render()
+    actual = daemon.get_context("test", context_builder=context, auto_tokens=0).render(
+        use_tags=True
+    )
     assert (
         actual
         == """\
