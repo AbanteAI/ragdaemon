@@ -13,6 +13,7 @@ from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
+from ragdaemon.utils import mentat_dir_path
 
 
 def default_annotators():
@@ -44,7 +45,9 @@ class Daemon:
         if graph_path is not None:
             self.graph_path = (cwd / graph_path).resolve()
         else:
-            self.graph_path = self.cwd / ".ragdaemon" / "graph.json"
+            self.graph_path = (
+                mentat_dir_path / "ragdaemon" / f"ragdaemon-{self.cwd.name}.json"
+            )
         self.graph_path.parent.mkdir(exist_ok=True)
         if spice_client is None:
             spice_client = Spice(

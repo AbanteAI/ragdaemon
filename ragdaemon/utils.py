@@ -73,7 +73,7 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             with open(cwd / path, "r") as f:
                 file_lines = f.read().split("\n")
             for line in sorted(lines):
-                text += f"{line}:{file_lines[line - 1]}\n"
+                text += f"{file_lines[line - 1]}\n"
         else:
             try:
                 with open(cwd / path, "r") as f:
