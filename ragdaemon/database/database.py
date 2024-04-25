@@ -48,14 +48,14 @@ class Database:
                 name = ""  # not applicable for diffs
 
             if query in name:
-                distance *= 2
+                distance *= 0.5
             elif query in result["id"]:
-                distance *= 1.5
+                distance *= 0.75
             elif query in result["document"]:
-                distance *= 1.1
+                distance *= 0.9
 
             result["distance"] = distance
-        results = sorted(results, key=lambda x: x["distance"], reverse=True)
+        results = sorted(results, key=lambda x: x["distance"])
 
         if n:
             results = results[:n]
