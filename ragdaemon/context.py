@@ -88,6 +88,15 @@ class ContextBuilder:
         }
         self.context[path_str] = message
 
+    def add_id(self, node_id: str, tags: list[str] = []):
+        """Add the given id to the context."""
+        if node_id not in self.graph.nodes:
+            raise ValueError(f"Node {node_id} not found in graph.")
+        ref = self.graph.nodes[node_id].get("ref")
+        if not ref:
+            raise ValueError(f"Node {node_id} has no ref.")
+        self.add_ref(ref, tags)
+
     def add_ref(self, path_ref: str, tags: list[str] = []):
         """Manually include path_refs"""
         path, lines = parse_path_ref(path_ref)

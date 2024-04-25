@@ -64,10 +64,10 @@ class LiteCollection:
             {"id": k, **v} for k, v in self.data.items() if k in active_checksums
         ]
         return {
-            "ids": [r["id"] for r in records],
-            "metadatas": [r["metadatas"] for r in records],
-            "documents": [r["document"] for r in records],
-            "distances": [1] * len(records),
+            "ids": [[r["id"] for r in records]],
+            "metadatas": [[r["metadatas"] for r in records]],
+            "documents": [[r["document"] for r in records]],
+            "distances": [[1] * len(records)],
         }
 
     def upsert(
