@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -20,15 +20,6 @@ def mock_db(cwd):
     return get_db(
         cwd, spice_client=AsyncMock(), embedding_model=DEFAULT_EMBEDDING_MODEL
     )
-
-
-@pytest.fixture
-def mock_get_llm_response():
-    with patch(
-        "ragdaemon.annotators.chunker_llm.ChunkerLLM.get_llm_response",
-        return_value={"chunks": []},
-    ) as mock:
-        yield mock
 
 
 @pytest.fixture(scope="function")
