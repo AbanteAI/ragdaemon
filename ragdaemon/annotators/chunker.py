@@ -26,7 +26,7 @@ from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import get_document, hash_str
+from ragdaemon.utils import get_document, hash_str, truncate
 
 
 def is_chunk_valid(chunk: dict) -> bool:
@@ -138,6 +138,9 @@ def add_file_chunks_to_graph(
                     "checksum": checksum,
                     "active": False,
                 }
+                document, truncate_ratio = truncate(document, db.embedding_model)
+                if truncate_ratio > 0 and verbose:
+                    print(f"Truncated {id} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(record)
