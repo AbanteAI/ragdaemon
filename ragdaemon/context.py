@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -37,6 +40,26 @@ class ContextBuilder:
         self.context = dict[
             str, dict[str, Any]
         ]()  # {path: {lines, tags, document, diff}}
+
+    def copy(self):
+        duplicate = ContextBuilder(self.graph, self.db, self.verbose)
+        duplicate.context = deepcopy(self.context)
+        return duplicate
+
+    def __add__(self, other: ContextBuilder) -> ContextBuilder:
+        duplicate = self.copy()
+        for path_str, data in other.context.items():
+            if path_str not in duplicate.context:
+                duplicate.context[path_str] = data
+            else:
+                duplicate.context[path_str]["lines"].update(data["lines"])
+                duplicate.context[path_str]["tags"].update(data["tags"])
+                duplicate.context[path_str]["diffs"].update(data["diffs"])
+                for line, comments in data["comments"].items():
+                    duplicate.context[path_str]["comments"].setdefault(line, []).extend(
+                        comments
+                    )
+        return duplicate
 
     def _add_path(self, path_str: str):
         """Create a new record in the context for the given path."""

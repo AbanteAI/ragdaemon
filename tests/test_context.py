@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from ragdaemon.context import ContextBuilder
+from ragdaemon.daemon import Daemon
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document
 
@@ -64,6 +67,31 @@ src/interface.py (test-flag)
 ...
 """
     )
+
+
+@pytest.mark.asyncio
+async def test_context_builder_methods(cwd, mock_db):
+    daemon = Daemon(cwd)
+    await daemon.update()
+
+    context = daemon.get_context("")
+    context.add_ref("src/interface.py:3-5")
+
+    copied_context = context.copy()
+    copied_context.add_ref("src/interface.py:7-9")
+
+    assert context.context["src/interface.py"]["lines"] == set([3, 4, 5])
+    assert copied_context.context["src/interface.py"]["lines"] == set(
+        [3, 4, 5, 7, 8, 9]
+    )
+
+    different_context = daemon.get_context("")
+    different_context.add_ref("src/interface.py:17")
+    different_context.add_ref("src/operations.py")
+    combined_context = context + different_context
+
+    assert combined_context.context["src/interface.py"]["lines"] == set([3, 4, 5, 17])
+    assert combined_context.context["src/operations.py"]["lines"] == set(range(1, 22))
 
 
 def test_to_refs(cwd, mock_db):
