@@ -32,6 +32,31 @@ class Database:
             if data and "checksum" in data
         ]
         results = self.query(query, active_checksums)
+
+        # Add exact-match multiplier
+        for result in results:
+            distance = result["distance"]
+            # Multiply by 2 if query is in the NAME
+            type = result["type"]
+            if type == "file":
+                name = Path(result["id"]).name
+            elif type == "chunk":
+                name = result["id"].split(":")[1]
+                if "." in name:
+                    name = name.split(".")[-1]
+            else:
+                name = ""  # not applicable for diffs
+
+            if query in name:
+                distance *= 2
+            elif query in result["id"]:
+                distance *= 1.5
+            elif query in result["document"]:
+                distance *= 1.1
+
+            result["distance"] = distance
+        results = sorted(results, key=lambda x: x["distance"], reverse=True)
+
         if n:
             results = results[:n]
         return results

@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any
 
 from ragdaemon.database.database import Database
-from ragdaemon.utils import parse_path_ref
 
 
 class LiteDB(Database):
@@ -64,45 +63,12 @@ class LiteCollection:
         records = [
             {"id": k, **v} for k, v in self.data.items() if k in active_checksums
         ]
-        if not query:
-            return {
-                "ids": [r["id"] for r in records],
-                "metadatas": [r["metadatas"] for r in records],
-                "documents": [r["document"] for r in records],
-                "distances": [0] * len(records),
-            }
-
-        # Pull out some fields to string match against
-        strings_to_compare = dict[str, list[tuple]]()
-        for record in records:
-            stc = list[tuple]()  # string, category_weight
-            data = record["metadatas"]
-            if data["type"] == "diff" and ":" in data["ref"]:
-                path = Path(data["ref"].split(":")[1])
-            else:
-                path, _ = parse_path_ref(data["ref"])
-            stc.append((path.name, 2))
-            stc.append((path.as_posix(), 1))
-            stc.append((record["document"], 0.5))
-            strings_to_compare[record["id"]] = stc
-
-        output = {"ids": [], "metadatas": [], "documents": [], "distances": []}
-        distances = list[tuple[str, float]]()
-        for id, stc in strings_to_compare.items():
-            score = 0
-            for string, weight in stc:
-                if string in query or query in string:
-                    score += weight
-            distance = 10 if not score else 1 / score
-            distances.append((id, distance))
-        # Sort by distance
-        ids, distances = zip(*sorted(distances, key=lambda x: x[1]))
-        output["ids"].append(ids)
-        output["metadatas"].append([self.data[id]["metadatas"] for id in ids])
-        output["documents"].append([self.data[id]["document"] for id in ids])
-        output["distances"].append(distances)
-
-        return output
+        return {
+            "ids": [r["id"] for r in records],
+            "metadatas": [r["metadatas"] for r in records],
+            "documents": [r["document"] for r in records],
+            "distances": [1] * len(records),
+        }
 
     def upsert(
         self,
