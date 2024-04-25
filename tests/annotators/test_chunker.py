@@ -1,11 +1,20 @@
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from ragdaemon.annotators import Chunker, ChunkerLLM
 from ragdaemon.daemon import Daemon
 from ragdaemon.graph import KnowledgeGraph
+
+
+@pytest.fixture
+def mock_get_llm_response():
+    with patch(
+        "ragdaemon.annotators.chunker_llm.ChunkerLLM.get_llm_response",
+        return_value={"chunks": []},
+    ) as mock:
+        yield mock
 
 
 def test_chunker_is_complete(cwd, mock_db):
@@ -45,7 +54,6 @@ async def test_chunker_llm_annotate(cwd, mock_get_llm_response, mock_db):
     daemon = Daemon(
         cwd=cwd,
         annotators={"hierarchy": {}},
-        graph_path=(Path.cwd() / "tests/data/hierarchy_graph.json"),
     )
     chunker = ChunkerLLM(spice_client=AsyncMock())
     actual = await chunker.annotate(daemon.graph, mock_db)

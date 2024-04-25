@@ -16,6 +16,7 @@ class NodeMetadata(TypedDict):
     chunks: Optional[
         list[dict[str, str]]
     ]  # For files, func/class/method. For diff, by file/hunk
+    summary: Optional[str]  # Generated summary of the node
 
 
 class EdgeMetadata(TypedDict):
