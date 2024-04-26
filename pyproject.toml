@@ -7,7 +7,7 @@ packages=["ragdaemon"]
 
 [project]
 name = "ragdaemon"
-version = "0.2.11"
+version = "0.2.12"
 description = "Generate and render a call graph for a Python project."
 readme = "README.md"
 dependencies = [

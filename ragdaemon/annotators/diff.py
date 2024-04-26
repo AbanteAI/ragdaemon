@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database
+from ragdaemon.database import Database, remove_add_to_db_duplicates
 from ragdaemon.get_paths import get_git_root_for_path
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
@@ -176,6 +176,7 @@ class Diff(Annotator):
         for source, origin in edges_to_add:
             graph.add_edge(source, origin, type="diff")
         if len(add_to_db["ids"]) > 0:
+            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.upsert(**add_to_db)
 
         return graph

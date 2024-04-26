@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, cast
+from typing import Any, TYPE_CHECKING, Optional, cast
 
 from spice import Spice
 
@@ -13,6 +13,20 @@ if TYPE_CHECKING:
         GetResult,
         Metadata,
     )
+
+
+def remove_add_to_db_duplicates(
+    ids: list[str], documents: list[str], metadatas: list[dict]
+) -> dict[str, Any]:
+    seen = set()
+    output = {"ids": [], "documents": [], "metadatas": []}
+    for id, document, metadata in zip(ids, documents, metadatas):
+        if id not in seen:
+            output["ids"].append(id)
+            output["documents"].append(document)
+            output["metadatas"].append(metadata)
+            seen.add(id)
+    return output
 
 
 class ChromaDB(Database):
