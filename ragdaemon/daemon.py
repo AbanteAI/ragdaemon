@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from networkx.readwrite import json_graph
 from spice import Spice
+from spice.spice import Model
 
 from ragdaemon.annotators import Annotator, annotators_map
 from ragdaemon.context import ContextBuilder
@@ -50,9 +51,12 @@ class Daemon:
             )
         self.graph_path.parent.mkdir(exist_ok=True)
         if spice_client is None:
+            logging_dir = mentat_dir_path / "ragdaemon" / "spice_logs"
+            logging_dir.mkdir(parents=True, exist_ok=True)
             spice_client = Spice(
                 default_text_model=DEFAULT_COMPLETION_MODEL,
                 default_embeddings_model=model,
+                logging_dir=mentat_dir_path / "ragdaemon" / "spice_logs",
             )
         self.spice_client = spice_client
         self.embedding_model = model
@@ -139,7 +143,7 @@ class Daemon:
         context_builder: Optional[ContextBuilder] = None,
         max_tokens: int = 8000,
         auto_tokens: int = 0,
-        model: str = DEFAULT_COMPLETION_MODEL,
+        model: Model | str = DEFAULT_COMPLETION_MODEL,
     ) -> ContextBuilder:
         if context_builder is None:
             context = ContextBuilder(self.graph, self.db, self.verbose)

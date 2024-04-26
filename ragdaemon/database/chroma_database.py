@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import cast, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 from spice import Spice
 
@@ -10,9 +10,9 @@ MAX_INPUTS_PER_CALL = 2048
 
 if TYPE_CHECKING:
     from chromadb.api.types import (
-        Metadata,
         GetResult,
-    )  # noqa: F401
+        Metadata,
+    )
 
 
 class ChromaDB(Database):
@@ -29,7 +29,11 @@ class ChromaDB(Database):
         self.embedding_model = embedding_model
 
         import chromadb  # Imports are slow so do it lazily
-        from chromadb.api.types import Embeddable, EmbeddingFunction, Embeddings  # noqa: F811
+        from chromadb.api.types import (
+            Embeddable,
+            EmbeddingFunction,
+            Embeddings,
+        )
 
         class SpiceEmbeddingFunction(EmbeddingFunction[Embeddable]):
             def __call__(self, input_texts: Embeddable) -> Embeddings:
