@@ -18,14 +18,14 @@ The Chunker base class below handles everything except step 2.
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Coroutine, Callable, Optional
+from typing import Any, Callable, Coroutine, Optional
 
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
-from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document, hash_str, truncate
 
 

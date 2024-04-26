@@ -1,1 +1,3 @@
-DEFAULT_COMPLETION_MODEL = "gpt-4-0125-preview"
+from spice.models import GPT_4_TURBO
+
+DEFAULT_COMPLETION_MODEL = GPT_4_TURBO
