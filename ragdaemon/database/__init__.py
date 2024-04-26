@@ -5,7 +5,7 @@ from typing import Optional
 from spice import Spice
 from spice.errors import SpiceError
 
-from ragdaemon.database.chroma_database import ChromaDB
+from ragdaemon.database.chroma_database import ChromaDB, remove_add_to_db_duplicates
 from ragdaemon.database.database import Database
 from ragdaemon.database.lite_database import LiteDB
 from ragdaemon.utils import mentat_dir_path

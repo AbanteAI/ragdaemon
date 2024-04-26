@@ -23,7 +23,7 @@ from typing import Any, Callable, Coroutine, Optional
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database
+from ragdaemon.database import Database, remove_add_to_db_duplicates
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document, hash_str, truncate
@@ -281,5 +281,6 @@ class Chunker(Annotator):
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)
         if len(add_to_db["ids"]) > 0:
+            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.upsert(**add_to_db)
         return graph
