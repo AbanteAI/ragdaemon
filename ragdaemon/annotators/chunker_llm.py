@@ -1,12 +1,27 @@
 import asyncio
 import json
 from json.decoder import JSONDecodeError
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from spice import SpiceMessages
 
-from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
+from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.errors import RagdaemonError
+
+
+def is_chunk_valid(chunk: dict) -> bool:
+    # Includes the correct fields
+    if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
+        return False
+    # ID is in the correct format
+    if not chunk["id"].count(":") == 1:
+        return False
+    # A chunk name is specified
+    if not len(chunk["id"].split(":")[1]):
+        return False
+    # TODO: Validate the ref, i.e. a parent chunk exists
+
+    return True
 
 
 semaphore = asyncio.Semaphore(50)
@@ -61,13 +76,16 @@ class ChunkerLLM(Chunker):
                         seen.add(chunk["id"])
                 return chunks
 
-    async def chunk_file(
-        self, file_lines: list[str], file: str
-    ) -> list[dict[str, Any]]:
+    async def chunk_document(self, document: str) -> list[dict[str, Any]]:
         """Parse file_lines into a list of {id, ref} chunks."""
-        chunks = list[dict[str, Any]]()
+        lines = document.splitlines()
+        file = lines[0]
+        file_lines = lines[1:]
+        if not file_lines or not any(line for line in file_lines):
+            return []
 
         # Get raw llm output
+        chunks = list[dict[str, Any]]()
         tries: int = 1
         for tries in range(tries, 0, -1):
             tries -= 1
@@ -84,7 +102,7 @@ class ChunkerLLM(Chunker):
         if not chunks:
             return []
         if not all(is_chunk_valid(chunk) for chunk in chunks):
-            raise ValueError(f"Invalid chunk data: {chunks}")
+            raise RagdaemonError(f"Invalid chunk data: {chunks}")
 
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))

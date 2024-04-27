@@ -11,15 +11,13 @@ class ChunkerLine(Chunker):
         super().__init__(*args, **kwargs)
         self.n = lines_per_chunk
 
-    async def chunk_file(
-        self, file_lines: list[str], file: str
-    ) -> list[dict[str, Any]]:
-        """Split text files into chunks N lines long.
+    async def chunk_document(self, document: str) -> list[dict[str, Any]]:
+        lines = document.splitlines()
+        file = lines[0]
+        file_lines = lines[1:]
+        if not file_lines or not any(line for line in file_lines):
+            return []
 
-        Chunker.annotate will generate a 'BASE' chunk from the lines
-        not assigned to chunks as a hierarchical root of all chunks.
-        Here we set aside the first N lines as the BASE chunk.
-        """
         chunks = list[dict[str, Any]]()
         if len(file_lines) > self.n:
             chunks.append(
