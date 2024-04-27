@@ -57,6 +57,7 @@ semaphore = asyncio.Semaphore(50)
 
 class ChunkerLLM(Chunker):
     name = "chunker_llm"
+    chunk_field_id = "chunks_llm"
 
     async def get_llm_response(
         self,

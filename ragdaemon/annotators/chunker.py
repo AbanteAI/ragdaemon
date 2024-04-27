@@ -51,6 +51,7 @@ async def get_file_chunk_data(
     chunk_function: Callable[
         [str, list[str], bool], Coroutine[Any, Any, list[dict[str, str]]]
     ],
+    chunk_field_id: str,
     db: Database,
     verbose: bool = False,
 ):
@@ -97,14 +98,15 @@ async def get_file_chunk_data(
         ] + [base_chunk]
     # Save to db and graph
     metadatas = db.get(data["checksum"])["metadatas"][0]
-    metadatas["chunks"] = json.dumps(chunks)
+    metadatas[chunk_field_id] = json.dumps(chunks)
     db.update(data["checksum"], metadatas=metadatas)
-    data["chunks"] = chunks
+    data[chunk_field_id] = chunks
 
 
 def add_file_chunks_to_graph(
     file: str,
     data: dict,
+    chunk_field_id: str,
     graph: KnowledgeGraph,
     db: Database,
     refresh: bool = False,
@@ -112,10 +114,10 @@ def add_file_chunks_to_graph(
 ) -> dict[str, list[Any]]:
     """Load chunks from file data into db/graph"""
     add_to_db = {"ids": [], "documents": [], "metadatas": []}
-    if not isinstance(data["chunks"], list):
-        data["chunks"] = json.loads(data["chunks"])
-    chunks = data["chunks"]
-    if not refresh and len(data["chunks"]) == 0:
+    if not isinstance(data[chunk_field_id], list):
+        data[chunk_field_id] = json.loads(data[chunk_field_id])
+    chunks = data[chunk_field_id]
+    if not refresh and len(data[chunk_field_id]) == 0:
         return add_to_db
     edges_to_add = set()
     base_id = f"{file}:BASE"
@@ -172,6 +174,7 @@ def add_file_chunks_to_graph(
 
 class Chunker(Annotator):
     name = "chunker"
+    chunk_field_id = "chunks"
 
     def __init__(self, *args, chunk_extensions: Optional[list[str]] = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -205,7 +208,7 @@ class Chunker(Annotator):
                 raise RagdaemonError(f"Node {node} has no data.")
             if data.get("type") != "file":
                 continue
-            chunks = data.get("chunks", None)
+            chunks = data.get(self.chunk_field_id, None)
             if chunks is None:
                 if self.chunk_extensions is None:
                     return False
@@ -261,10 +264,10 @@ class Chunker(Annotator):
         # Generate/add chunk data to file nodes
         tasks = []
         for node, data in file_nodes:
-            if refresh or data.get("chunks", None) is None:
+            if refresh or data.get(self.chunk_field_id, None) is None:
                 tasks.append(
                     get_file_chunk_data(
-                        cwd, node, data, self.chunk_file, db, verbose=self.verbose
+                        cwd, node, data, self.chunk_file, self.chunk_field_id, db, verbose=self.verbose
                     )
                 )
         if len(tasks) > 0:
@@ -276,7 +279,7 @@ class Chunker(Annotator):
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for file, data in file_nodes:
             _add_to_db = add_file_chunks_to_graph(
-                file, data, graph, db, verbose=self.verbose
+                file, data, self.chunk_field_id, graph, db, verbose=self.verbose
             )
             for field, values in _add_to_db.items():
                 add_to_db[field].extend(values)

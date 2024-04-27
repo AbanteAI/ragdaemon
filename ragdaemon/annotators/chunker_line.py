@@ -3,6 +3,7 @@ from ragdaemon.annotators.chunker import Chunker
 
 class ChunkerLine(Chunker):
     name = "chunker_line"
+    chunk_field_id = "chunks_line"
 
     def __init__(self, *args, lines_per_chunk=50, **kwargs):
         super().__init__(*args, **kwargs)
