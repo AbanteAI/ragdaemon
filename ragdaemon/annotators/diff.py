@@ -138,7 +138,7 @@ class Diff(Annotator):
                     "active": False,
                 }
                 document, truncate_ratio = truncate(document, db.embedding_model)
-                if truncate_ratio < 1 and self.verbose:
+                if truncate_ratio > 0 and self.verbose:
                     print(f"Truncated diff chunk {chunk_id} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(chunk_checksum)
                 add_to_db["documents"].append(document)
