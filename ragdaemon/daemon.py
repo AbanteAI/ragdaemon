@@ -86,6 +86,7 @@ class Daemon:
                 spice_client=self.spice_client,
                 embedding_model=self.embedding_model,
                 embedding_provider=self.embedding_provider,
+                verbose=self.verbose,
             )
         return self._db
 
