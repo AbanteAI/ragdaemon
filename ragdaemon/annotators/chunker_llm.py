@@ -1,11 +1,13 @@
 import asyncio
 import json
 from json.decoder import JSONDecodeError
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from spice import SpiceMessages
 
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
+from ragdaemon.database import Database
 from ragdaemon.errors import RagdaemonError
 
 
@@ -62,7 +64,57 @@ class ChunkerLLM(Chunker):
                 return chunks
 
     async def chunk_file(
-        self, file: str, file_lines: list[str], verbose: bool
+        self, cwd: Path, node: str, data: dict[str, Any], db: Database
+    ):
+        """Get or add chunk data to database, load into file data"""
+        file_lines = (cwd / Path(node)).read_text().splitlines()
+        if len(file_lines) == 0:
+            chunks = []
+        else:
+            chunks = await self.generate_file_chunks(node, file_lines)
+            if not all(is_chunk_valid(chunk) for chunk in chunks):
+                raise ValueError(f"Invalid chunk data: {chunks}")
+        if chunks:
+            # Generate a 'BASE chunk' with all lines not already part of a chunk
+            base_chunk_lines = set(range(1, len(file_lines) + 1))
+            for chunk in chunks:
+                for i in range(int(chunk["start_line"]), int(chunk["end_line"]) + 1):
+                    base_chunk_lines.discard(i)
+            if len(base_chunk_lines) > 0:
+                base_chunk_lines_sorted = sorted(list(base_chunk_lines))
+                base_chunk_refs = []
+                start = base_chunk_lines_sorted[0]
+                end = start
+                for i in base_chunk_lines_sorted[1:]:
+                    if i == end + 1:
+                        end = i
+                    else:
+                        if start == end:
+                            base_chunk_refs.append(f"{start}")
+                        else:
+                            base_chunk_refs.append(f"{start}-{end}")
+                        start = end = i
+                base_chunk_refs.append(f"{start}-{end}")
+            else:
+                base_chunk_refs = []
+            # Replace with standardized fields
+            lines_str = ":" + ",".join(base_chunk_refs) if base_chunk_refs else ""
+            base_chunk = {"id": f"{node}:BASE", "ref": f"{node}{lines_str}"}
+            chunks = [
+                {
+                    "id": chunk["id"],
+                    "ref": f"{node}:{chunk['start_line']}-{chunk['end_line']}",
+                }
+                for chunk in chunks
+            ] + [base_chunk]
+        # Save to db and graph
+        metadatas = db.get(data["checksum"])["metadatas"][0]
+        metadatas[self.chunk_field_id] = json.dumps(chunks)
+        db.update(data["checksum"], metadatas=metadatas)
+        data[self.chunk_field_id] = chunks
+
+    async def generate_file_chunks(
+        self, file: str, file_lines: list[str]
     ) -> list[dict[str, str]]:
         tries: int = 1
         for tries in range(tries, 0, -1):
@@ -74,6 +126,6 @@ class ChunkerLLM(Chunker):
             chunks = await self.get_llm_response(file_message)
             if not chunks or all(is_chunk_valid(chunk) for chunk in chunks):
                 return chunks
-            if tries > 1 and verbose:
+            if tries > 1 and self.verbose:
                 print(f"Error with chunker response:\n{chunks}.\n{tries} tries left.")
         return []
