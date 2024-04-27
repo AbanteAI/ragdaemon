@@ -18,7 +18,7 @@ The Chunker base class below handles everything except step 2.
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Coroutine, Optional
 
 from tqdm.asyncio import tqdm
 
@@ -165,8 +165,8 @@ class Chunker(Annotator):
         return True
 
     async def chunk_file(
-        self, cwd: Path, node: str, data: dict[str, Any], db: Database
-    ):
+        self, file_lines: list[str], file: str
+    ) -> list[dict[str, Any]]:
         """Add chunks records {id, ref} to file nodes in graph and db."""
         raise NotImplementedError()
 
@@ -192,14 +192,20 @@ class Chunker(Annotator):
         cwd = Path(graph.graph["cwd"])
         for node, data in files_with_chunks:
             if refresh or data.get(self.chunk_field_id, None) is None:
-                tasks.append(
-                    self.chunk_file(
-                        cwd,
-                        node,
-                        data,
-                        db,
-                    )
-                )
+
+                async def _chunk_file(cwd, node, data, db):
+                    file_lines = (cwd / Path(node)).read_text().splitlines()
+                    if len(file_lines) == 0:
+                        chunks = []
+                    else:
+                        chunks = await self.chunk_file(file_lines, node)
+                    # Save to db and graph
+                    metadatas = db.get(data["checksum"])["metadatas"][0]
+                    metadatas[self.chunk_field_id] = json.dumps(chunks)
+                    db.update(data["checksum"], metadatas=metadatas)
+                    data[self.chunk_field_id] = chunks
+
+                tasks.append(_chunk_file(cwd, node, data, db))
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Chunking files...")
