@@ -267,7 +267,13 @@ class Chunker(Annotator):
             if refresh or data.get(self.chunk_field_id, None) is None:
                 tasks.append(
                     get_file_chunk_data(
-                        cwd, node, data, self.chunk_file, self.chunk_field_id, db, verbose=self.verbose
+                        cwd,
+                        node,
+                        data,
+                        self.chunk_file,
+                        self.chunk_field_id,
+                        db,
+                        verbose=self.verbose,
                     )
                 )
         if len(tasks) > 0:

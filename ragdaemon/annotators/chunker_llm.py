@@ -3,54 +3,11 @@ import json
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
 
-from spice import SpiceMessage
+from spice import SpiceMessages
 
 from ragdaemon.annotators.chunker import Chunker, is_chunk_valid
 from ragdaemon.errors import RagdaemonError
 
-first_pass = "Make sure to start at the beginning of the file and do it in order!"
-next_pass = """\
-You are continuing this task from a previous call. Start exactly where the previous call stopped, output the last chunk as the first chunk of your new output, and finish the rest of the file after that chunk.
-Here is the last chunk already parsed, that you will start with:\n"""
-
-chunker_prompt = """\
-Split the provided code file into chunks.
-Return a list of functions, classes and methods in this code file as JSON data.
-Each item in the list should contain:
-1. `id` - the complete call path, e.g. `path/to/file:class.method`
-2. `start_line` - where the function, class or method begins
-3. `end_line` - where it ends - INCLUSIVE
-
-If there are no chunks, return an empty list. {{ pass }}
-
-EXAMPLE:
---------------------------------------------------------------------------------
-src/graph.py
-1:import pathlib as Path
-2:
-3:
-4:class KnowledgeGraph:
-5:    def __init__(self, cwd: Path):
-6:        self.cwd = cwd
-7:
-8:_knowledge_graph = None
-9:def get_knowledge_graph():
-10:    global _knowledge_graph
-11:    if _knowledge_graph is None:
-12:        _knowledge_graph = KnowledgeGraph(Path.cwd())
-13:    return _knowledge_graph
-14:
-
-RESPONSE:
-{
-    "chunks": [
-        {"id": "src/graph.py:KnowledgeGraph", "start_line": 4, "end_line": 6},
-        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 5, "end_line": 6},
-        {"id": "src/graph.py:get_knowledge_graph", "start_line": 9, "end_line": 13}
-    ]
-}
---------------------------------------------------------------------------------
-"""
 
 semaphore = asyncio.Semaphore(50)
 
@@ -71,17 +28,17 @@ class ChunkerLLM(Chunker):
             raise RagdaemonError("Spice client is not initialized.")
         global semaphore
         async with semaphore:
+            messages = SpiceMessages(self.spice_client)
+            messages.add_system_prompt(name="chunker_llm.base")
             if last_chunk == None:
-                prompt = chunker_prompt.replace("{{ pass }}", first_pass)
+                messages.add_system_prompt(name="chunker_llm.first_pass")
             else:
-                prompt = chunker_prompt.replace(
-                    "{{ pass }}", next_pass + json.dumps(last_chunk, indent=4)
+                messages.add_system_prompt(
+                    name="chunker_llm.next_pass",
+                    last_chunk=json.dumps(last_chunk, indent=4),
                 )
+            messages.add_user_message(file_message)
 
-            messages: list[SpiceMessage] = [
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": file_message},
-            ]
             response = await self.spice_client.get_response(
                 messages=messages,
                 response_format={"type": "json_object"},

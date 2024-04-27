@@ -59,6 +59,7 @@ class Daemon:
                 logging_dir=mentat_dir_path / "ragdaemon" / "spice_logs",
             )
         self.spice_client = spice_client
+        self.spice_client.load_dir(Path(__file__).parent / "prompts")
         self.embedding_model = model
         self.embedding_provider = provider
 
