@@ -252,7 +252,7 @@ class ContextBuilder:
             current_segment = ""
             last_line = 0
             for line in sorted(data["lines"]):
-                if line - last_line > 1:
+                if current_segment and line - last_line > 1:
                     current_segment += f"-{last_line}"
                     segments.append(current_segment)
                     current_segment = ""
