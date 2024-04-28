@@ -1,0 +1,44 @@
+import argparse
+import math
+
+
+class Calculator:
+    def __init__(self, operation: str, a: float, b: float):
+        self.operation = operation
+        self.a = a
+        self.b = b
+
+    def add_numbers(self):
+        return self.a + self.b
+    
+    def subtract_numbers(self):
+        return self.a - self.b
+    
+    def exp_numbers(self):
+        return math.pow(self.a, self.b)
+    
+    def call():
+        if self.operation == "add":
+            return self.add_numbers()
+        elif self.operation == "subtract":
+            return self.subtract_numbers()
+        elif self.operation == "exp":
+            return self.multiply_numbers()
+        else:
+            raise ValueError("Invalid operation")
+
+def main():
+    parser = argparse.ArgumentParser(description='Perform a calculation.')
+    parser.add_argument('operation', type=str, help='Operation to perform: add, subtract, multiply, divide, log, exp')
+    parser.add_argument('num1', type=float, help='First number')
+    parser.add_argument('num2', type=float, help='Second number')
+    args = parser.parse_args()
+    calc = Calculator(args.operation, args.num1, args.num2)
+    try:
+        output = calc.call()
+        print(output)
+    except ValueError as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()

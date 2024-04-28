@@ -118,7 +118,7 @@ class Chunker(Annotator):
             chunks = json.loads(chunks)
             data[self.chunk_field_id] = chunks
         base_id = f"{file}:BASE"
-        if len(chunks) > 0 and base_id not in graph:
+        if len(chunks) > 0 and not any(chunk["id"] == base_id for chunk in chunks):
             raise RagdaemonError(f"Node {file} missing base chunk")
         edges_to_add = {(file, base_id)}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
