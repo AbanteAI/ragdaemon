@@ -13,6 +13,29 @@ from ragdaemon.errors import RagdaemonError
 mentat_dir_path = Path.home() / ".mentat"
 
 
+DEFAULT_CODE_EXTENSIONS = [
+    ".py",
+    ".js",
+    ".java",
+    ".html",
+    ".css",
+    ".sql",
+    ".php",
+    ".rb",
+    ".sh",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cs",
+    ".go",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".scss",
+]
+
+
 def hash_str(string: str) -> str:
     """Return the MD5 hash of the input string."""
     return hashlib.md5(string.encode()).hexdigest()

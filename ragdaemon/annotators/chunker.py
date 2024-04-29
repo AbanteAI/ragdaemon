@@ -26,7 +26,7 @@ from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database, remove_add_to_db_duplicates
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import get_document, hash_str, truncate
+from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, get_document, hash_str, truncate
 
 
 class Chunker(Annotator):
@@ -36,27 +36,7 @@ class Chunker(Annotator):
     def __init__(self, *args, chunk_extensions: Optional[list[str]] = None, **kwargs):
         super().__init__(*args, **kwargs)
         if chunk_extensions is None:
-            chunk_extensions = [
-                ".py",
-                ".js",
-                ".java",
-                ".html",
-                ".css",
-                ".sql",
-                ".php",
-                ".rb",
-                ".sh",
-                ".c",
-                ".cpp",
-                ".h",
-                ".hpp",
-                ".cs",
-                ".go",
-                ".ts",
-                ".jsx",
-                ".tsx",
-                ".scss",
-            ]
+            chunk_extensions = DEFAULT_CODE_EXTENSIONS
         self.chunk_extensions = chunk_extensions
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
@@ -179,7 +159,7 @@ class Chunker(Annotator):
                 graph.remove_node(node)
             elif data.get("type") == "file":
                 if self.chunk_extensions is None:
-                    files_with_chunks.append(node)
+                    files_with_chunks.append((node, data))
                 else:
                     extension = Path(data["ref"]).suffix
                     if extension in self.chunk_extensions:

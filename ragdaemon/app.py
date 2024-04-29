@@ -23,10 +23,10 @@ parser.add_argument(
     "--refresh", "-r", action="store_true", help="Refresh active records."
 )
 parser.add_argument(
-    "--chunk-extensions",
+    "--code-extensions",
     "-c",
     nargs="*",
-    help="List of file extensions to chunk, e.g., .py .js",
+    help="List of file extensions to process as code, e.g., .py .js",
 )
 parser.add_argument(
     "--chunk-model",
@@ -47,11 +47,11 @@ parser.add_argument(
 args = parser.parse_args()
 refresh = args.refresh
 verbose = True  # Always verbose in server mode
-chunk_extensions = None if args.chunk_extensions is None else set(args.chunk_extensions)
+code_extensions = None if args.code_extensions is None else set(args.code_extensions)
 diff = args.diff
 annotators = {
     "hierarchy": {},
-    "chunker_llm": {"chunk_extensions": chunk_extensions},
+    "chunker_llm": {"chunk_extensions": code_extensions},
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }
