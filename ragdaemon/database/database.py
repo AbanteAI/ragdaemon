@@ -26,11 +26,13 @@ class Database:
         Chroma's default search covers all records, including inactive ones, so we
         manually flag the active records, query them, and then unflag them.
         """
-        active_checksums = [
-            data["checksum"]
-            for _, data in graph.nodes(data=True)
-            if data and "checksum" in data
-        ]
+        active_checksums = list(
+            {
+                data["checksum"]
+                for _, data in graph.nodes(data=True)
+                if data and "checksum" in data
+            }
+        )
         results = self.query(query, active_checksums)
 
         # Add exact-match multiplier

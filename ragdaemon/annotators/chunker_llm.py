@@ -9,7 +9,7 @@ from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.errors import RagdaemonError
 
 
-def is_chunk_valid(chunk: dict) -> bool:
+def is_chunk_valid(chunk: dict, last_valid_line: int) -> bool:
     # Includes the correct fields
     if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
         return False
@@ -19,12 +19,16 @@ def is_chunk_valid(chunk: dict) -> bool:
     # A chunk name is specified
     if not len(chunk["id"].split(":")[1]):
         return False
+    # Start and end lines make sense
+    start, end = int(chunk["start_line"]), int(chunk["end_line"])
+    if not 1 <= start <= end <= last_valid_line:
+        return False
     # TODO: Validate the ref, i.e. a parent chunk exists
 
     return True
 
 
-semaphore = asyncio.Semaphore(50)
+semaphore = asyncio.Semaphore(100)
 
 
 class ChunkerLLM(Chunker):
@@ -65,9 +69,10 @@ class ChunkerLLM(Chunker):
                 "long, i.e. there are too many functions to chunk in one pass. If this "
                 "is the case, decrease the batch size and try again."
             )
+        last_valid_line = int(file_lines[-1].split(":")[0])
         for chunk in chunks:
-            if not is_chunk_valid(chunk):
-                raise RagdaemonError(f"Model returned chunk: {chunk}")
+            if not is_chunk_valid(chunk, last_valid_line):
+                raise RagdaemonError(f"Model returned invalid chunk: {chunk}")
         if last_chunk is not None:
             if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
                 raise RagdaemonError(

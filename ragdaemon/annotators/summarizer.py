@@ -24,7 +24,7 @@ maximum of two (2) such named functions, but err on the side of brevity.
 """
 
 
-semaphore = asyncio.Semaphore(50)
+semaphore = asyncio.Semaphore(100)
 
 
 class Summarizer(Annotator):
