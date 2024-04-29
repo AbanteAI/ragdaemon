@@ -99,6 +99,17 @@ class ChunkerLLM(Chunker):
                         )
                     if j == 1:
                         return []
+                    
+        # Make sure end_line of each 'parent' chunk covers all children
+        def update_end_lines(id: str, _chunks: list[dict[str, Any]]):
+            child_chunks = [c for c in _chunks if c["id"].startswith(id + ".")]
+            if child_chunks:
+                end_line = max(c["end_line"] for c in child_chunks)
+                parent_chunk = next(c for c in _chunks if c["id"] == id)
+                parent_chunk["end_line"] = end_line
+            return _chunks
+        for chunk in sorted(chunks, key=lambda c: len(c["id"]), reverse=True):
+            chunks = update_end_lines(chunk["id"], chunks)
 
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))
@@ -126,10 +137,11 @@ class ChunkerLLM(Chunker):
         base_chunk = {"id": f"{file}:BASE", "ref": f"{file}{lines_str}"}
 
         # Convert to refs and return
-        return [base_chunk] + [
-            {
-                "id": chunk["id"],
-                "ref": f"{file}:{chunk['start_line']}-{chunk['end_line']}",
-            }
-            for chunk in chunks
-        ]
+        output = [base_chunk]
+        for chunk in chunks:
+            if chunk["start_line"] == chunk["end_line"]:
+                lines_str = str(chunk["start_line"])
+            else:
+                lines_str = f"{chunk['start_line']}-{chunk['end_line']}"
+            output.append({"id": chunk["id"], "ref": f"{file}:{lines_str}"})
+        return output

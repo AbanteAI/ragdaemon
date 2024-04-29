@@ -32,7 +32,7 @@ def expected_chunks():
 
 
 
-# @pytest.mark.skip(reason="This test requires calling an API")
+@pytest.mark.skip(reason="This test requires calling an API")
 @pytest.mark.asyncio
 async def test_chunker_llm_edge_cases(cwd, expected_chunks):
 
@@ -48,7 +48,7 @@ async def test_chunker_llm_edge_cases(cwd, expected_chunks):
     document = f"src/calculator.py\n{text}"
     actual_chunks = await chunker.chunk_document(document, batch_size=10)
 
-    # assert len(actual_chunks) == len(expected_chunks)
+    assert len(actual_chunks) == len(expected_chunks)
     actual_chunks = sorted(actual_chunks, key=lambda x: x["ref"])
     expected_chunks = sorted(expected_chunks, key=lambda x: x["ref"])
     for actual, expected in zip(actual_chunks, expected_chunks):
