@@ -1,16 +1,18 @@
-base = """\
-Split the provided code file into chunks.
-Return a list of functions, classes and methods in this code file as JSON data.
+base="""\
+Split the provided code into chunks.
+Return a list of functions, classes and methods in this code as JSON data.
 Each item in the list should contain:
 1. `id` - the complete call path, e.g. `path/to/file:class.method`
 2. `start_line` - where the function, class or method begins
 3. `end_line` - where it ends - INCLUSIVE
 
-If there are no chunks, return an empty list.
-
 EXAMPLE:
 --------------------------------------------------------------------------------
-src/graph.py
+<path>
+example/graph.py
+</path>
+
+<code>
 1:import pathlib as Path
 2:
 3:
@@ -25,22 +27,37 @@ src/graph.py
 12:        _knowledge_graph = KnowledgeGraph(Path.cwd())
 13:    return _knowledge_graph
 14:
+</code>
 
-RESPONSE:
+<response>
 {
     "chunks": [
-        {"id": "src/graph.py:KnowledgeGraph", "start_line": 4, "end_line": 6},
-        {"id": "src/graph.py:KnowledgeGraph.__init__", "start_line": 5, "end_line": 6},
-        {"id": "src/graph.py:get_knowledge_graph", "start_line": 9, "end_line": 13}
+        {"id": "example/graph.py:KnowledgeGraph", "start_line": 4, "end_line": 6},
+        {"id": "example/graph.py:KnowledgeGraph.__init__", "start_line": 5, "end_line": 6},
+        {"id": "example/graph.py:get_knowledge_graph", "start_line": 9, "end_line": 13}
     ]
 }
---------------------------------------------------------------------------------
-"""
+</response>
+--------------------------------------------------------------------------------"""
 
-first_pass="""\
-Make sure to start at the beginning of the file and do it in order!"""
+continuation="""\
+You are continuing this task from a previous call. The LAST CHUNK processed was:
+{{ last_chunk }}
 
-next_pass = """\
-You are continuing this task from a previous call. Start exactly where the previous call stopped, output the last chunk as the first chunk of your new output, and finish the rest of the file after that chunk.
-Here is the last chunk already parsed, that you will start with:
-{{ last_chunk }}"""
+In order to ensure continuity, return a DUPLICATE of the LAST CHUNK in your response
+with any necessary updates. 
+
+Do your best to infer the correct position from the LAST CHUNK. For example:
+- If the last chunk was a class method and your first chunk also appears to be a class method,
+use the class name from the LAST CHUNK in your first chunk's `id`.
+- If the `end_line` of the last chunk is the last line before the provided code file,
+it may be a continuation of the LAST CHUNK, so return it with updated `end_line`."""
+
+user="""\
+<path>
+{{ path }}
+</path>
+
+<code>
+{{ code }}
+</code>"""
