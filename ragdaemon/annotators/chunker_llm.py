@@ -28,7 +28,7 @@ def is_chunk_valid(chunk: dict, last_valid_line: int) -> bool:
     return True
 
 
-semaphore = asyncio.Semaphore(50)
+semaphore = asyncio.Semaphore(100)
 
 
 class ChunkerLLM(Chunker):
