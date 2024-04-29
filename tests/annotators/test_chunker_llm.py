@@ -1,8 +1,6 @@
 from pathlib import Path
 
 import pytest
-import os
-from dotenv import load_dotenv
 
 from ragdaemon.annotators.chunker_llm import ChunkerLLM
 from ragdaemon.daemon import Daemon
@@ -31,11 +29,9 @@ def expected_chunks():
     ]
 
 
-
 @pytest.mark.skip(reason="This test requires calling an API")
 @pytest.mark.asyncio
 async def test_chunker_llm_edge_cases(cwd, expected_chunks):
-
     # NOTE: TO RUN THIS YOU HAVE TO COMMENT_OUT tests/conftest.py/mock_openai_api_key
     daemon = Daemon(cwd, annotators={"hierarchy": {}})
     chunker = ChunkerLLM(spice_client=daemon.spice_client)
