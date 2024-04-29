@@ -5,6 +5,7 @@ from spice import Spice
 
 from ragdaemon.database.database import Database
 from ragdaemon.errors import RagdaemonError
+from ragdaemon import __version__
 
 MAX_INPUTS_PER_CALL = 2048
 
@@ -71,7 +72,8 @@ class ChromaDB(Database):
         embedding_function = SpiceEmbeddingFunction()
 
         _client = chromadb.PersistentClient(path=str(db_path))
-        name = f"ragdaemon-{self.cwd.name}-{self.embedding_model}"
+        minor_version = ".".join(__version__.split(".")[:2])
+        name = f"ragdaemon-{minor_version}-{self.embedding_model}"
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,

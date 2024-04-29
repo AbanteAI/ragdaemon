@@ -1,0 +1,68 @@
+base="""\
+Split the provided code into chunks.
+Return a list of functions, classes and methods in this code as JSON data.
+Each item in the list should contain:
+1. `id` - the complete call path, e.g. `path/to/file:class.method`
+2. `start_line` - where the function, class or method begins
+3. `end_line` - where it ends - INCLUSIVE
+
+The code may be provided in BATCHES, so you might see incomplete functions 
+or function signatures at the end of the file. Return them as if they were 
+complete functions, and they'll be repaired later.
+
+EXAMPLE:
+--------------------------------------------------------------------------------
+<path>
+example/graph.py
+</path>
+
+<code>
+1:import pathlib as Path
+2:
+3:
+4:class KnowledgeGraph:
+5:    def __init__(self, cwd: Path):
+6:        self.cwd = cwd
+7:
+8:_knowledge_graph = None
+9:def get_knowledge_graph():
+10:    global _knowledge_graph
+11:    if _knowledge_graph is None:
+12:        _knowledge_graph = KnowledgeGraph(Path.cwd())
+13:    return _knowledge_graph
+14:
+</code>
+
+<response>
+{
+    "chunks": [
+        {"id": "example/graph.py:KnowledgeGraph", "start_line": 4, "end_line": 6},
+        {"id": "example/graph.py:KnowledgeGraph.__init__", "start_line": 5, "end_line": 6},
+        {"id": "example/graph.py:get_knowledge_graph", "start_line": 9, "end_line": 13}
+    ]
+}
+</response>
+--------------------------------------------------------------------------------"""
+
+continuation="""\
+You are continuing this task from a previous call. The LAST CHUNK processed was:
+{{ last_chunk }}
+
+In order to ensure continuity, return a DUPLICATE of the LAST CHUNK in your response
+with any necessary updates. 
+
+Do your best to infer the correct position from the LAST CHUNK. For example:
+- If the last chunk was a class method and your first chunk also appears to be a class method,
+use the class name from the LAST CHUNK in your first chunk's `id`. Do your best to infer from
+context, spacing or other clues whether it is a continuation or a new section.
+- If the `end_line` of the last chunk is the last line before the provided code file,
+it may be a continuation of the LAST CHUNK, so return it with updated `end_line`."""
+
+user="""\
+<path>
+{{ path }}
+</path>
+
+<code>
+{{ code }}
+</code>"""

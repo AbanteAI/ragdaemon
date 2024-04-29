@@ -12,7 +12,7 @@ from ragdaemon.graph import KnowledgeGraph
 def mock_get_llm_response():
     with patch(
         "ragdaemon.annotators.chunker_llm.ChunkerLLM.get_llm_response",
-        return_value={"chunks": []},
+        return_value={"chunks_llm": []},
     ) as mock:
         yield mock
 
@@ -61,4 +61,4 @@ async def test_chunker_llm_annotate(cwd, mock_get_llm_response, mock_db):
     for node, data in actual.nodes(data=True):
         assert data, f"Node {node} is missing data"
         if data["type"] == "file" and Path(node).suffix in chunker.chunk_extensions:
-            assert "chunks" in data, f"File {node} is missing chunks"
+            assert "chunks_llm" in data, f"File {node} is missing chunks"
