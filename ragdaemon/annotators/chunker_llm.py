@@ -7,6 +7,7 @@ from spice import SpiceMessages
 
 from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.utils import lines_set_to_ref
 
 
 def is_chunk_valid(chunk: dict, last_valid_line: int):
@@ -90,7 +91,7 @@ class ChunkerLLM(Chunker):
             return []
         file_lines = [f"{i+1}:{line}" for i, line in enumerate(file_lines)]
 
-        # Get raw llm output
+        # Get raw llm output: {id, start_line, end_line}
         chunks = list[dict[str, Any]]()
         n_batches = (len(file_lines) + batch_size - 1) // batch_size
         for i in range(n_batches):
@@ -112,49 +113,41 @@ class ChunkerLLM(Chunker):
                     if j == 1:
                         return []
 
-        # Make sure end_line of each 'parent' chunk covers all children
-        def update_end_lines(id: str, _chunks: list[dict[str, Any]]):
-            child_chunks = [c for c in _chunks if c["id"].startswith(id + ".")]
+        # Convert to {id: set(lines)} for easier manipulation
+        chunks = {
+            c["id"]: set(range(c["start_line"], c["end_line"] + 1)) for c in chunks
+        }
+
+        def update_parent_nodes(id: str, _chunks: dict[str, set[int]]):
+            parent_lines = _chunks[id]
+            child_chunks = {k: v for k, v in _chunks.items() if k.startswith(id + ".")}
             if child_chunks:
-                end_line = max(c["end_line"] for c in child_chunks)
-                parent_chunk = next(c for c in _chunks if c["id"] == id)
-                parent_chunk["end_line"] = end_line
+                # Make sure end_line of each 'parent' chunk covers all children
+                start_line = min(parent_lines)
+                end_line = max(max(v) for v in child_chunks.values())
+                parent_lines = set(range(start_line, end_line + 1))
+                # Remove child lines from parent lines
+                for child_lines in child_chunks.values():
+                    parent_lines -= child_lines
+                _chunks[id] = parent_lines
             return _chunks
 
-        for chunk in sorted(chunks, key=lambda c: len(c["id"]), reverse=True):
-            chunks = update_end_lines(chunk["id"], chunks)
+        ids_longest_first = sorted(chunks, key=lambda x: len(x), reverse=True)
+        for id in ids_longest_first:
+            chunks = update_parent_nodes(id, chunks)
 
         # Generate a 'BASE chunk' with all lines not already part of a chunk
         base_chunk_lines = set(range(1, len(file_lines) + 1))
-        for chunk in chunks:
-            for i in range(int(chunk["start_line"]), int(chunk["end_line"]) + 1):
-                base_chunk_lines.discard(i)
-        if len(base_chunk_lines) > 0:
-            base_chunk_lines_sorted = sorted(list(base_chunk_lines))
-            base_chunk_refs = []
-            start = base_chunk_lines_sorted[0]
-            end = start
-            for i in base_chunk_lines_sorted[1:]:
-                if i == end + 1:
-                    end = i
-                else:
-                    if start == end:
-                        base_chunk_refs.append(f"{start}")
-                    else:
-                        base_chunk_refs.append(f"{start}-{end}")
-                    start = end = i
-            base_chunk_refs.append(f"{start}-{end}")
-        else:
-            base_chunk_refs = []
-        lines_str = ":" + ",".join(base_chunk_refs) if base_chunk_refs else ""
-        base_chunk = {"id": f"{file}:BASE", "ref": f"{file}{lines_str}"}
+        for lines in chunks.values():
+            base_chunk_lines -= lines
+        lines_ref = lines_set_to_ref(base_chunk_lines)
+        ref = f"{file}:{lines_ref}" if lines_ref else file
+        base_chunk = {"id": f"{file}:BASE", "ref": ref}
 
         # Convert to refs and return
         output = [base_chunk]
-        for chunk in chunks:
-            if chunk["start_line"] == chunk["end_line"]:
-                lines_str = str(chunk["start_line"])
-            else:
-                lines_str = f"{chunk['start_line']}-{chunk['end_line']}"
-            output.append({"id": chunk["id"], "ref": f"{file}:{lines_str}"})
+        for id, lines in chunks.items():
+            lines_ref = lines_set_to_ref(lines)
+            ref = f"{file}:{lines_ref}" if lines_ref else file
+            output.append({"id": id, "ref": ref})
         return output
