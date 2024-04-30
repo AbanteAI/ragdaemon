@@ -9,23 +9,23 @@ from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.errors import RagdaemonError
 
 
-def is_chunk_valid(chunk: dict, last_valid_line: int) -> bool:
-    # Includes the correct fields
+def is_chunk_valid(chunk: dict, last_valid_line: int):
     if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
-        return False
-    # ID is in the correct format
-    if not chunk["id"].count(":") == 1:
-        return False
-    # A chunk name is specified
-    if not len(chunk["id"].split(":")[1]):
-        return False
-    # Start and end lines make sense
-    start, end = int(chunk["start_line"]), int(chunk["end_line"])
+        raise RagdaemonError(f"Chunk is missing fields: {chunk}")
+    halves = chunk["id"].split(":")
+    if len(halves) != 2 or not halves[0] or not halves[1]:
+        raise RagdaemonError(f"Chunk ID is not in the correct format: {chunk}")
+    start, end = chunk.get("start_line"), chunk.get("end_line")
+    if start is None or end is None:
+        raise RagdaemonError(f"Chunk lines are missing: {chunk}")
+    # Sometimes output is int, sometimes string. This accomodates either.
+    start, end = str(start), str(end)
+    if not start.isdigit() or not end.isdigit():
+        raise RagdaemonError(f"Chunk lines are not valid: {chunk}")
+    start, end = int(start), int(end)
     if not 1 <= start <= end <= last_valid_line:
-        return False
+        raise RagdaemonError(f"Chunk lines are out of bounds: {chunk}")
     # TODO: Validate the ref, i.e. a parent chunk exists
-
-    return True
 
 
 semaphore = asyncio.Semaphore(100)
@@ -71,8 +71,7 @@ class ChunkerLLM(Chunker):
             )
         last_valid_line = int(file_lines[-1].split(":")[0])
         for chunk in chunks:
-            if not is_chunk_valid(chunk, last_valid_line):
-                raise RagdaemonError(f"Model returned invalid chunk: {chunk}")
+            is_chunk_valid(chunk, last_valid_line)
         if last_chunk is not None:
             if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
                 raise RagdaemonError(

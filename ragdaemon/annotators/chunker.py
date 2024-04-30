@@ -187,9 +187,11 @@ class Chunker(Annotator):
 
         # Generate/add chunk data for nodes that don't have it
         tasks = []
+        files_just_chunked = set()
         for node, data in files_with_chunks:
             if refresh or data.get(self.chunk_field_id, None) is None:
                 tasks.append(self.get_file_chunk_data(node, data, db))
+                files_just_chunked.add(node)
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Chunking files...")
@@ -198,10 +200,26 @@ class Chunker(Annotator):
 
         # Process chunks
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        remove_from_db = set()
         for file, data in files_with_chunks:
-            _add_to_db = self.add_file_chunks_to_graph(file, data, graph, db)
-            for field, values in _add_to_db.items():
-                add_to_db[field].extend(values)
+            try:
+                refresh = refresh or file in files_just_chunked
+                _add_to_db = self.add_file_chunks_to_graph(
+                    file, data, graph, db, refresh
+                )
+                for field, values in _add_to_db.items():
+                    add_to_db[field].extend(values)
+            except RagdaemonError as e:
+                # If there's a problem with the chunks, remove the file from the db.
+                # This, along with 'files_just_chunked', prevents invalid database
+                # records perpetuating.
+                if self.verbose:
+                    print(f"Error adding chunks for {file}:\n{e}. Removing db record.")
+                remove_from_db.add(data["checksum"])
+                continue
+        if len(remove_from_db) > 0:
+            db.delete(list(remove_from_db))
+            raise RagdaemonError(f"Chunking error, try again.")
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.upsert(**add_to_db)

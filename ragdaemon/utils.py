@@ -72,6 +72,8 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             text = ""
             with open(cwd / path, "r") as f:
                 file_lines = f.read().split("\n")
+            if max(lines) > len(file_lines):
+                raise RagdaemonError(f"{type} {ref} has invalid line numbers")
             for line in sorted(lines):
                 text += f"{file_lines[line - 1]}\n"
         else:
