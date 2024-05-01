@@ -109,3 +109,25 @@ def truncate(document, embedding_model: str | None) -> tuple[str, float]:
         label = "\n[TRUNCATED]"
         document = document[: -len(label)] + label
     return document, truncate_ratio
+
+
+def lines_set_to_ref(lines: set[int]) -> str:
+    if not lines:
+        return ""
+    refs = []
+    low_to_high = sorted(lines)
+    start = end = low_to_high[0]
+    for i in low_to_high[1:]:
+        if i == end + 1:
+            end = i
+        else:
+            if start == end:
+                refs.append(str(start))
+            else:
+                refs.append(f"{start}-{end}")
+            start = end = i
+    if start == end:
+        refs.append(str(start))
+    else:
+        refs.append(f"{start}-{end}")
+    return ",".join(refs)
