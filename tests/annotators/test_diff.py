@@ -110,6 +110,7 @@ src/operations.py (diff)
 -    return a - b
 +return a - b #modified
  
+
 """
     )
 
@@ -143,6 +144,7 @@ src/operations.py (diff, user-included)
 19:
 20:def sqrt(a):
 21:    return math.sqrt(a)
+22:
 --git diff
 @@ -1,5 +1,5 @@
  import math
@@ -158,5 +160,6 @@ src/operations.py (diff, user-included)
 -    return a - b
 +return a - b #modified
  
+
 """
     )

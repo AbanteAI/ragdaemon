@@ -9,7 +9,7 @@ from ragdaemon.daemon import Daemon
 @pytest.fixture
 def expected_chunks():
     return [
-        {"id": "src/calculator.py:BASE", "ref": "src/calculator.py:1-4,29,42-44"},
+        {"id": "src/calculator.py:BASE", "ref": "src/calculator.py:1-4,29,42-45"},
         {"id": "src/calculator.py:Calculator", "ref": "src/calculator.py:5-28"},
         {"id": "src/calculator.py:Calculator.__init__", "ref": "src/calculator.py:6-9"},
         {

@@ -12,7 +12,7 @@ class ChunkerLine(Chunker):
         self.n = lines_per_chunk
 
     async def chunk_document(self, document: str) -> list[dict[str, Any]]:
-        lines = document.splitlines()
+        lines = document.split("\n")
         file = lines[0]
         file_lines = lines[1:]
         if not file_lines or not any(line for line in file_lines):
