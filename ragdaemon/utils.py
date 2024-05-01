@@ -2,6 +2,7 @@ import hashlib
 import os
 import re
 import subprocess
+from base64 import b64encode
 from pathlib import Path
 
 from spice import Spice
@@ -16,6 +17,11 @@ mentat_dir_path = Path.home() / ".mentat"
 def hash_str(string: str) -> str:
     """Return the MD5 hash of the input string."""
     return hashlib.md5(string.encode()).hexdigest()
+
+
+def basic_auth(username: str, password: str):
+    token = b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+    return f"Basic {token}"
 
 
 def get_git_diff(diff_args: str, cwd: str) -> str:
