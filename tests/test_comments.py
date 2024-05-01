@@ -76,6 +76,7 @@ async def test_comment_render(git_history, mock_db):
                 <content>Look replies are easy!</content>
             </replies>
             21:    return math.sqrt(a)
+            22:
             """)
     context.remove_comments("src/operations.py", tags=["test-flag"])
     actual = context.render()
@@ -118,6 +119,7 @@ async def test_comment_render(git_history, mock_db):
                 <content>Look replies are easy!</content>
             </replies>
             21:    return math.sqrt(a)
+            22:
             """)
     context.remove_comments("src/operations.py")
     actual = context.render()
@@ -144,4 +146,5 @@ async def test_comment_render(git_history, mock_db):
             19:
             20:def sqrt(a):
             21:    return math.sqrt(a)
+            22:
             """)

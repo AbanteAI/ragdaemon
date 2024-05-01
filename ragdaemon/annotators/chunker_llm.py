@@ -84,7 +84,7 @@ class ChunkerLLM(Chunker):
         self, document: str, batch_size: int = 1000, retries: int = 1
     ) -> list[dict[str, Any]]:
         """Parse file_lines into a list of {id, ref} chunks."""
-        lines = document.splitlines()
+        lines = document.split("\n")
         file = lines[0]
         file_lines = lines[1:]
         if not file_lines or not any(line for line in file_lines):

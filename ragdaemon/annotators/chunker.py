@@ -172,7 +172,8 @@ class Chunker(Annotator):
     ) -> KnowledgeGraph:
         # Select file nodes and remove all existing chunk nodes from graph.
         files_with_chunks = []
-        for node, data in graph.nodes(data=True):
+        all_nodes = list(graph.nodes(data=True))
+        for node, data in all_nodes:
             if data is None:
                 raise RagdaemonError(f"Node {node} has no data.")
             if data.get("type") == "chunk":
