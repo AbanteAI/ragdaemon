@@ -70,6 +70,19 @@ class Daemon:
             print("Initialized empty graph.")
 
         annotators = annotators if annotators is not None else default_annotators()
+
+        # TODO: Maybe this should be a base annotator method? validate against all
+        if "call_graph" in annotators:
+            try:
+                chunker_type = next(a for a in annotators if "chunker" in a)
+                chunker_cls = annotators_map[chunker_type]
+                chunk_field_id = chunker_cls.chunk_field_id
+                annotators["call_graph"]["chunk_field_id"] = chunk_field_id
+            except StopIteration:
+                raise ValueError(
+                    "Call graph annotator requires a chunker annotator to be specified."
+                )
+
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
         self.pipeline: dict[str, Annotator] = {

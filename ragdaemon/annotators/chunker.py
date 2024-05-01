@@ -143,8 +143,8 @@ class Chunker(Annotator):
 
             if id != base_id:
                 _link_to_base_chunk(id)
-        for source, origin in edges_to_add:
-            graph.add_edge(source, origin, type="hierarchy")
+        for source, target in edges_to_add:
+            graph.add_edge(source, target, type="hierarchy")
         return add_to_db
 
     async def annotate(

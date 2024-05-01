@@ -52,6 +52,7 @@ diff = args.diff
 annotators = {
     "hierarchy": {},
     "chunker_llm": {"chunk_extensions": code_extensions},
+    "call_graph": {"call_extensions": code_extensions},
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }

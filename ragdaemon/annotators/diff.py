@@ -173,8 +173,8 @@ class Diff(Annotator):
 
             _link_to_successors(file_str)
 
-        for source, origin in edges_to_add:
-            graph.add_edge(source, origin, type="diff")
+        for source, target in edges_to_add:
+            graph.add_edge(source, target, type="diff")
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.upsert(**add_to_db)

@@ -32,19 +32,6 @@ def expected_chunks():
     ]
 
 
-"""
-
-{'id': 'src/calculator.py:BASE', 'ref': 'src/calculator.py:1-4,19,29,42-44'}, 
-{'id': 'src/calculator.py:Calculator', 'ref': 'src/calculator.py:5,10,13,16'}, 
-{'id': 'src/calculator.py:Calculator.__init__', 'ref': 'src/calculator.py:6-9'}, 
-{'id': 'src/calculator.py:Calculator.add_numbers', 'ref': 'src/calculator.py:11-12'}, 
-{'id': 'src/calculator.py:Calculator.subtract_numbers', 'ref': 'src/calculator.py:14-15'}, 
-{'id': 'src/calculator.py:Calculator.exp_numbers', 'ref': 'src/calculator.py:17-18'}, 
-{'id': 'src/calculator.py:call', 'ref': 'src/calculator.py:20-28'}, 
-{'id': 'src/calculator.py:main', 'ref': 'src/calculator.py:30-41'}
-"""
-
-
 @pytest.mark.skip(reason="This test requires calling an API")
 @pytest.mark.asyncio
 async def test_chunker_llm_edge_cases(cwd, expected_chunks):
