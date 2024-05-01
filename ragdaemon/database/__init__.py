@@ -30,6 +30,7 @@ def get_db(
                 spice_client=spice_client,
                 embedding_model=embedding_model,
                 embedding_provider=embedding_provider,
+                verbose=verbose,
             )
             # In case the api key is wrong, try to embed something to trigger an error.
             _ = db.add(ids="test", documents="test doc")
