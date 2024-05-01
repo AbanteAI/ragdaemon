@@ -91,7 +91,7 @@ async def test_context_builder_methods(cwd, mock_db):
     combined_context = context + different_context
 
     assert combined_context.context["src/interface.py"]["lines"] == set([3, 4, 5, 17])
-    assert combined_context.context["src/operations.py"]["lines"] == set(range(1, 22))
+    assert combined_context.context["src/operations.py"]["lines"] == set(range(1, 23))
 
 
 def test_to_refs(cwd, mock_db):

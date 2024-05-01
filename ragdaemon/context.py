@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, Union
 from dict2xml import dict2xml
 from ragdaemon.annotators.diff import parse_diff_id
 from ragdaemon.database import Database
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document, hash_str, parse_path_ref
 
@@ -106,7 +107,7 @@ class ContextBuilder:
         self.context[path_str]["tags"].update(tags)
         if not lines:
             document = self.context[path_str]["document"]
-            lines = list(range(1, len(document.splitlines())))
+            lines = list(range(1, len(document.split("\n"))))
         self.context[path_str]["lines"].update(lines)
 
     def add_diff(self, id: str):
@@ -206,11 +207,13 @@ class ContextBuilder:
             if 0 in data["comments"]:
                 output += render_comments(data["comments"][0]) + "\n"
             if data["lines"]:
-                file_lines = data["document"].splitlines()
+                file_lines = data["document"].split("\n")
                 last_rendered = 0
                 for line in sorted(data["lines"]):
                     if line - last_rendered > 1:
                         output += "...\n"
+                    if line >= len(file_lines):
+                        raise RagdaemonError(f"Line {line} not found in {path_str}.")
                     line_content = f"{line}:{file_lines[line]}"
                     if line in data["comments"]:
                         line_content += "\n" + render_comments(data["comments"][line])
@@ -235,7 +238,7 @@ class ContextBuilder:
             checksum = self.graph.nodes[id]["checksum"]
             document = self.db.get(checksum)["documents"][0]
             # TODO: Add line numbers
-            without_git_command = "\n".join(document.splitlines()[1:])
+            without_git_command = "\n".join(document.split("\n")[1:])
             output += without_git_command + "\n"
         return output
 
@@ -245,7 +248,7 @@ class ContextBuilder:
         for path, data in self.context.items():
             if len(data["lines"]) == 0:
                 continue
-            elif len(data["lines"]) == data["document"].splitlines():
+            elif len(data["lines"]) == data["document"].split("\n"):
                 refs[path] = ""
                 continue
             segments = []

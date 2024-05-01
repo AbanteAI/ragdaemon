@@ -95,6 +95,8 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
             text = ""
             with open(cwd / path, "r") as f:
                 file_lines = f.read().split("\n")
+            if max(lines) > len(file_lines):
+                raise RagdaemonError(f"{type} {ref} has invalid line numbers")
             for line in sorted(lines):
                 text += f"{file_lines[line - 1]}\n"
         else:
@@ -130,3 +132,25 @@ def truncate(document, embedding_model: str | None) -> tuple[str, float]:
         label = "\n[TRUNCATED]"
         document = document[: -len(label)] + label
     return document, truncate_ratio
+
+
+def lines_set_to_ref(lines: set[int]) -> str:
+    if not lines:
+        return ""
+    refs = []
+    low_to_high = sorted(lines)
+    start = end = low_to_high[0]
+    for i in low_to_high[1:]:
+        if i == end + 1:
+            end = i
+        else:
+            if start == end:
+                refs.append(str(start))
+            else:
+                refs.append(f"{start}-{end}")
+            start = end = i
+    if start == end:
+        refs.append(str(start))
+    else:
+        refs.append(f"{start}-{end}")
+    return ",".join(refs)
