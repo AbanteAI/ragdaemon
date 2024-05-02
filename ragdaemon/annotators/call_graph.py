@@ -224,7 +224,7 @@ class CallGraph(Annotator):
                     if lines is None:
                         raise RagdaemonError(f"Chunk {chunk} is missing line numbers.")
                     for line in lines:
-                        line_index[line] = file
+                        line_index[line] = chunk["id"]
 
             # Add one edge per source/target pair
             for target, lines in calls.items():
