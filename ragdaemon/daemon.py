@@ -13,8 +13,7 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.llm import DEFAULT_COMPLETION_MODEL
-from ragdaemon.utils import mentat_dir_path
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path
 
 
 def default_annotators():

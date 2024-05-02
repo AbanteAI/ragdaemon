@@ -4,13 +4,19 @@ from pathlib import Path
 from typing import Any, Optional
 
 from tqdm.asyncio import tqdm
+from spice import SpiceMessages
+from spice.models import TextModel
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, parse_path_ref
-from spice import SpiceMessages
+from ragdaemon.utils import (
+    DEFAULT_CODE_EXTENSIONS,
+    DEFAULT_COMPLETION_MODEL,
+    parse_path_ref,
+    semaphore,
+)
 
 
 def is_calls_valid(calls: dict[str, list[dict[str, str | list[int]]]]) -> bool:
@@ -25,9 +31,6 @@ def is_calls_valid(calls: dict[str, list[dict[str, str | list[int]]]]) -> bool:
     return True
 
 
-semaphore = asyncio.Semaphore(50)
-
-
 class CallGraph(Annotator):
     name = "call_graph"
     call_field_id = "calls"
@@ -37,6 +40,7 @@ class CallGraph(Annotator):
         *args,
         call_extensions: Optional[list[str]] = None,
         chunk_field_id: Optional[str] = None,
+        model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -46,6 +50,7 @@ class CallGraph(Annotator):
         if chunk_field_id is None:
             raise RagdaemonError("Chunk field ID is required for call graph annotator.")
         self.chunk_field_id = chunk_field_id
+        self.model = model
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         for node, data in graph.nodes(data=True):
@@ -84,10 +89,10 @@ class CallGraph(Annotator):
         messages.add_system_prompt(name="call_graph.base")
         messages.add_user_prompt("call_graph.user", document=document)
 
-        global semaphore
         async with semaphore:
             response = await self.spice_client.get_response(
                 messages=messages,
+                model=self.model,
                 response_format={"type": "json_object"},
             )
         try:

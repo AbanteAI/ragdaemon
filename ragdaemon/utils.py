@@ -1,17 +1,20 @@
+import asyncio
 import hashlib
-import os
 import re
 import subprocess
 from base64 import b64encode
 from pathlib import Path
 
 from spice import Spice
-from spice.models import UnknownModel
+from spice.models import GPT_4_TURBO, UnknownModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
 
 mentat_dir_path = Path.home() / ".mentat"
+
+
+semaphore = asyncio.Semaphore(100)
 
 
 DEFAULT_CODE_EXTENSIONS = [
@@ -35,6 +38,9 @@ DEFAULT_CODE_EXTENSIONS = [
     ".tsx",
     ".scss",
 ]
+
+
+DEFAULT_COMPLETION_MODEL = GPT_4_TURBO
 
 
 def hash_str(string: str) -> str:
