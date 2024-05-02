@@ -4,10 +4,11 @@ from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
 
 from spice import SpiceMessages
+from spice.models import TextModel
 
 from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import lines_set_to_ref
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, lines_set_to_ref, semaphore
 
 
 def is_chunk_valid(chunk: dict, last_valid_line: int):
@@ -29,12 +30,18 @@ def is_chunk_valid(chunk: dict, last_valid_line: int):
     # TODO: Validate the ref, i.e. a parent chunk exists
 
 
-semaphore = asyncio.Semaphore(100)
-
-
 class ChunkerLLM(Chunker):
     name = "chunker_llm"
     chunk_field_id = "chunks_llm"
+
+    def __init__(
+        self,
+        *args,
+        model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.model = model
 
     async def get_llm_response(
         self,
@@ -56,10 +63,10 @@ class ChunkerLLM(Chunker):
             "chunker_llm.user", path=file, code="\n".join(file_lines)
         )
 
-        global semaphore
         async with semaphore:
             response = await self.spice_client.get_response(
                 messages=messages,
+                model=self.model,
                 response_format={"type": "json_object"},
             )
         try:

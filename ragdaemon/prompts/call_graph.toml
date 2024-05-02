@@ -1,0 +1,62 @@
+base="""\
+Identify which internal functions are called by the given code file and on what line numbers.
+Return a json object following the schema {path/to/file:function: [1, 2, 3]}.
+
+* Do your best to determine the FULL call path of a function relative to the project root.
+If you're not sure, take your best guess.
+* ONLY return calls to INTERNAL functions, i.e. functions where are defined within the
+codebase/repo, NOT built-in functions (like print) or installed dependencies (like numpy).
+* If there are no function calls, return an empty json object ("{}").
+* Paths should follow posix formatting. Use a ":" to separate the path from the function 
+signature stack. Use "."s to separate classes/methods/functions within the function signature, 
+and do not add hanging "." at the end.
+
+EXAMPLE:
+--------------------------------------------------------------------------------
+<code>
+example/graph.py
+1:import pathlib as Path
+2:from example.errors import GraphError
+3:from example.node import Node, parse_node_id
+4:
+5:
+6:class KnowledgeGraph:
+7:    def __init__(self, nodes: list[Node]):
+8:        self.node_ids = []
+9:        for node in nodes:
+10:            id = node.get_id()
+11:            try:
+12:                _, _ = parse_node_id(id)
+13:                self.node_ids.append(id)
+14:            except Exception:
+15:                raise GraphError(f"Malformed id: {id}")
+16:
+17:    def get_paths(self):
+18:        paths = []
+19:        for id in self.node_ids:
+20:            path, lines = parse_node_id(id)
+21:            paths.append(Path(path))
+22:
+23:
+24:def get_paths_from_nodes(nodes):
+25:    graph = KnowledgeGraph(nodes)
+26:    return graph.get_paths()
+27:
+</code>
+
+<response>
+{
+    "example/node.py:Node.get_id": [10],
+    "example/node.py:parse_node_id": [12, 20],
+    "example/errors.py:GraphError": [15],
+    "example/graph.py:KnowledgeGraph.__init__": [17],
+    "example/graph.py:KnowledgeGraph.get_paths": [18],
+}
+</response>
+"""
+
+user="""\
+<code>
+{{ document }}
+</code>
+"""

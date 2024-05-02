@@ -1,4 +1,5 @@
 from ragdaemon.annotators.base_annotator import Annotator  # noqa: F401
+from ragdaemon.annotators.call_graph import CallGraph  # noqa: F401
 from ragdaemon.annotators.chunker import Chunker
 from ragdaemon.annotators.chunker_line import ChunkerLine
 from ragdaemon.annotators.chunker_llm import ChunkerLLM
@@ -9,6 +10,7 @@ from ragdaemon.annotators.summarizer import Summarizer
 
 annotators_map = {
     "hierarchy": Hierarchy,
+    "call_graph": CallGraph,
     "chunker": Chunker,
     "chunker_llm": ChunkerLLM,
     "chunker_line": ChunkerLine,

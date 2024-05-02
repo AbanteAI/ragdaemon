@@ -1,3 +1,0 @@
-from spice.models import GPT_4_TURBO
-
-DEFAULT_COMPLETION_MODEL = GPT_4_TURBO
