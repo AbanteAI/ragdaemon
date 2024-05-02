@@ -48,7 +48,7 @@ class Daemon:
             self.graph_path = (
                 mentat_dir_path / "ragdaemon" / f"ragdaemon-{self.cwd.name}.json"
             )
-        self.graph_path.parent.mkdir(exist_ok=True)
+        self.graph_path.parent.mkdir(parents=True, exist_ok=True)
         if spice_client is None:
             logging_dir = mentat_dir_path / "ragdaemon" / "spice_logs"
             logging_dir.mkdir(parents=True, exist_ok=True)
