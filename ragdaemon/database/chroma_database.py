@@ -1,11 +1,15 @@
+import os
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
+import dotenv
+from chromadb.config import Settings
 from spice import Spice
 
+from ragdaemon import __version__
 from ragdaemon.database.database import Database
 from ragdaemon.errors import RagdaemonError
-from ragdaemon import __version__
+from ragdaemon.utils import basic_auth
 
 MAX_INPUTS_PER_CALL = 2048
 
@@ -38,6 +42,7 @@ class ChromaDB(Database):
         spice_client: Spice,
         embedding_model: str,
         embedding_provider: Optional[str] = None,
+        verbose: bool = False,
     ) -> None:
         self.cwd = cwd
         self.db_path = db_path
@@ -71,7 +76,27 @@ class ChromaDB(Database):
 
         embedding_function = SpiceEmbeddingFunction()
 
-        _client = chromadb.PersistentClient(path=str(db_path))
+        dotenv.load_dotenv()
+
+        try:
+            host = os.environ["CHROMA_SERVER_HOST"]
+            port = int(os.environ.get("CHROMA_SERVER_HTTP_PORT", 443))
+            username = os.environ["CHROMA_SERVER_USERNAME"]
+            password = os.environ["CHROMA_SERVER_PASSWORD"]
+            _client = chromadb.HttpClient(
+                host=host,
+                port=port,
+                ssl=port == 443,
+                headers={"Authorization": basic_auth(username, password)},
+                settings=Settings(allow_reset=True, anonymized_telemetry=False),
+            )
+        except KeyError:
+            if verbose:
+                print(
+                    "No Chroma HTTP client environment variables found. Defaulting to PersistentClient."
+                )
+            _client = chromadb.PersistentClient(path=str(db_path))
+
         minor_version = ".".join(__version__.split(".")[:2])
         name = f"ragdaemon-{minor_version}-{self.embedding_model}"
         self._collection = _client.get_or_create_collection(
