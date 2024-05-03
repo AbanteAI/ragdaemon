@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from networkx.readwrite import json_graph
 from spice import Spice
@@ -68,19 +68,27 @@ class Daemon:
         if self.verbose:
             print("Initialized empty graph.")
 
+        # Link annotators together as required
         annotators = annotators if annotators is not None else default_annotators()
-
-        # TODO: Maybe this should be a base annotator method? validate against all
+        chunker_type = next((a for a in annotators if "chunker" in a), None)
+        summarizer_type = next((a for a in annotators if a == "summarizer"), None)
         if "call_graph" in annotators:
-            try:
-                chunker_type = next(a for a in annotators if "chunker" in a)
-                chunker_cls = annotators_map[chunker_type]
-                chunk_field_id = chunker_cls.chunk_field_id
-                annotators["call_graph"]["chunk_field_id"] = chunk_field_id
-            except StopIteration:
+            if chunker_type is None:
                 raise ValueError(
                     "Call graph annotator requires a chunker annotator to be specified."
                 )
+            chunker_cls = annotators_map[chunker_type]
+            chunk_field_id = chunker_cls.chunk_field_id
+            annotators["call_graph"]["chunk_field_id"] = chunk_field_id
+        if "summarizer_agglomerative" in annotators:
+            if chunker_type is None or summarizer_type is None:
+                raise ValueError(
+                    "Summarizer annotator requires a chunker and summarizer to be specified."
+                )
+            chunker_field_id = annotators_map[chunker_type].chunk_field_id
+            summary_field_id = annotators_map[summarizer_type].summary_field_id
+            annotators["summarizer_agglomerative"]["chunk_field_id"] = chunker_field_id
+            annotators["summarizer_agglomerative"]["summary_field_id"] = summary_field_id
 
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
@@ -142,9 +150,9 @@ class Daemon:
                 last_updated = _last_updated
                 _update_task = asyncio.create_task(self.update())
 
-    def search(self, query: str, n: Optional[int] = None) -> list[dict[str, Any]]:
+    def search(self, query: str, n: Optional[int] = None, node_types: Iterable[str] = ("file", "chunk", "diff")) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
-        return self.db.query_graph(query, self.graph, n=n)
+        return self.db.query_graph(query, self.graph, n=n, node_types=node_types)
 
     def get_document(self, filename: str) -> str:
         checksum = self.graph.nodes[filename]["checksum"]
