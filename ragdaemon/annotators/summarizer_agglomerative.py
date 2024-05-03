@@ -25,8 +25,6 @@ Don't aim to give an exhaustive report; instead, focus on what would distinguish
 particular code from other parts of the codebase.
 """
 
-# TODO: Add a node_type to the search function so these summary nodes don't gunk up
-# the works.
 
 class SummarizerAgglomerative(Annotator):
     name = "agglomerative_summarizer"
@@ -34,8 +32,8 @@ class SummarizerAgglomerative(Annotator):
     def __init__(
         self,
         *args,
-        chunk_field_id: Optional[str] = None,
-        summary_field_id: Optional[str] = None,
+        chunk_field_id: str = "chunker_llm",
+        summary_field_id: str = "summary",
         linkage_method: str = "ward",
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
         **kwargs,
@@ -111,7 +109,9 @@ class SummarizerAgglomerative(Annotator):
             )
         return response.text
 
-    async def get_summary(self, node: str, document: str, graph: KnowledgeGraph, db: Database):
+    async def get_summary(
+        self, node: str, document: str, graph: KnowledgeGraph, db: Database
+    ):
         """Asynchronously generate summary and update graph and db"""
         summary = await self.get_llm_response(document)
         checksum = hash_str(document)
@@ -141,14 +141,14 @@ class SummarizerAgglomerative(Annotator):
             if e[-1].get("type") == "agglomerative_summary"
         ]
         graph.remove_edges_from(agglomerative_edges)
-        
+
         # Generate the linkage_list for active checksums
         leaf_ids = self.select_leaf_nodes(graph)
         leaf_checksums = [graph.nodes[leaf]["checksum"] for leaf in leaf_ids]
         embeddings = db.get(ids=leaf_checksums, include=["embeddings"])["embeddings"]
         data = np.array([np.array(e) for e in embeddings])
         linkage_matrix = linkage(data, method=self.linkage_method)
-        
+
         # Add empty nodes and edges, organize by height
         index = {i: leaf for i, leaf in enumerate(leaf_ids)}
         summary_nodes_by_height = defaultdict(list)
@@ -167,7 +167,9 @@ class SummarizerAgglomerative(Annotator):
             for node in links:
                 successors = list(graph.successors(node))
                 if len(successors) != 2:
-                    raise RagdaemonError(f"Node {node} has {len(successors)} successors.")
+                    raise RagdaemonError(
+                        f"Node {node} has {len(successors)} successors."
+                    )
                 a, b = successors
                 a_summary = graph.nodes[a].get("summary")
                 b_summary = graph.nodes[b].get("summary")
@@ -184,7 +186,10 @@ class SummarizerAgglomerative(Annotator):
 
             if len(tasks) > 0:
                 if self.verbose:
-                    await tqdm.gather(*tasks, desc=f"Generating agglomerative summaries level {height}")
+                    await tqdm.gather(
+                        *tasks,
+                        desc=f"Generating agglomerative summaries level {height}",
+                    )
                 else:
                     await asyncio.gather(*tasks)
 

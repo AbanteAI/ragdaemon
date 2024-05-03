@@ -88,7 +88,9 @@ class Daemon:
             chunker_field_id = annotators_map[chunker_type].chunk_field_id
             summary_field_id = annotators_map[summarizer_type].summary_field_id
             annotators["summarizer_agglomerative"]["chunk_field_id"] = chunker_field_id
-            annotators["summarizer_agglomerative"]["summary_field_id"] = summary_field_id
+            annotators["summarizer_agglomerative"]["summary_field_id"] = (
+                summary_field_id
+            )
 
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
@@ -150,7 +152,12 @@ class Daemon:
                 last_updated = _last_updated
                 _update_task = asyncio.create_task(self.update())
 
-    def search(self, query: str, n: Optional[int] = None, node_types: Iterable[str] = ("file", "chunk", "diff")) -> list[dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        n: Optional[int] = None,
+        node_types: Iterable[str] = ("file", "chunk", "diff"),
+    ) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
         return self.db.query_graph(query, self.graph, n=n, node_types=node_types)
 

@@ -19,7 +19,11 @@ class Database:
         raise NotImplementedError
 
     def query_graph(
-        self, query: str, graph: KnowledgeGraph, n: Optional[int] = None, node_types: Iterable[str] = ("file", "chunk", "diff")
+        self,
+        query: str,
+        graph: KnowledgeGraph,
+        n: Optional[int] = None,
+        node_types: Iterable[str] = ("file", "chunk", "diff"),
     ) -> list[dict]:
         """Return documents, metadatas and distances, sorted, for nodes in the graph.
 
