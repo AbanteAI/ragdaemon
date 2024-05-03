@@ -1,7 +1,6 @@
 import asyncio
 import json
-from collections import defaultdict
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 from spice import SpiceMessage
@@ -110,8 +109,12 @@ class SummarizerAgglomerative(Annotator):
         return response.text
 
     async def get_summary(
-        self, node: str, document: str, graph: KnowledgeGraph, db: Database
-    ):
+        self,
+        node: str,
+        document: str,
+        graph: KnowledgeGraph,
+        loading_bar: Optional[tqdm] = None,
+    ) -> dict[str, Any]:
         """Asynchronously generate summary and update graph and db"""
         summary = await self.get_llm_response(document)
         checksum = hash_str(document)
@@ -122,8 +125,58 @@ class SummarizerAgglomerative(Annotator):
             "checksum": checksum,
             "active": False,
         }
-        db.upsert(ids=checksum, documents=document, metadatas=record)
         graph.nodes[node].update(record)
+        if loading_bar is not None:
+            loading_bar.update(1)
+        return {"ids": checksum, "documents": document, "metadatas": record}
+
+    async def load_all_summary_nodes(
+        self,
+        new_nodes: list[str],
+        graph: KnowledgeGraph,
+        db: Database,
+        refresh: bool = False,
+    ):
+        """Asynchronously generate or fetch summaries and add to graph/db"""
+        loading_bar = (
+            None
+            if not self.verbose
+            else tqdm(total=len(new_nodes), desc="Refreshing agglomerative summaries")
+        )
+        while len(new_nodes) > 0:
+            tasks = []
+            just_added = set()
+            for node in new_nodes:
+                a, b = list(graph.successors(node))
+                a_summary = graph.nodes[a].get("summary")
+                b_summary = graph.nodes[b].get("summary")
+                if a_summary is None or b_summary is None:
+                    continue
+                just_added.add(node)
+                document = f"{a_summary}\n{b_summary}"
+                checksum = hash_str(document)
+                records = db.get(checksum)["metadatas"]
+                if refresh or len(records) == 0:
+                    tasks.append(self.get_summary(node, document, graph, loading_bar))
+                else:
+                    record = records[0]
+                    graph.nodes[node].update(record)
+                    if loading_bar is not None:
+                        loading_bar.update(1)
+
+            new_nodes = list(set(new_nodes) - just_added)
+            if len(tasks) > 0:
+                results = await asyncio.gather(*tasks)
+                add_to_db = {"ids": [], "documents": [], "metadatas": []}
+                for result in results:
+                    for key, value in result.items():
+                        add_to_db[key].append(value)
+                db.add(**add_to_db)
+            elif new_nodes:
+                raise RagdaemonError(f"Stuck on nodes {new_nodes}")
+
+        if loading_bar is not None:
+            loading_bar.close()
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
@@ -149,48 +202,21 @@ class SummarizerAgglomerative(Annotator):
         data = np.array([np.array(e) for e in embeddings])
         linkage_matrix = linkage(data, method=self.linkage_method)
 
-        # Add empty nodes and edges, organize by height
-        index = {i: leaf for i, leaf in enumerate(leaf_ids)}
-        summary_nodes_by_height = defaultdict(list)
+        # Add empty nodes and edges to the graph
+        all_nodes = leaf_ids.copy()
         for i, (a, b, _, height) in enumerate(linkage_matrix):
             i_link = i + len(leaf_ids)
             node = f"summary_{i_link}"
-            index[i_link] = node
+            all_nodes.append(node)
             graph.add_node(node)
-            graph.add_edge(node, index[int(a)], type="agglomerative_summary")
-            graph.add_edge(node, index[int(b)], type="agglomerative_summary")
-            summary_nodes_by_height[int(height)].append(node)
+            graph.add_edge(node, all_nodes[int(a)], type="agglomerative_summary")
+            graph.add_edge(node, all_nodes[int(b)], type="agglomerative_summary")
 
-        # Generate/fetch summaries and add to graph/db
-        for height, links in summary_nodes_by_height.items():
-            tasks = []
-            for node in links:
-                successors = list(graph.successors(node))
-                if len(successors) != 2:
-                    raise RagdaemonError(
-                        f"Node {node} has {len(successors)} successors."
-                    )
-                a, b = successors
-                a_summary = graph.nodes[a].get("summary")
-                b_summary = graph.nodes[b].get("summary")
-                if a_summary is None or b_summary is None:
-                    raise RagdaemonError("Both nodes must have summaries.")
-                document = f"{a_summary}\n{b_summary}"
-                checksum = hash_str(document)
-                records = db.get(checksum)["metadatas"]
-                if refresh or len(records) == 0:
-                    tasks.append(self.get_summary(node, document, graph, db))
-                else:
-                    record = records[0]
-                    graph.nodes[node].update(record)
-
-            if len(tasks) > 0:
-                if self.verbose:
-                    await tqdm.gather(
-                        *tasks,
-                        desc=f"Generating agglomerative summaries level {height}",
-                    )
-                else:
-                    await asyncio.gather(*tasks)
+        # Generate/fetch summaries and add to graph/db.
+        new_nodes = all_nodes[len(leaf_ids) :]
+        try:
+            await self.load_all_summary_nodes(new_nodes, graph, db, refresh=refresh)
+        except KeyboardInterrupt:
+            raise
 
         return graph
