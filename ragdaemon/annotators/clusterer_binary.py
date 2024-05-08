@@ -5,7 +5,6 @@ from typing import Optional, Any
 import numpy as np
 from spice import SpiceMessage
 from spice.models import TextModel
-from scipy.cluster.hierarchy import linkage
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -193,6 +192,9 @@ class ClustererBinary(Annotator):
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
     ) -> KnowledgeGraph:
+        # Lazy import and exclude from requirements (because large and experimental)
+        from scipy.cluster.hierarchy import linkage
+
         # Remove any existing cluster_binary nodes and edges
         cluster_binary_nodes = [
             node
