@@ -192,8 +192,14 @@ class ClustererBinary(Annotator):
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
     ) -> KnowledgeGraph:
-        # Lazy import and exclude from requirements (because large and experimental)
-        from scipy.cluster.hierarchy import linkage
+        try:
+            # Scipy is intentionally excluded from package requirements because it's
+            # a large package and this is an experimental feature.
+            from scipy.cluster.hierarchy import linkage
+        except ImportError:
+            raise RagdaemonError(
+                "ClustererBinary requires scipy to be installed. Run 'pip install scipy'."
+            )
 
         # Remove any existing cluster_binary nodes and edges
         cluster_binary_nodes = [

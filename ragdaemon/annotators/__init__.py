@@ -12,11 +12,11 @@ from ragdaemon.annotators.clusterer_binary import ClustererBinary
 annotators_map = {
     "call_graph": CallGraph,
     "chunker": Chunker,
-    "chunker_llm": ChunkerLLM,
     "chunker_line": ChunkerLine,
+    "chunker_llm": ChunkerLLM,
+    "clusterer_binary": ClustererBinary,
     "diff": Diff,
     "hierarchy": Hierarchy,
     "layout_hierarchy": LayoutHierarchy,
     "summarizer": Summarizer,
-    "clusterer_binary": ClustererBinary,
 }

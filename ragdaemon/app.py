@@ -39,11 +39,11 @@ diff = args.diff
 annotators = {
     "hierarchy": {},
     "chunker_llm": {"chunk_extensions": code_extensions},
-    "summarizer": {},
-    "clusterer_binary": {},
+    # "summarizer": {},
+    # "clusterer_binary": {},
     # "call_graph": {"call_extensions": code_extensions},
-    # "diff": {"diff": diff},
-    # "layout_hierarchy": {},
+    "diff": {"diff": diff},
+    "layout_hierarchy": {},
 }
 daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
 
