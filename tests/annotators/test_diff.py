@@ -55,7 +55,7 @@ async def test_diff_annotate(git_history, mock_db):
 
 @pytest.mark.asyncio
 async def test_diff_render(git_history, mock_db):
-    daemon = Daemon(cwd=git_history)
+    daemon = Daemon(cwd=git_history, annotators={"hierarchy": {}, "diff": {}})
     await daemon.update(refresh=True)
 
     # Only diffs

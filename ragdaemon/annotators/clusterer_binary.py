@@ -15,7 +15,7 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore
 
 clusterer_binary_prompt = """\
-You are building a hierarchical summary of a codebase using binary clustering.
+You are building a hierarchical summary of a codebase using agglomerative clustering.
 You will be given two one-line summaries of code chunks or existing summaries.
 Combine the two summaries into a single one-line summary.
 
@@ -31,13 +31,25 @@ class ClustererBinary(Annotator):
     def __init__(
         self,
         *args,
-        chunk_field_id: str = "chunker_llm",
-        summary_field_id: str = "summary",
+        pipeline: list[Annotator] = [],
         linkage_method: str = "ward",
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        try:
+            chunk_field_id = next(
+                getattr(a, "chunk_field_id") for a in pipeline if "chunker" in a.name
+            )
+            summary_field_id = next(
+                getattr(a, "summary_field_id")
+                for a in pipeline
+                if "summarizer" in a.name
+            )
+        except (StopIteration, AttributeError):
+            raise RagdaemonError(
+                "ClustererBinary annotator requires a 'chunker' and 'summarizer' annotator with chunk_field_id and summary_field_id."
+            )
         self.chunk_field_id = chunk_field_id
         self.summary_field_id = summary_field_id
         self.linkage_method = linkage_method

@@ -68,36 +68,17 @@ class Daemon:
         if self.verbose:
             print("Initialized empty graph.")
 
-        # Link annotators together as required
         annotators = annotators if annotators is not None else default_annotators()
-        chunker_type = next((a for a in annotators if "chunker" in a), None)
-        summarizer_type = next((a for a in annotators if a == "summarizer"), None)
-        if "call_graph" in annotators:
-            if chunker_type is None:
-                raise ValueError(
-                    "Call graph annotator requires a chunker annotator to be specified."
-                )
-            chunker_cls = annotators_map[chunker_type]
-            chunk_field_id = chunker_cls.chunk_field_id
-            annotators["call_graph"]["chunk_field_id"] = chunk_field_id
-        if "clusterer_binary" in annotators:
-            if chunker_type is None or summarizer_type is None:
-                raise ValueError(
-                    "Summarizer annotator requires a chunker and summarizer to be specified."
-                )
-            chunker_field_id = annotators_map[chunker_type].chunk_field_id
-            summary_field_id = annotators_map[summarizer_type].summary_field_id
-            annotators["clusterer_binary"]["chunk_field_id"] = chunker_field_id
-            annotators["clusterer_binary"]["summary_field_id"] = summary_field_id
-
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
-        self.pipeline: dict[str, Annotator] = {
-            ann: annotators_map[ann](
-                **kwargs, verbose=self.verbose, spice_client=spice_client
+        self.pipeline = {}
+        for ann, kwargs in annotators.items():
+            self.pipeline[ann] = annotators_map[ann](
+                **kwargs,
+                verbose=self.verbose,
+                spice_client=spice_client,
+                pipeline=self.pipeline,
             )
-            for ann, kwargs in annotators.items()
-        }
 
     @property
     def db(self) -> Database:
