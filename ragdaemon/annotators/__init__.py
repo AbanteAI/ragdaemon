@@ -7,14 +7,16 @@ from ragdaemon.annotators.diff import Diff
 from ragdaemon.annotators.hierarchy import Hierarchy
 from ragdaemon.annotators.layout_hierarchy import LayoutHierarchy
 from ragdaemon.annotators.summarizer import Summarizer
+from ragdaemon.annotators.clusterer_binary import ClustererBinary
 
 annotators_map = {
-    "hierarchy": Hierarchy,
     "call_graph": CallGraph,
     "chunker": Chunker,
-    "chunker_llm": ChunkerLLM,
     "chunker_line": ChunkerLine,
+    "chunker_llm": ChunkerLLM,
+    "clusterer_binary": ClustererBinary,
     "diff": Diff,
+    "hierarchy": Hierarchy,
     "layout_hierarchy": LayoutHierarchy,
     "summarizer": Summarizer,
 }

@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 from networkx.readwrite import json_graph
 from spice import Spice
@@ -69,27 +69,16 @@ class Daemon:
             print("Initialized empty graph.")
 
         annotators = annotators if annotators is not None else default_annotators()
-
-        # TODO: Maybe this should be a base annotator method? validate against all
-        if "call_graph" in annotators:
-            try:
-                chunker_type = next(a for a in annotators if "chunker" in a)
-                chunker_cls = annotators_map[chunker_type]
-                chunk_field_id = chunker_cls.chunk_field_id
-                annotators["call_graph"]["chunk_field_id"] = chunk_field_id
-            except StopIteration:
-                raise ValueError(
-                    "Call graph annotator requires a chunker annotator to be specified."
-                )
-
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")
-        self.pipeline: dict[str, Annotator] = {
-            ann: annotators_map[ann](
-                **kwargs, verbose=self.verbose, spice_client=spice_client
+        self.pipeline = {}
+        for ann, kwargs in annotators.items():
+            self.pipeline[ann] = annotators_map[ann](
+                **kwargs,
+                verbose=self.verbose,
+                spice_client=spice_client,
+                pipeline=self.pipeline,
             )
-            for ann, kwargs in annotators.items()
-        }
 
     @property
     def db(self) -> Database:
@@ -142,9 +131,14 @@ class Daemon:
                 last_updated = _last_updated
                 _update_task = asyncio.create_task(self.update())
 
-    def search(self, query: str, n: Optional[int] = None) -> list[dict[str, Any]]:
+    def search(
+        self,
+        query: str,
+        n: Optional[int] = None,
+        node_types: Iterable[str] = ("file", "chunk", "diff"),
+    ) -> list[dict[str, Any]]:
         """Return a sorted list of nodes that match the query."""
-        return self.db.query_graph(query, self.graph, n=n)
+        return self.db.query_graph(query, self.graph, n=n, node_types=node_types)
 
     def get_document(self, filename: str) -> str:
         checksum = self.graph.nodes[filename]["checksum"]

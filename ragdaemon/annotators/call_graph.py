@@ -39,16 +39,22 @@ class CallGraph(Annotator):
         self,
         *args,
         call_extensions: Optional[list[str]] = None,
-        chunk_field_id: Optional[str] = None,
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
+        pipeline: list[Annotator] = [],
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         if call_extensions is None:
             call_extensions = DEFAULT_CODE_EXTENSIONS
         self.call_extensions = call_extensions
-        if chunk_field_id is None:
-            raise RagdaemonError("Chunk field ID is required for call graph annotator.")
+        try:
+            chunk_field_id = next(
+                getattr(a, "chunk_field_id") for a in pipeline if "chunker" in a.name
+            )
+        except (StopIteration, AttributeError):
+            raise RagdaemonError(
+                "CallGraph annotator requires a 'chunker' annotator with chunk_field_id."
+            )
         self.chunk_field_id = chunk_field_id
         self.model = model
 

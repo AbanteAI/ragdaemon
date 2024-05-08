@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 from ragdaemon.graph import KnowledgeGraph
 
@@ -19,7 +19,11 @@ class Database:
         raise NotImplementedError
 
     def query_graph(
-        self, query: str, graph: KnowledgeGraph, n: Optional[int] = None
+        self,
+        query: str,
+        graph: KnowledgeGraph,
+        n: Optional[int] = None,
+        node_types: Iterable[str] = ("file", "chunk", "diff"),
     ) -> list[dict]:
         """Return documents, metadatas and distances, sorted, for nodes in the graph.
 
@@ -30,7 +34,7 @@ class Database:
             {
                 data["checksum"]
                 for _, data in graph.nodes(data=True)
-                if data and "checksum" in data
+                if data and "checksum" in data and data["type"] in node_types
             }
         )
         results = self.query(query, active_checksums)

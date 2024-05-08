@@ -28,6 +28,7 @@ maximum of two (2) such named functions, but err on the side of brevity.
 
 class Summarizer(Annotator):
     name = "summarizer"
+    summary_field_id = "summary"
 
     def __init__(
         self,
@@ -40,7 +41,7 @@ class Summarizer(Annotator):
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         return all(
-            data.get("summary") is not None
+            data.get(self.summary_field_id) is not None
             for _, data in graph.nodes(data=True)
             if data is not None and data.get("checksum") is not None
         )
@@ -65,9 +66,9 @@ class Summarizer(Annotator):
         document = record["documents"][0]
         metadatas = record["metadatas"][0]
         summary = await self.get_llm_response(document)
-        metadatas["summary"] = summary
+        metadatas[self.summary_field_id] = summary
         db.update(data["checksum"], metadatas=metadatas)
-        data["summary"] = summary
+        data[self.summary_field_id] = summary
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
@@ -77,7 +78,7 @@ class Summarizer(Annotator):
         for _, data in graph.nodes(data=True):
             if data is None or data.get("checksum") is None:
                 continue
-            if data.get("summary") is not None and not refresh:
+            if data.get(self.summary_field_id) is not None and not refresh:
                 continue
             tasks.append(self.get_summary(data, db))
         if len(tasks) > 0:

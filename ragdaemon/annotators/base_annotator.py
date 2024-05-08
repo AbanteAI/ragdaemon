@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional
 
 from spice import Spice
@@ -9,7 +11,12 @@ from ragdaemon.graph import KnowledgeGraph
 class Annotator:
     name: str = "base_annotator"
 
-    def __init__(self, verbose: bool = False, spice_client: Optional[Spice] = None):
+    def __init__(
+        self,
+        verbose: bool = False,
+        spice_client: Optional[Spice] = None,
+        pipeline: Optional[list[Annotator]] = None,
+    ):
         self.verbose = verbose
         self.spice_client = spice_client
         pass
