@@ -80,17 +80,15 @@ class Daemon:
             chunker_cls = annotators_map[chunker_type]
             chunk_field_id = chunker_cls.chunk_field_id
             annotators["call_graph"]["chunk_field_id"] = chunk_field_id
-        if "summarizer_agglomerative" in annotators:
+        if "clusterer_binary" in annotators:
             if chunker_type is None or summarizer_type is None:
                 raise ValueError(
                     "Summarizer annotator requires a chunker and summarizer to be specified."
                 )
             chunker_field_id = annotators_map[chunker_type].chunk_field_id
             summary_field_id = annotators_map[summarizer_type].summary_field_id
-            annotators["summarizer_agglomerative"]["chunk_field_id"] = chunker_field_id
-            annotators["summarizer_agglomerative"]["summary_field_id"] = (
-                summary_field_id
-            )
+            annotators["clusterer_binary"]["chunk_field_id"] = chunker_field_id
+            annotators["clusterer_binary"]["summary_field_id"] = summary_field_id
 
         if self.verbose:
             print(f"Initializing annotators: {list(annotators.keys())}...")

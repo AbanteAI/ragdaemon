@@ -14,8 +14,8 @@ from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore
 
-summarizer_agglomerative_prompt = """\
-You are building a hierarchical summary of a codebase using agglomerative clustering.
+clusterer_binary_prompt = """\
+You are building a hierarchical summary of a codebase using binary clustering.
 You will be given two one-line summaries of code chunks or existing summaries.
 Combine the two summaries into a single one-line summary.
 
@@ -25,8 +25,8 @@ particular code from other parts of the codebase.
 """
 
 
-class SummarizerAgglomerative(Annotator):
-    name = "agglomerative_summarizer"
+class ClustererBinary(Annotator):
+    name = "cluterer_binary"
 
     def __init__(
         self,
@@ -67,14 +67,14 @@ class SummarizerAgglomerative(Annotator):
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         # Start with a list of all the summary nodes
-        agglomerative_summary_nodes = [
+        cluster_binary_nodes = [
             (node, graph.in_degree(node), graph.out_degree(node))
             for node, data in graph.nodes(data=True)
-            if data is not None and data.get("type") == "agglomerative_summary"
+            if data is not None and data.get("type") == "cluster_binary"
         ]
         root = None
         leaves = set()
-        for node, in_degree, out_degree in agglomerative_summary_nodes:
+        for node, in_degree, out_degree in cluster_binary_nodes:
             if not graph.nodes[node].get("summary"):
                 return False  # Each needs a summary
             if out_degree != 2:
@@ -87,7 +87,7 @@ class SummarizerAgglomerative(Annotator):
                 if in_degree != 1:
                     return False  # The rest need 1 predecessor
                 for neighbor in graph.successors(node):
-                    if graph.nodes[neighbor].get("type") != "agglomerative_summary":
+                    if graph.nodes[neighbor].get("type") != "cluster_binary":
                         leaves.add(neighbor)
         if root is None:
             return False  # There has to be a root
@@ -98,7 +98,7 @@ class SummarizerAgglomerative(Annotator):
         if self.spice_client is None:
             raise RagdaemonError("Spice client is not initialized.")
         messages: list[SpiceMessage] = [
-            {"role": "system", "content": summarizer_agglomerative_prompt},
+            {"role": "system", "content": clusterer_binary_prompt},
             {"role": "user", "content": document},
         ]
         async with semaphore:
@@ -120,7 +120,7 @@ class SummarizerAgglomerative(Annotator):
         checksum = hash_str(document)
         record = {
             "id": node,
-            "type": "agglomerative_summary",
+            "type": "cluster_binary",
             "summary": summary,
             "checksum": checksum,
             "active": False,
@@ -141,7 +141,7 @@ class SummarizerAgglomerative(Annotator):
         loading_bar = (
             None
             if not self.verbose
-            else tqdm(total=len(new_nodes), desc="Refreshing agglomerative summaries")
+            else tqdm(total=len(new_nodes), desc="Refreshing binary clusters")
         )
         while len(new_nodes) > 0:
             tasks = []
@@ -181,19 +181,19 @@ class SummarizerAgglomerative(Annotator):
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
     ) -> KnowledgeGraph:
-        # Remove any existing agglomerative_summary nodes and edges
-        agglomerative_nodes = [
+        # Remove any existing cluster_binary nodes and edges
+        cluster_binary_nodes = [
             node
             for node, data in graph.nodes(data=True)
-            if data is not None and data.get("type") == "agglomerative_summary"
+            if data is not None and data.get("type") == "cluster_binary"
         ]
-        graph.remove_nodes_from(agglomerative_nodes)
-        agglomerative_edges = [
+        graph.remove_nodes_from(cluster_binary_nodes)
+        cluster_binary_edges = [
             (e[0], e[1])
             for e in graph.edges(data=True)
-            if e[-1].get("type") == "agglomerative_summary"
+            if e[-1].get("type") == "cluster_binary"
         ]
-        graph.remove_edges_from(agglomerative_edges)
+        graph.remove_edges_from(cluster_binary_edges)
 
         # Generate the linkage_list for active checksums
         leaf_ids = self.select_leaf_nodes(graph)
@@ -209,8 +209,8 @@ class SummarizerAgglomerative(Annotator):
             node = f"summary_{i_link}"
             all_nodes.append(node)
             graph.add_node(node)
-            graph.add_edge(node, all_nodes[int(a)], type="agglomerative_summary")
-            graph.add_edge(node, all_nodes[int(b)], type="agglomerative_summary")
+            graph.add_edge(node, all_nodes[int(a)], type="cluster_binary")
+            graph.add_edge(node, all_nodes[int(b)], type="cluster_binary")
 
         # Generate/fetch summaries and add to graph/db.
         new_nodes = all_nodes[len(leaf_ids) :]

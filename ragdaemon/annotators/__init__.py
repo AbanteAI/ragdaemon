@@ -7,7 +7,7 @@ from ragdaemon.annotators.diff import Diff
 from ragdaemon.annotators.hierarchy import Hierarchy
 from ragdaemon.annotators.layout_hierarchy import LayoutHierarchy
 from ragdaemon.annotators.summarizer import Summarizer
-from ragdaemon.annotators.summarizer_agglomerative import SummarizerAgglomerative
+from ragdaemon.annotators.clusterer_binary import ClustererBinary
 
 annotators_map = {
     "call_graph": CallGraph,
@@ -18,5 +18,5 @@ annotators_map = {
     "hierarchy": Hierarchy,
     "layout_hierarchy": LayoutHierarchy,
     "summarizer": Summarizer,
-    "summarizer_agglomerative": SummarizerAgglomerative,
+    "clusterer_binary": ClustererBinary,
 }
