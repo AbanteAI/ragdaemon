@@ -195,7 +195,7 @@ class ClustererBinary(Annotator):
         try:
             # Scipy is intentionally excluded from package requirements because it's
             # a large package and this is an experimental feature.
-            from scipy.cluster.hierarchy import linkage
+            from scipy.cluster.hierarchy import linkage  # type: ignore
         except ImportError:
             raise RagdaemonError(
                 "ClustererBinary requires scipy to be installed. Run 'pip install scipy'."
