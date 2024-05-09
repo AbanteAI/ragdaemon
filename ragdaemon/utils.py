@@ -10,6 +10,7 @@ from spice.models import GPT_4_TURBO, UnknownModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.get_paths import get_paths_for_directory
 
 mentat_dir_path = Path.home() / ".mentat"
 
@@ -100,6 +101,12 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
         else:
             text = diff
         ref = f"git diff{'' if diff_ref == 'DEFAULT' else f' {diff_ref}'}"
+
+    elif type == "directory":
+        if ref == "ROOT":
+            ref = "."
+        paths = sorted(list(get_paths_for_directory(Path(cwd / ref))))
+        text = "\n".join([path.as_posix() for path in paths])
 
     elif type in {"file", "chunk"}:
         path, lines = parse_path_ref(ref)

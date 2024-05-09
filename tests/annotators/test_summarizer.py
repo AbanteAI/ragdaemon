@@ -25,5 +25,5 @@ async def test_summarizer_annotate(cwd, mock_get_llm_response):
     summarizer = Summarizer(spice_client=AsyncMock())
     actual = await summarizer.annotate(daemon.graph, daemon.db)
     for _, data in actual.nodes(data=True):
-        if data.get("checksum") is not None:
+        if data.get("type") in summarizer.summarize_nodes:
             assert data.get("summary") == "summary of"

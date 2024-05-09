@@ -34,16 +34,18 @@ class Summarizer(Annotator):
         self,
         *args,
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
+        summarize_nodes: list[str] = ["file", "chunk"],
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.model = model
+        self.summarize_nodes = summarize_nodes
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         return all(
             data.get(self.summary_field_id) is not None
             for _, data in graph.nodes(data=True)
-            if data is not None and data.get("checksum") is not None
+            if data is not None and data.get("type") in self.summarize_nodes
         )
 
     async def get_llm_response(self, document: str) -> str:
@@ -76,7 +78,7 @@ class Summarizer(Annotator):
         # Generate/add summaries to nodes with checksums (file, chunk, diff)
         tasks = []
         for _, data in graph.nodes(data=True):
-            if data is None or data.get("checksum") is None:
+            if data is None or data.get("type") not in self.summarize_nodes:
                 continue
             if data.get(self.summary_field_id) is not None and not refresh:
                 continue

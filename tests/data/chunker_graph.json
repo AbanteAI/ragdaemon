@@ -94,11 +94,15 @@
             "id": "src/interface.py"
         },
         {
+            "active": false,
+            "checksum": "b97e74d824fca5e980257ed15bb800b3",
             "type": "directory",
             "ref": "ROOT",
             "id": "ROOT"
         },
         {
+            "active": false,
+            "checksum": "6a31bb042874e065fea5bcbc36362d58",
             "type": "directory",
             "ref": "src",
             "id": "src"
