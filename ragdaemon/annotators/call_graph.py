@@ -149,23 +149,22 @@ class CallGraph(Annotator):
         lines = document.split("\n")
         file = lines[0]
         file_lines = lines[1:]
-        if not file_lines or not any(line for line in file_lines):
-            return calls
-        file_lines = [f"{i+1}:{line}" for i, line in enumerate(file_lines)]
-        document = "\n".join([file] + file_lines)
+        if any(line for line in file_lines):
+            file_lines = [f"{i+1}:{line}" for i, line in enumerate(file_lines)]
+            document = "\n".join([file] + file_lines)
 
-        for i in range(retries + 1, 0, -1):
-            try:
-                calls = await self.get_llm_response(document, graph)
-                break
-            except RagdaemonError as e:
-                if self.verbose:
-                    print(
-                        f"Error generating call graph for {node}:\n{e}\n"
-                        + f"{i-1} retries left."
-                        if i > 1
-                        else "Skipping."
-                    )
+            for i in range(retries + 1, 0, -1):
+                try:
+                    calls = await self.get_llm_response(document, graph)
+                    break
+                except RagdaemonError as e:
+                    if self.verbose:
+                        print(
+                            f"Error generating call graph for {node}:\n{e}\n"
+                            + f"{i-1} retries left."
+                            if i > 1
+                            else "Skipping."
+                        )
 
         # Save to db and graph
         metadatas = record["metadatas"][0]

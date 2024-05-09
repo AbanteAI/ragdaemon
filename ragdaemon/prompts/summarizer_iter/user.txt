@@ -1,0 +1,13 @@
+<CONTEXT>
+{{ context }}
+</CONTEXT>
+
+<DOCUMENT>
+{{ document }}
+</DOCUMENT>
+{% if previous_summary %}
+
+<PREVIOUS_SUMMARY>
+{{ previous_summary }}
+</PREVIOUS_SUMMARY>
+{% endif %}

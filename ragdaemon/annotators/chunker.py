@@ -97,11 +97,14 @@ class Chunker(Annotator):
         if isinstance(chunks, str):
             chunks = json.loads(chunks)
             data[self.chunk_field_id] = chunks
+
+        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        if len(chunks) == 0:
+            return add_to_db
         base_id = f"{file}:BASE"
-        if len(chunks) > 0 and not any(chunk["id"] == base_id for chunk in chunks):
+        if not any(chunk["id"] == base_id for chunk in chunks):
             raise RagdaemonError(f"Node {file} missing base chunk")
         edges_to_add = {(file, base_id)}
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for chunk in chunks:
             # Locate or create record for chunk
             id, ref = chunk["id"], chunk["ref"]
