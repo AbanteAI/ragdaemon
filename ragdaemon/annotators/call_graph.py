@@ -40,7 +40,7 @@ class CallGraph(Annotator):
         *args,
         call_extensions: Optional[list[str]] = None,
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
-        pipeline: list[Annotator] = [],
+        pipeline: dict[str, Annotator] = {},
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -49,7 +49,9 @@ class CallGraph(Annotator):
         self.call_extensions = call_extensions
         try:
             chunk_field_id = next(
-                getattr(a, "chunk_field_id") for a in pipeline if "chunker" in a.name
+                getattr(a, "chunk_field_id")
+                for a in pipeline.values()
+                if "chunker" in a.name
             )
         except (StopIteration, AttributeError):
             raise RagdaemonError(

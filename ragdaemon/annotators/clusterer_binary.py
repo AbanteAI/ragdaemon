@@ -30,7 +30,7 @@ class ClustererBinary(Annotator):
     def __init__(
         self,
         *args,
-        pipeline: list[Annotator] = [],
+        pipeline: dict[str, Annotator] = {},
         linkage_method: str = "ward",
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
         **kwargs,
@@ -38,11 +38,13 @@ class ClustererBinary(Annotator):
         super().__init__(*args, **kwargs)
         try:
             chunk_field_id = next(
-                getattr(a, "chunk_field_id") for a in pipeline if "chunker" in a.name
+                getattr(a, "chunk_field_id")
+                for a in pipeline.values()
+                if "chunker" in a.name
             )
             summary_field_id = next(
                 getattr(a, "summary_field_id")
-                for a in pipeline
+                for a in pipeline.values()
                 if "summarizer" in a.name
             )
         except (StopIteration, AttributeError):
