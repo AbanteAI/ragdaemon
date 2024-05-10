@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional
 
-from spice import SpiceMessages
+from spice import Spice, SpiceMessages
 from spice.models import TextModel
 from spice.spice import get_model_from_name
 from tqdm.asyncio import tqdm
@@ -11,7 +11,7 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore, truncate
 
 
 def build_filetree(
@@ -144,16 +144,14 @@ def get_document_and_context(
 
     else:
         raise RagdaemonError(f"Unsupported type: {data.get('type')}")
-    
-    if model is not None:
-        prompt_buffer = 0.1
-        document_ratio = 0.8
-        context_ratio = 0.2
-        chars_per_token = 5
 
+    if model is not None and model.context_length is not None:
+        prompt_buffer = 0.1
         max_tokens = model.context_length * (1 - prompt_buffer)
-        document = document[:int(max_tokens * document_ratio * chars_per_token)]
-        context = context[:int(max_tokens * context_ratio * chars_per_token)]
+        document_tokens = round(max_tokens * 0.8)
+        document, _ = truncate(document, model=model, tokens=document_tokens)
+        context_tokens = round(max_tokens - Spice().count_tokens(context, model))
+        context, _ = truncate(context, model=model, tokens=context_tokens)
 
     return document, context
 
@@ -171,7 +169,12 @@ class SummarizerIter(Annotator):
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
-        self.model = get_model_from_name(model) if isinstance(model, str) else model
+        if isinstance(model, str):
+            _model = get_model_from_name(model)
+            if not isinstance(_model, TextModel):
+                raise RagdaemonError(f"Not a text model: {model}")
+            model = _model
+        self.model = model
         self.summarize_nodes = summarize_nodes
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
@@ -183,7 +186,11 @@ class SummarizerIter(Annotator):
             if data.get(self.summary_field_id) is None:
                 return False
             document, context = get_document_and_context(
-                node, graph, db, summary_field_id=self.summary_field_id
+                node,
+                graph,
+                db,
+                summary_field_id=self.summary_field_id,
+                model=self.model,
             )
             summary_iter_checksum = hash_str(document + context)
             if summary_iter_checksum != data.get(self.checksum_field_id):
@@ -201,9 +208,9 @@ class SummarizerIter(Annotator):
         """Asynchronously generate summary and update graph and db"""
         if self.spice_client is None:
             raise RagdaemonError("Spice client not initialized")
-        
+
         document, context = get_document_and_context(
-            node, graph, db, summary_field_id=self.summary_field_id
+            node, graph, db, summary_field_id=self.summary_field_id, model=self.model
         )
         summary_iter_checksum = hash_str(document + context)
         data = graph.nodes[node]

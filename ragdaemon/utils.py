@@ -6,7 +6,7 @@ from base64 import b64encode
 from pathlib import Path
 
 from spice import Spice
-from spice.models import GPT_4_TURBO, UnknownModel
+from spice.models import GPT_4_TURBO, Model, UnknownModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
@@ -130,23 +130,30 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
     return f"{ref}\n{text}"
 
 
-def truncate(document, embedding_model: str | None) -> tuple[str, float]:
+def truncate(
+    document, model: str | Model | None = None, tokens: int | None = None
+) -> tuple[str, float]:
     """Return an embeddable document, and what fraction was removed."""
-    if embedding_model is None:
+    if model is None:
         return document, 0
-    spice_model = get_model_from_name(embedding_model)
-    if isinstance(spice_model, UnknownModel):
-        raise RagdaemonError(f"Unrecognized embedding model: {embedding_model}")
-    max_tokens = spice_model.context_length
-    if max_tokens is None:
+
+    if isinstance(model, str):
+        model = get_model_from_name(model)
+        if isinstance(model, UnknownModel):
+            raise RagdaemonError(f"Unrecognized model: {model}")
+    max_tokens = model.context_length
+    if tokens is not None:
+        max_tokens = tokens if max_tokens is None else min(max_tokens, tokens)
+    doc_tokens = Spice().count_tokens(document, model=model.name)
+    if max_tokens is None or doc_tokens <= max_tokens:
         return document, 0
-    tokens = Spice().count_tokens(document, model=spice_model.name)
-    original_tokens = tokens
-    while tokens > max_tokens:
-        truncate_ratio = (max_tokens / tokens) * 0.98  # Saw some errors with .99
+
+    original_tokens = doc_tokens
+    while doc_tokens > max_tokens:
+        truncate_ratio = (max_tokens / doc_tokens) * 0.98  # Saw some errors with .99
         document = document[: int(len(document) * truncate_ratio)]
-        tokens = Spice().count_tokens(document, model=spice_model.name)
-    truncate_ratio = 1 - tokens / original_tokens
+        doc_tokens = Spice().count_tokens(document, model=model.name)
+    truncate_ratio = 1 - doc_tokens / original_tokens
     if truncate_ratio > 0:
         label = "\n[TRUNCATED]"
         document = document[: -len(label)] + label
