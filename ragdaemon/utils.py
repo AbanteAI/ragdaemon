@@ -103,10 +103,9 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
         ref = f"git diff{'' if diff_ref == 'DEFAULT' else f' {diff_ref}'}"
 
     elif type == "directory":
-        if ref == "ROOT":
-            ref = "."
-        paths = sorted(list(get_paths_for_directory(Path(cwd / ref))))
-        text = "\n".join([path.as_posix() for path in paths])
+        path = cwd if ref == "ROOT" else cwd / ref
+        paths = sorted(list(get_paths_for_directory(path)))
+        text = "\n".join([p.as_posix() for p in paths])
 
     elif type in {"file", "chunk"}:
         path, lines = parse_path_ref(ref)
