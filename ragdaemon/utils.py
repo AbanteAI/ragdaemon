@@ -104,8 +104,8 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
 
     elif type == "directory":
         path = cwd if ref == "ROOT" else cwd / ref
-        paths = sorted(list(get_paths_for_directory(path)))
-        text = "\n".join([p.as_posix() for p in paths])
+        paths = sorted([p.as_posix() for p in get_paths_for_directory(path)])
+        text = "\n".join(paths)
 
     elif type in {"file", "chunk"}:
         path, lines = parse_path_ref(ref)
