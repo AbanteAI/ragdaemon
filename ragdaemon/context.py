@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
@@ -24,7 +25,10 @@ class Comment:
         self.tags = tags
 
     def render(self) -> str:
-        return dict2xml(self.content, indent="    ")
+        output = dict2xml(self.content, indent="    ")
+        if self.tags:
+            output += f" ({', '.join(self.tags)})"
+        return output
 
 
 def render_comments(comments: list[Comment]) -> str:
@@ -89,7 +93,9 @@ class ContextBuilder:
         }
         self.context[path_str] = message
 
-    def add_id(self, node_id: str, tags: list[str] = []):
+    def add_id(
+        self, node_id: str, tags: list[str] = [], summary_field_id: Optional[str] = None
+    ):
         """Add the given id to the context."""
         if node_id not in self.graph.nodes:
             raise ValueError(f"Node {node_id} not found in graph.")
@@ -97,6 +103,13 @@ class ContextBuilder:
         if not ref:
             raise ValueError(f"Node {node_id} has no ref.")
         self.add_ref(ref, tags)
+        if summary_field_id:
+            summary = self.graph.nodes[node_id].get(summary_field_id)
+            if summary:
+                path, lines = parse_path_ref(ref)
+                path_str = path.as_posix()
+                line = 0 if not lines else max(0, min(lines) - 1)
+                self.add_comment(path_str, summary, line, tags=["summary"])
 
     def add_ref(self, path_ref: str, tags: list[str] = []):
         """Manually include path_refs"""
@@ -187,7 +200,12 @@ class ContextBuilder:
             del self.context[path_str]
         return id
 
-    def render(self, use_xml: bool = False, use_tags: bool = False) -> str:
+    def render(
+        self,
+        use_xml: bool = False,
+        use_tags: bool = False,
+        remove_whitespace: bool = False,
+    ) -> str:
         """Return a formatted context message for the given nodes."""
         output = ""
         for path_str, data in self.context.items():
@@ -221,6 +239,12 @@ class ContextBuilder:
                     last_rendered = line
                 if last_rendered < len(file_lines) - 1:
                     output += "...\n"
+            if remove_whitespace:
+                # Remove empty ranges
+                output = re.sub(r"\.\.\.\n(\d+:\n)*(?=\.\.\.\n)", "", output)
+                # Remove last range if it's empty
+                output = re.sub(r"\.\.\.\n(\d+:\n)*$", "...\n", output)
+
             if data["diffs"]:
                 output += self.render_diffs(data["diffs"])
             if use_xml:

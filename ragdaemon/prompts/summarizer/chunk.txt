@@ -1,0 +1,65 @@
+{% extends "summarizer.base" %}
+
+{% block type %}a chunk of code within a codebase{% endblock %}
+
+{% block conventions %}
+* Follow the conventions of the summary line of a docstring; start with verbs and be concise.
+* If there are important details or gotchas, mention them in subsequent sentences, also concise.
+{% endblock %}
+
+{% block examples %}
+<CONTEXT>
+src/interface.py (chunk context)
+1:import argparse
+2:import re
+3:
+4:
+...
+</CONTEXT>
+
+<DOCUMENT>
+src/interface.py
+...
+5:def parse_arguments():
+6:    parser = argparse.ArgumentParser(description="Basic Calculator")
+7:    parser.add_argument("operation", type=str, help="Calculation operation")
+8:    args = parser.parse_args()
+9:
+10:    # use re to parse symbol, nubmer before, nubmer after
+11:    match = re.match(r"(\\d+)(\\D)(\\d+)", args.operation)
+12:    if match is None:
+13:        raise ValueError("Invalid operation")
+14:    return int(match.group(1)), match.group(2), int(match.group(3))
+...
+</DOCUMENT>
+
+<RESPONSE>
+Parse command-line arguments into three components: an integer, a symbol representing a mathematical operation, and a second integer.
+</RESPONSE>
+{% if previous_summary %}
+--------------------------------------------------------------------------------
+<CONTEXT>
+src/operations.py (chunk context)
+1:import math
+2:
+3:
+...
+</CONTEXT>
+
+<DOCUMENT>
+src/operations.py
+...
+12:def multiply(a, b):
+13:    return a * b
+...
+</DOCUMENT>
+
+<PREVIOUS_SUMMARY>
+Return the product of two inputs.
+</PREVIOUS_SUMMARY>
+
+<RESPONSE>
+PASS
+</RESPONSE>
+{% endif %}
+{% endblock %}

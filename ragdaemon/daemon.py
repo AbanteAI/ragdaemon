@@ -6,13 +6,16 @@ from typing import Any, Iterable, Optional
 
 from networkx.readwrite import json_graph
 from spice import Spice
-from spice.spice import Model
+from spice.models import Model, TextModel
+from spice.spice import get_model_from_name
 
-from ragdaemon.annotators import Annotator, annotators_map
+from ragdaemon.annotators import annotators_map
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.errors import RagdaemonError
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
+from ragdaemon.locate import locate
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path
 
 
@@ -179,3 +182,33 @@ class Daemon:
                     context.remove_ref(node["ref"])
                 break
         return context
+
+    async def locate(
+        self,
+        query: str,
+        instruction: Optional[str] = None,
+        revise: bool = True,
+        model: Model | TextModel | str = DEFAULT_COMPLETION_MODEL,
+    ) -> list[str]:
+        """Use summaries to scan the codebase and return relevant nodes."""
+        if "summarizer" not in self.pipeline:
+            raise RagdaemonError(f"Summarizer annotator required for locate.")
+        if instruction is None:
+            instruction = "Return items which are relevant to fulfilling the query."
+        if isinstance(model, str):
+            model = get_model_from_name(model)
+        if not isinstance(model, TextModel):
+            raise RagdaemonError(f"Invalid model: {model}")
+
+        edge_type = "hierarchy"
+        summary_field_id = "summary"
+        return await locate(
+            self.graph,
+            edge_type,
+            summary_field_id,
+            self.spice_client,
+            instruction,
+            query,
+            model,
+            revise=revise,
+        )

@@ -1,0 +1,43 @@
+base="""\
+Read the user's query and item summaries, and return a list of indices of items which fulfill their instructions.
+Respond with a comma-separated string of integers and nothing else.
+
+Unless explicitly instructed otherwise:
+* Err on the side of inclusivity. Especially with directories - if there's a chance it may be relevant, include it.
+* You include no items, one item or multiple items. You decide what is relevant.
+
+EXAMPLE:
+--------------------------------------------------------------------------------
+<INSTRUCTION>
+Return items which are relevant to fulfilling the query.
+</INSTRUCTION>
+
+<QUERY>
+Add an 'exp' function.
+</QUERY>
+
+<ITEMS>
+1. src - Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.
+2. .gitignore - Execute arithmetic operations based on command-line input and produce an output.
+3. main.py - Manage exclusions for version control by specifying files and directories that Git should ignore, while ensuring the .gitignore file itself remains tracked.
+4. README.md - Describe the application's experimental purpose in testing the limits of the treesitter parser.
+</ITEMS>
+
+<RESPONSE>
+1, 2
+</RESPONSE>
+"""
+
+user="""\
+<INSTRUCTION>
+{{ instruction }}
+</INSTRUCTION>
+
+<QUERY>
+{{ query }}
+</QUERY>
+
+<ITEMS>
+{{ items }}
+</ITEMS>
+"""

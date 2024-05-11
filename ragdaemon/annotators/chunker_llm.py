@@ -143,16 +143,18 @@ class ChunkerLLM(Chunker):
         for id in ids_longest_first:
             chunks = update_parent_nodes(id, chunks)
 
-        # Generate a 'BASE chunk' with all lines not already part of a chunk
-        base_chunk_lines = set(range(1, len(file_lines) + 1))
-        for lines in chunks.values():
-            base_chunk_lines -= lines
-        lines_ref = lines_set_to_ref(base_chunk_lines)
-        ref = f"{file}:{lines_ref}" if lines_ref else file
-        base_chunk = {"id": f"{file}:BASE", "ref": ref}
+        output = []
+        if chunks:
+            # Generate a 'BASE chunk' with all lines not already part of a chunk
+            base_chunk_lines = set(range(1, len(file_lines) + 1))
+            for lines in chunks.values():
+                base_chunk_lines -= lines
+            lines_ref = lines_set_to_ref(base_chunk_lines)
+            ref = f"{file}:{lines_ref}" if lines_ref else file
+            base_chunk = {"id": f"{file}:BASE", "ref": ref}
+            output.append(base_chunk)
 
         # Convert to refs and return
-        output = [base_chunk]
         for id, lines in chunks.items():
             lines_ref = lines_set_to_ref(lines)
             ref = f"{file}:{lines_ref}" if lines_ref else file

@@ -1,0 +1,57 @@
+{% extends "summarizer.base" %}
+
+{% block type %}a file within a codebase{% endblock %}
+
+{% block conventions %}
+* Start with a one-sentence description of the theme or intention of the file.
+* Consider how the file fits within the context of the codebase; readers should get a sense of what 'belongs' in this file and what does not.
+* If there's one or two main functions or classes, you can name them, otherwise use general descriptive language.
+{% endblock %}
+
+{% block examples %}
+<CONTEXT>
+<file_tree>
+.gitignore - Exclude specific files and directories from the git version control system.
+README.md - Describe the application and its purpose in relation to the treesitter parser.
+<b>main.py</b>
+src
+</file_tree>
+
+<chunk_summaries>
+main.py:BASE - Execute the main function when the script is run directly.
+main.py:main - Parse command-line arguments, perform the specified arithmetic operation, and render the result.
+</chunk_summaries>
+</CONTEXT>
+
+<DOCUMENT>
+main.py
+1:from src.interface import parse_arguments, render_response
+2:from src.operations import add, divide, multiply, subtract
+3:
+4:
+5:def main():
+6:    a, op, b = parse_arguments()
+7:
+8:    if op == "+":
+9:        result = add(a, b)
+10:    elif op == "-":
+11:        result = subtract(a, b)
+12:    elif op == "*":
+13:        result = multiply(a, b)
+14:    elif op == "/":
+15:        result = divide(a, b)
+16:    else:
+17:        raise ValueError("Unsupported operation")
+18:
+19:    render_response(result)
+20:
+21:
+22:if __name__ == "__main__":
+23:    main()
+24:
+</DOCUMENT>
+
+<RESPONSE>
+Execute arithmetic operations based on command-line input and produce an output.
+</RESPONSE>
+{% endblock %}

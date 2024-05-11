@@ -39,7 +39,7 @@ async def test_comment_render(git_history, mock_db):
     actual = context.render()
     assert actual == dedent("""\
             src/operations.py
-            <comment>What is this file for?</comment>
+            <comment>What is this file for?</comment> (test-flag)
             1:import math
             2: #modified
             3: #modified
@@ -53,7 +53,7 @@ async def test_comment_render(git_history, mock_db):
             <comment>
                 <author>bot</author>
                 <content>test</content>
-            </comment>
+            </comment> (test-flag2)
             <comment>
                 <author>bot</author>
                 <content>Two comments on one line</content>
@@ -96,7 +96,7 @@ async def test_comment_render(git_history, mock_db):
             <comment>
                 <author>bot</author>
                 <content>test</content>
-            </comment>
+            </comment> (test-flag2)
             <comment>
                 <author>bot</author>
                 <content>Two comments on one line</content>

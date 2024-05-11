@@ -15,7 +15,7 @@ class Annotator:
         self,
         verbose: bool = False,
         spice_client: Optional[Spice] = None,
-        pipeline: Optional[list[Annotator]] = None,
+        pipeline: Optional[dict[str, Annotator]] = None,
     ):
         self.verbose = verbose
         self.spice_client = spice_client

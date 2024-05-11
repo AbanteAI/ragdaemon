@@ -1,0 +1,32 @@
+{% extends "summarizer.base" %}
+
+{% block type %}a directory within a codebase{% endblock %}
+
+{% block conventions %}
+* Give a 1-sentence description the theme or intention of the directory.
+* Then give a brief description of its contents as a single sentence.
+* Use the number of items in subdirectories to 'weight' your summaries. Directories with more items are typically more relevant to the summary.
+* Your aim is not to give an exhaustive list, but to indicate what may or may not be included in this directory.
+{% endblock %}
+
+{% block examples %}
+<CONTEXT>
+<file_tree>
+.gitignore - Exclude specific files and directories from being tracked by the git version control system.
+README.md - Describe the application's purpose and its relation to the treesitter parser.
+main.py - Execute arithmetic operations based on command-line input and produce an output.
+<b>src (3 items)</b>
+  src/__init__.py - Introduce the `src` package without defining any specific functionality or objects.
+  src/interface.py - Parse command-line arguments for arithmetic operations and display the result to the console.
+  src/operations.py - Define and perform basic arithmetic and mathematical operations returning their respective results. These operations include addition, subtraction, multiplication, division, and square root calculations. Each function within this file is straightforward, taking input values and directly computing the output using standard arithmetic expressions or, in the case of the square root, a function from the Python 'math' library. This module acts as a utility provider for mathematical computations needed across the application.
+</file_tree>
+</CONTEXT>
+
+<DOCUMENT>
+Directory: src
+</DOCUMENT>
+
+<RESPONSE>
+Organize code modules for a simple arithmetic operations application. It contains an initialization file, a command-line interface parser, and a set of functions for performing arithmetic operations.
+</RESPONSE>
+{% endblock %}

@@ -22,6 +22,8 @@ def test_get_active_checksums(cwd, mock_db):
         for node, data in hierarchy_graph.nodes(data=True)
         if data and "checksum" in data
     }
+    # Replace checksums "." with "ROOT"
+    checksums[Path("ROOT")] = checksums.pop(Path("."))
     actual = {(path.as_posix(), checksum) for path, checksum in checksums.items()}
     assert actual == expected, "Checksums are not equal"
 

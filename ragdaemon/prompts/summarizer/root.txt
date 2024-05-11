@@ -1,0 +1,29 @@
+{% extends "summarizer.base" %}
+
+{% block type %}the 'root' of the codebase, i.e. the entire project{% endblock %}
+
+{% block conventions %}
+* It's critial that your summary capture the essence of the codebase; why does it exist? what is it for?
+* In most cases you should avoid listing specific functions or tasks and instead focus on the overall theme or intention of the codebase.
+* Use the number of items in subdirectories to 'weight' your summaries. Directories with more items are typically more relevant to the summary.
+* Things like tests, deployment, etc. which are common to most codebases are not important to the summary.
+{% endblock %}
+
+{% block examples %}
+<CONTEXT>
+<file_tree>
+.gitignore - Exclude specific files and directories from being tracked by the git version control system.
+README.md - Describe the application's purpose and its relation to the treesitter parser.
+main.py - Execute arithmetic operations based on command-line input and produce an output.
+src (3) - Organize code modules for a simple arithmetic operations application. It contains an initialization file, a command-line interface parser, and a set of functions for performing arithmetic operations.
+</file_tree>
+</CONTEXT>
+
+<DOCUMENT>
+Directory: ROOT
+</DOCUMENT>
+Execute simple arithmetic operations from command-line input using a structured application that integrates with the treesitter parser.
+<RESPONSE>
+
+</RESPONSE>
+{% endblock %}
