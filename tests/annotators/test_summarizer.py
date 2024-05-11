@@ -25,7 +25,7 @@ async def test_build_filetree(cwd):
         ".gitignore",
         "README.md",
         "main.py",
-        "src",
+        "src (3 items)",
         "  src/__init__.py",
         "  <b>src/interface.py</b>",
         "  src/operations.py",
@@ -36,7 +36,7 @@ async def test_build_filetree(cwd):
         ".gitignore",
         "README.md",
         "main.py",
-        "<b>src</b>",
+        "<b>src (3 items)</b>",
         "  src/__init__.py",
         "  src/interface.py",
         "  src/operations.py",
@@ -116,10 +116,10 @@ main.py (call graph)
 .gitignore - Manage exclusions for version control by specifying files and directories that Git should ignore, while ensuring the .gitignore file itself remains tracked.
 README.md - Describe the application's experimental purpose in testing the limits of the treesitter parser.
 main.py - Execute arithmetic operations based on command-line input and produce an output.
-src - Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.
+src (8 items) - Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.
   src/__init__.py - Establish the 'src' as a Python package to organize related modules concerning command-line based arithmetic operations, without adding any explicit functionality.
-  <b>src/interface.py - Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.</b>
-  src/operations.py - Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.
+  <b>src/interface.py (2 items) - Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.</b>
+  src/operations.py (5 items) - Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.
 </file_tree>
 
 <chunk_summaries>
@@ -140,9 +140,9 @@ src/interface.py:parse_arguments Parse command-line arguments into three compone
 .gitignore - Manage exclusions for version control by specifying files and directories that Git should ignore, while ensuring the .gitignore file itself remains tracked.
 README.md - Describe the application's experimental purpose in testing the limits of the treesitter parser.
 main.py - Execute arithmetic operations based on command-line input and produce an output.
-<b>src - Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.</b>
+<b>src (8 items) - Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.</b>
   src/__init__.py - Establish the 'src' as a Python package to organize related modules concerning command-line based arithmetic operations, without adding any explicit functionality.
-  src/interface.py - Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.
-  src/operations.py - Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.
+  src/interface.py (2 items) - Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.
+  src/operations.py (5 items) - Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.
 </file_tree>"""
     )

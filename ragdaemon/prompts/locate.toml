@@ -3,9 +3,9 @@ Read the user's query and item summaries, and return a list of indices of items 
 Respond with a comma-separated string of integers and nothing else.
 
 Unless explicitly instructed otherwise:
-* Err on the side of inclusivity.
+* Err on the side of inclusivity. Especially with directories - if there's a chance it may be relevant, include it.
 * You include no items, one item or multiple items. You decide what is relevant.
-                
+
 EXAMPLE:
 --------------------------------------------------------------------------------
 <INSTRUCTION>

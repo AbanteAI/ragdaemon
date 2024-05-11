@@ -24,14 +24,13 @@ async def scan(
     )
 
     def validator(text: str) -> bool:
-        # if not text:
-        #     return True
-        # selected = text.split(",")
-        # if not all(i.isdigit() for i in selected):
-        #     return False
-        # if not all(1 <= int(i) <= len(nodes) for i in selected):
-        #     return False
-        return True
+        if not text:
+            return True
+        try:
+            _ = [int(i) for i in text.split(",")]
+            return True
+        except ValueError:
+            return False
 
     messages = SpiceMessages(spice_client)
     messages.add_system_prompt("locate.base")

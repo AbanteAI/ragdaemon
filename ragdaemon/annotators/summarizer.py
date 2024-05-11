@@ -14,6 +14,27 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore, truncate
 
 
+def count_leaf_nodes_any_depth(
+    graph: KnowledgeGraph,
+    node: str,
+    edge_type: str = "hierarchy",
+    seen: Optional[set[str]] = None,
+) -> int:
+    """Return the number of leaf nodes in the hierarchy rooted at the given node."""
+    if seen is None:
+        seen = set()
+    seen.add(node)
+    leaf_nodes = 0
+    for edge in graph.out_edges(node, data=True):
+        if edge[-1].get("type") == edge_type:
+            child = edge[1]
+            if child not in seen:
+                leaf_nodes += count_leaf_nodes_any_depth(graph, child, edge_type, seen)
+    if leaf_nodes == 0:
+        leaf_nodes = 1
+    return leaf_nodes
+
+
 def build_filetree(
     graph: KnowledgeGraph,
     target: str,
@@ -29,6 +50,9 @@ def build_filetree(
             child = edge[1]
             line = child
             summary = graph.nodes[child].get(summary_field_id)
+            leaf_nodes = count_leaf_nodes_any_depth(graph, child)
+            if leaf_nodes > 1:
+                line += f" ({leaf_nodes} items)"
             if summary:
                 line += " - " + summary
             if child == target:
