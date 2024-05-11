@@ -1,4 +1,4 @@
-{% extends "summarizer_iter.base" %}
+{% extends "summarizer.base" %}
 
 {% block type %}the 'root' of the codebase, i.e. the entire project{% endblock %}
 

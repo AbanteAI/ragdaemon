@@ -191,8 +191,8 @@ class Daemon:
         model: Model | TextModel | str = DEFAULT_COMPLETION_MODEL,
     ) -> list[str]:
         """Use summaries to scan the codebase and return relevant nodes."""
-        if "summarizer_iter" not in self.pipeline:
-            raise RagdaemonError(f"SummarizerIter annotator required for locate.")
+        if "summarizer" not in self.pipeline:
+            raise RagdaemonError(f"Summarizer annotator required for locate.")
         if instruction is None:
             instruction = "Return items which are relevant to fulfilling the query."
         if isinstance(model, str):
@@ -201,7 +201,7 @@ class Daemon:
             raise RagdaemonError(f"Invalid model: {model}")
 
         edge_type = "hierarchy"
-        summary_field_id = "summary_iter"
+        summary_field_id = "summary"
         return await locate(
             self.graph,
             edge_type,

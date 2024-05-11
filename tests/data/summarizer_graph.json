@@ -26,8 +26,8 @@
             ],
             "id": "src/interface.py",
             "ref": "src/interface.py",
-            "summary_iter": "Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.",
-            "summary_iter_checksum": "156e6b95a939cc690524c7e96448c787",
+            "summary": "Parse command-line input to extract operands and an operator for arithmetic operations and display the output to the console.",
+            "summary_checksum": "156e6b95a939cc690524c7e96448c787",
             "type": "file"
         },
         {
@@ -35,8 +35,8 @@
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "id": "README.md",
             "ref": "README.md",
-            "summary_iter": "Describe the application's experimental purpose in testing the limits of the treesitter parser.",
-            "summary_iter_checksum": "f512afb951427a1494eecd927607aa42",
+            "summary": "Describe the application's experimental purpose in testing the limits of the treesitter parser.",
+            "summary_checksum": "f512afb951427a1494eecd927607aa42",
             "type": "file"
         },
         {
@@ -46,8 +46,8 @@
             "chunks_llm": [],
             "id": "src/__init__.py",
             "ref": "src/__init__.py",
-            "summary_iter": "Establish the 'src' as a Python package to organize related modules concerning command-line based arithmetic operations, without adding any explicit functionality.",
-            "summary_iter_checksum": "207e3de4ed658542202ca6ccc3376a96",
+            "summary": "Establish the 'src' as a Python package to organize related modules concerning command-line based arithmetic operations, without adding any explicit functionality.",
+            "summary_checksum": "207e3de4ed658542202ca6ccc3376a96",
             "type": "file"
         },
         {
@@ -55,8 +55,8 @@
             "checksum": "39611184a249763e91b60432ae324486",
             "id": ".gitignore",
             "ref": ".gitignore",
-            "summary_iter": "Manage exclusions for version control by specifying files and directories that Git should ignore, while ensuring the .gitignore file itself remains tracked.",
-            "summary_iter_checksum": "5f3c1aebfa8418a5845a2c5ddc2b33cf",
+            "summary": "Manage exclusions for version control by specifying files and directories that Git should ignore, while ensuring the .gitignore file itself remains tracked.",
+            "summary_checksum": "5f3c1aebfa8418a5845a2c5ddc2b33cf",
             "type": "file"
         },
         {
@@ -91,8 +91,8 @@
             ],
             "id": "src/operations.py",
             "ref": "src/operations.py",
-            "summary_iter": "Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.",
-            "summary_iter_checksum": "f32593b8091a214cc0042312abb4626c",
+            "summary": "Define basic arithmetic operations including addition, subtraction, multiplication, division, and square root calculation utilizing Python's math library.",
+            "summary_checksum": "f32593b8091a214cc0042312abb4626c",
             "type": "file"
         },
         {
@@ -111,8 +111,8 @@
             ],
             "id": "main.py",
             "ref": "main.py",
-            "summary_iter": "Execute arithmetic operations based on command-line input and produce an output.",
-            "summary_iter_checksum": "23112504dd4d8d6daf28cb234eb9a7f3",
+            "summary": "Execute arithmetic operations based on command-line input and produce an output.",
+            "summary_checksum": "23112504dd4d8d6daf28cb234eb9a7f3",
             "type": "file"
         },
         {
@@ -120,8 +120,8 @@
             "checksum": "b97e74d824fca5e980257ed15bb800b3",
             "id": "ROOT",
             "ref": ".",
-            "summary_iter": "Execute simple arithmetic operations from command-line input and explore the capabilities of the treesitter parser, organizing the code into clear modules within the source directory.",
-            "summary_iter_checksum": "53a5d32f0cc62b73d0129d17ca1a64e5",
+            "summary": "Execute simple arithmetic operations from command-line input and explore the capabilities of the treesitter parser, organizing the code into clear modules within the source directory.",
+            "summary_checksum": "53a5d32f0cc62b73d0129d17ca1a64e5",
             "type": "directory"
         },
         {
@@ -129,8 +129,8 @@
             "checksum": "6a31bb042874e065fea5bcbc36362d58",
             "id": "src",
             "ref": "src",
-            "summary_iter": "Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.",
-            "summary_iter_checksum": "0d9635c66b257d6f31f165fea667e3fd",
+            "summary": "Organize code modules for a simple arithmetic operations application. It includes files for initializing the package, parsing command-line input, and defining arithmetic operations.",
+            "summary_checksum": "0d9635c66b257d6f31f165fea667e3fd",
             "type": "directory"
         },
         {
@@ -138,8 +138,8 @@
             "checksum": "1f2a24668c773ee52d6067e78aa20988",
             "id": "src/interface.py:BASE",
             "ref": "src/interface.py:1-4,15-16,19",
-            "summary_iter": "No action is described as the provided code only includes import statements.",
-            "summary_iter_checksum": "775efab314470411a3b831802154edff",
+            "summary": "No action is described as the provided code only includes import statements.",
+            "summary_checksum": "775efab314470411a3b831802154edff",
             "type": "chunk"
         },
         {
@@ -147,8 +147,8 @@
             "checksum": "9d3f1e521d73b8280485d5c1153ed428",
             "id": "src/interface.py:parse_arguments",
             "ref": "src/interface.py:5-14",
-            "summary_iter": "Parse command-line arguments into three components: an integer, a symbol representing a mathematical operation, and a second integer.",
-            "summary_iter_checksum": "eaca0178f36ef4919aad47f57682c7e7",
+            "summary": "Parse command-line arguments into three components: an integer, a symbol representing a mathematical operation, and a second integer.",
+            "summary_checksum": "eaca0178f36ef4919aad47f57682c7e7",
             "type": "chunk"
         },
         {
@@ -156,8 +156,8 @@
             "checksum": "1ccdd90fad048efd1dcb0f09c169620c",
             "id": "src/interface.py:render_response",
             "ref": "src/interface.py:17-18",
-            "summary_iter": "Display the result of a mathematical operation to standard output.",
-            "summary_iter_checksum": "8d69c71cda68ed3dad02d2c6f8e31503",
+            "summary": "Display the result of a mathematical operation to standard output.",
+            "summary_checksum": "8d69c71cda68ed3dad02d2c6f8e31503",
             "type": "chunk"
         },
         {
@@ -165,8 +165,8 @@
             "checksum": "dc61d9d0a9b01aa0b099f859f7409d6c",
             "id": "src/operations.py:BASE",
             "ref": "src/operations.py:1-3,6-7,10-11,14-15,18-19,22",
-            "summary_iter": "No operation is performed in the provided code snippet as it only includes an import statement for the math library and no other executable code.",
-            "summary_iter_checksum": "d41598bfcfe2731338d393cd640de305",
+            "summary": "No operation is performed in the provided code snippet as it only includes an import statement for the math library and no other executable code.",
+            "summary_checksum": "d41598bfcfe2731338d393cd640de305",
             "type": "chunk"
         },
         {
@@ -174,8 +174,8 @@
             "checksum": "85e2229ba0d05c63100d164fa3dddc52",
             "id": "src/operations.py:add",
             "ref": "src/operations.py:4-5",
-            "summary_iter": "Define an addition function that takes two arguments and returns their sum.",
-            "summary_iter_checksum": "55c3d4fb8a3bb7f1e5c414d11d08ade8",
+            "summary": "Define an addition function that takes two arguments and returns their sum.",
+            "summary_checksum": "55c3d4fb8a3bb7f1e5c414d11d08ade8",
             "type": "chunk"
         },
         {
@@ -183,8 +183,8 @@
             "checksum": "d71832a93bf084918e90d981da01207c",
             "id": "src/operations.py:subtract",
             "ref": "src/operations.py:8-9",
-            "summary_iter": "Perform subtraction by taking two inputs, 'a' and 'b', and returning the result of 'a' - 'b'.",
-            "summary_iter_checksum": "64eb46f64d0361a7d7a2ef7e4afaf0f5",
+            "summary": "Perform subtraction by taking two inputs, 'a' and 'b', and returning the result of 'a' - 'b'.",
+            "summary_checksum": "64eb46f64d0361a7d7a2ef7e4afaf0f5",
             "type": "chunk"
         },
         {
@@ -192,8 +192,8 @@
             "checksum": "28efbdcfc7543aafe04c2e16e54221b7",
             "id": "src/operations.py:multiply",
             "ref": "src/operations.py:12-13",
-            "summary_iter": "Multiply two numbers and return the result.",
-            "summary_iter_checksum": "a1502efd32ac3ff71c767a1a31d359ef",
+            "summary": "Multiply two numbers and return the result.",
+            "summary_checksum": "a1502efd32ac3ff71c767a1a31d359ef",
             "type": "chunk"
         },
         {
@@ -201,8 +201,8 @@
             "checksum": "7c35cdfb2a9b7374e992709ae4e2d62d",
             "id": "src/operations.py:divide",
             "ref": "src/operations.py:16-17",
-            "summary_iter": "Perform division on two numbers, `a` and `b`, and return the result.",
-            "summary_iter_checksum": "108512db41db799615544198f287815d",
+            "summary": "Perform division on two numbers, `a` and `b`, and return the result.",
+            "summary_checksum": "108512db41db799615544198f287815d",
             "type": "chunk"
         },
         {
@@ -210,8 +210,8 @@
             "checksum": "b2502cd76efe086ad3603c9f90e9ad1a",
             "id": "src/operations.py:sqrt",
             "ref": "src/operations.py:20-21",
-            "summary_iter": "Calculate the square root of a number using the math library's sqrt function.",
-            "summary_iter_checksum": "bff8880d50f1e5c5d011135b8c720b43",
+            "summary": "Calculate the square root of a number using the math library's sqrt function.",
+            "summary_checksum": "bff8880d50f1e5c5d011135b8c720b43",
             "type": "chunk"
         },
         {
@@ -219,8 +219,8 @@
             "checksum": "eb2c4b770fcef0986d21af9dc424123a",
             "id": "main.py:BASE",
             "ref": "main.py:1-4,20-24",
-            "summary_iter": "Execute the main function if the script is run as the main program.",
-            "summary_iter_checksum": "5536373063c7333d4c35c6497b3862d6",
+            "summary": "Execute the main function if the script is run as the main program.",
+            "summary_checksum": "5536373063c7333d4c35c6497b3862d6",
             "type": "chunk"
         },
         {
@@ -228,8 +228,8 @@
             "checksum": "1823a6ee66760debfae5286bb2f53447",
             "id": "main.py:main",
             "ref": "main.py:5-19",
-            "summary_iter": "Parse command-line arguments for a basic arithmetic operation, perform the corresponding calculation, and print the result. If an unsupported operation is specified, raise a ValueError.",
-            "summary_iter_checksum": "6be54ffb7a09c09c621330f1edef8687",
+            "summary": "Parse command-line arguments for a basic arithmetic operation, perform the corresponding calculation, and print the result. If an unsupported operation is specified, raise a ValueError.",
+            "summary_checksum": "6be54ffb7a09c09c621330f1edef8687",
             "type": "chunk"
         }
     ],

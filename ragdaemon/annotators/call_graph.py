@@ -128,6 +128,12 @@ class CallGraph(Annotator):
         # Resolve library calls
         targets = set(calls.keys())
         unresolved = set()
+        """
+        TODO: Handle unresolved calls. Usually result from:
+        - Class inheritance. No method for resolving.
+        - Missing file extensions. Imports can be unclear which part is the file.
+        - Using '.' instead of '/' in the path definition. Again, imports.
+        """
         for target in targets:
             if target in graph:
                 continue
@@ -141,9 +147,6 @@ class CallGraph(Annotator):
                 unresolved.add(target)
             else:
                 calls[candidates[0]] = calls.pop(target)
-        if unresolved and self.verbose:
-            path = document.split("\n")[0]
-            print(f"Unresolved calls in {path}: {unresolved}")
 
         return calls
 
