@@ -7,7 +7,13 @@ from ragdaemon.database import Database, remove_add_to_db_duplicates
 from ragdaemon.get_paths import get_git_root_for_path
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import get_document, hash_str, parse_path_ref, truncate
+from ragdaemon.utils import (
+    get_document,
+    hash_str,
+    parse_diff_id,
+    parse_path_ref,
+    truncate,
+)
 
 
 def get_chunks_from_diff(id: str, diff: str) -> dict[str, str]:
@@ -51,15 +57,6 @@ def get_chunks_from_diff(id: str, diff: str) -> dict[str, str]:
         chunks[chunk_id] = chunk_ref
 
     return chunks
-
-
-def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
-    if ":" in id:
-        diff_ref, path_ref = id.split(":", 1)
-        path, lines = parse_path_ref(path_ref)
-    else:
-        diff_ref, path, lines = id, None, None
-    return diff_ref, path, lines
 
 
 class Diff(Annotator):

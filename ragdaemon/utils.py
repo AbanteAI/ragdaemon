@@ -86,6 +86,15 @@ def parse_path_ref(ref: str) -> tuple[Path, set[int] | None]:
     return Path(path_str), lines
 
 
+def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
+    if ":" in id:
+        diff_ref, path_ref = id.split(":", 1)
+        path, lines = parse_path_ref(path_ref)
+    else:
+        diff_ref, path, lines = id, None, None
+    return diff_ref, path, lines
+
+
 def get_document(ref: str, cwd: Path, type: str = "file") -> str:
     if type == "diff":
         if ":" in ref:
