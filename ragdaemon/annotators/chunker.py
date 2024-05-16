@@ -18,8 +18,9 @@ The Chunker base class below handles everything except step 2.
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Coroutine, Optional
+from typing import Any, Optional
 
+from spice.models import Model
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -64,20 +65,15 @@ class Chunker(Annotator):
         """Return a list of {id, ref} chunks for the given document."""
         raise NotImplementedError()
 
-    async def get_file_chunk_data(self, node, data, db):
+    async def get_file_chunk_data(self, node, data):
         """Generate and save chunk data for a file node to graph and db"""
-        record = db.get(data["checksum"])
-        document = record["documents"][0]
+        document = data["document"]
         try:
             chunks = await self.chunk_document(document)
         except RagdaemonError:
             if self.verbose:
                 print(f"Error chunking {node}; skipping.")
             chunks = []
-        # Save to db and graph
-        metadatas = record["metadatas"][0]
-        metadatas[self.chunk_field_id] = json.dumps(chunks)
-        db.update(data["checksum"], metadatas=metadatas)
         data[self.chunk_field_id] = chunks
 
     def add_file_chunks_to_graph(
@@ -85,7 +81,8 @@ class Chunker(Annotator):
         file: str,
         data: dict,
         graph: KnowledgeGraph,
-        db: Database,
+        db_data: dict[str, dict[str, Any]],
+        embedding_model: str | Model | None,
         refresh: bool = False,
     ) -> dict[str, list[Any]]:
         """Load chunks from file data into db/graph"""
@@ -110,18 +107,17 @@ class Chunker(Annotator):
             id, ref = chunk["id"], chunk["ref"]
             document = get_document(ref, Path(graph.graph["cwd"]))
             checksum = hash_str(document)
-            records = db.get(checksum)["metadatas"]
-            if not refresh and len(records) > 0:
-                record = records[0]
-            else:
+            record = db_data.get(checksum)
+            if record is None or refresh:
                 record = {
                     "id": id,
                     "type": "chunk",
                     "ref": chunk["ref"],
+                    "document": document,
                     "checksum": checksum,
                     "active": False,
                 }
-                document, truncate_ratio = truncate(document, db.embedding_model)
+                document, truncate_ratio = truncate(document, embedding_model)
                 if truncate_ratio > 0 and self.verbose:
                     print(f"Truncated {id} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
@@ -174,22 +170,39 @@ class Chunker(Annotator):
         files_just_chunked = set()
         for node, data in files_with_chunks:
             if refresh or data.get(self.chunk_field_id, None) is None:
-                tasks.append(self.get_file_chunk_data(node, data, db))
+                tasks.append(self.get_file_chunk_data(node, data))
                 files_just_chunked.add(node)
+            elif isinstance(data[self.chunk_field_id], str):
+                data[self.chunk_field_id] = json.loads(data[self.chunk_field_id])
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Chunking files...")
             else:
                 await asyncio.gather(*tasks)
+            update_db = {"ids": [], "metadatas": []}
+            for node in files_just_chunked:
+                data = graph.nodes[node]
+                update_db["ids"].append(data["checksum"])
+                metadatas = {self.chunk_field_id: json.dumps(data[self.chunk_field_id])}
+                update_db["metadatas"].append(metadatas)
+            db.update(**update_db)
 
         # Process chunks
+        all_chunk_ids = [
+            chunk["id"]
+            for _, data in files_with_chunks
+            for chunk in data[self.chunk_field_id]
+        ]
+        response = db.get(ids=all_chunk_ids, include=["metadatas"])
+        db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
+        embedding_model = db.embedding_model
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         remove_from_db = set()
         for file, data in files_with_chunks:
             try:
                 refresh = refresh or file in files_just_chunked
                 _add_to_db = self.add_file_chunks_to_graph(
-                    file, data, graph, db, refresh
+                    file, data, graph, db_data, embedding_model, refresh
                 )
                 for field, values in _add_to_db.items():
                     add_to_db[field].extend(values)
