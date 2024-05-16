@@ -85,12 +85,12 @@ def get_document_and_context(
     if data.get("type") == "directory":
         document = f"Directory: {node}"
     else:
-        cb = ContextBuilder(graph, db)
+        cb = ContextBuilder(graph)
         cb.add_id(node)
         document = cb.render()
 
     if data.get("type") == "chunk":
-        cb = ContextBuilder(graph, db)
+        cb = ContextBuilder(graph)
 
         # Parent chunks back to the file
         def get_hierarchical_parents(target: str, cb: ContextBuilder):

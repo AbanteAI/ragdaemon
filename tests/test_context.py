@@ -8,12 +8,12 @@ from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document
 
 
-def test_daemon_render_context(cwd, mock_db):
+def test_daemon_render_context(cwd):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Base Chunk
-    context = ContextBuilder(KnowledgeGraph(), mock_db)
+    context = ContextBuilder(KnowledgeGraph())
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),
@@ -99,7 +99,7 @@ def test_to_refs(cwd, mock_db):
     ref = path_str
 
     # Setup Context
-    context = ContextBuilder(KnowledgeGraph(), mock_db)
+    context = ContextBuilder(KnowledgeGraph())
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),

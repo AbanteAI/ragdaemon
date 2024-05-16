@@ -157,7 +157,7 @@ class Daemon:
         model: Model | str = DEFAULT_COMPLETION_MODEL,
     ) -> ContextBuilder:
         if context_builder is None:
-            context = ContextBuilder(self.graph, self.db, self.verbose)
+            context = ContextBuilder(self.graph, self.verbose)
         else:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder
