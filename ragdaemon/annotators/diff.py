@@ -1,5 +1,6 @@
 import json
 import re
+from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -148,14 +149,14 @@ class Diff(Annotator):
                 graph.add_edge(node, chunk_id, type="link")
 
         # Sync with remote DB
-        ids = list(checksums.values())
+        ids = list(set(checksums.values()))
         response = db.get(ids=ids, include=["metadatas"])
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for id, checksum in checksums.items():
             if not refresh and checksum in db_data:
                 continue
-            data = graph.nodes[id]
+            data = deepcopy(graph.nodes[id])
             document = data.pop("document")
             if "chunks" in data:
                 data["chunks"] = json.dumps(data["chunks"])

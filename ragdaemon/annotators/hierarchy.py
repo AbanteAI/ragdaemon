@@ -99,7 +99,7 @@ class Hierarchy(Annotator):
             graph.add_edge(source, target, type="hierarchy")
 
         # Sync with remote DB
-        ids = list(checksums.values())
+        ids = list(set(checksums.values()))
         response = db.get(ids=ids, include=["metadatas"])
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
