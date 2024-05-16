@@ -153,9 +153,18 @@ class Chunker(Annotator):
                     parent = base_id
                 else:
                     parts = chunk_str.split(".")
-                    parent = f"{file}:{'.'.join(parts[:-1])}"
-                if parent not in graph:
-                    raise RagdaemonError(f"Node {parent} not found in graph")
+                    while True:
+                        parent = f"{file}:{'.'.join(parts[:-1])}"
+                        if parent in graph:
+                            break
+                        if "." not in parent:
+                            # If we can't find a parent, use the base node.
+                            if self.verbose:
+                                print(f"No parent node found for {id}")
+                            parent = base_id
+                            break
+                        # If intermediate parents are missing, skip them
+                        parts = parent.split(".")
                 graph.add_edge(parent, id, type="hierarchy")
 
         # 2. Get metadata for all chunks from db
