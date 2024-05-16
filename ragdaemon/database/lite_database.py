@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from ragdaemon.database.database import Database
 
@@ -36,7 +36,7 @@ class LiteCollection:
     def __init__(self):
         self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
 
-    def get(self, ids: list[str] | str) -> dict:
+    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
         if isinstance(ids, str):
             ids = [ids]
         output = {"ids": [], "metadatas": [], "documents": []}
@@ -45,6 +45,8 @@ class LiteCollection:
                 output["ids"].append(id)
                 output["metadatas"].append(self.data[id]["metadatas"])
                 output["documents"].append(self.data[id]["document"])
+        if include:
+            output = {k: v for k, v in output.items() if k in include or k == "ids"}
         return output
 
     def count(self) -> int:
