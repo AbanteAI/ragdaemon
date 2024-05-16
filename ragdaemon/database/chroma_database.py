@@ -105,39 +105,44 @@ class ChromaDB(Database):
         )
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
+        """
+        Since we add many different versions of each file to Chroma, we can't do a
+        straightforward query, because it'd return multiple version of the same file.
+
+        The best workaround I've found for this is using the 'active' flag in metadata.
+        The downside is that it requires 2 additional calls to the database each time:
+        one to set it, another to unset it. The extra time is negligible for local DBs
+        and hopefully not unreasonable for remote.
+
+        There's a third "extra" call to validate the active_checksums. If we don't do
+        this it will still function properly but it will print a lot of warnings.
+        """
+        valid_checksums = self._collection.get(ids=active_checksums, include=[])["ids"]
         # Flag active records
-        result: GetResult = self._collection.get(active_checksums)
-        metadatas: Optional[list[Metadata]] = result["metadatas"]
-        if not metadatas or len(metadatas) == 0:
-            return []
-        updates = {"ids": [], "metadatas": []}
-        for metadata in metadatas:
-            updates["ids"].append(metadata["checksum"])
-            updates["metadatas"].append({**metadata, "active": True})
+        updates = {
+            "ids": valid_checksums,
+            "metadatas": [{"active": True} for _ in valid_checksums],
+        }
         self._collection.update(**updates)
         # Query
         response = self._collection.query(
             query_texts=query,
             where={"active": True},
-            n_results=len(metadatas),
+            n_results=len(valid_checksums),
+            include=["distances"],
         )
         # Remove flags
-        updates["metadatas"] = [{**metadata, "active": False} for metadata in metadatas]
+        updates = {
+            "ids": valid_checksums,
+            "metadatas": [{"active": False} for _ in valid_checksums],
+        }
         self._collection.update(**updates)
-        # Parse results. Return results for the 'first query' only
-        if (
-            response is None
-            or response["metadatas"] is None
-            or response["documents"] is None
-            or response["distances"] is None
-        ):
+        if response is None or response["distances"] is None:
             return []
-        _metadatas = response["metadatas"][0]
-        _documents = response["documents"][0]
-        _distances = response["distances"][0]
+        # Parse results. Return results for the 'first query' only
         results = [
-            {**m, "document": do, "distance": di}
-            for m, do, di in zip(_metadatas, _documents, _distances)
+            {"checksum": id, "distance": distance}
+            for id, distance in zip(response["ids"][0], response["distances"][0])
         ]
         results = sorted(results, key=lambda x: x["distance"])
         return results

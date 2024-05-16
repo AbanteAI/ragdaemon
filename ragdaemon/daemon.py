@@ -144,9 +144,7 @@ class Daemon:
         return self.db.query_graph(query, self.graph, n=n, node_types=node_types)
 
     def get_document(self, filename: str) -> str:
-        checksum = self.graph.nodes[filename]["checksum"]
-        document = self.db.get(checksum)["documents"][0]
-        return document
+        return self.graph.nodes[filename]["document"]
 
     def get_context(
         self,

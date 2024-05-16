@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from ragdaemon.graph import KnowledgeGraph
 
@@ -30,19 +30,24 @@ class Database:
         Chroma's default search covers all records, including inactive ones, so we
         manually flag the active records, query them, and then unflag them.
         """
-        active_checksums = list(
-            {
-                data["checksum"]
-                for _, data in graph.nodes(data=True)
-                if data and "checksum" in data and data["type"] in node_types
-            }
-        )
-        results = self.query(query, active_checksums)
+        checksum_index = {
+            data["checksum"]: node
+            for node, data in graph.nodes(data=True)
+            if data and "checksum" in data and data["type"] in node_types
+        }
+        response = self.query(query, list(checksum_index.keys()))
+
+        # Add (local) metadata to results
+        results = list[dict[str, Any]]()
+        for result in response:
+            node = checksum_index[result["checksum"]]
+            data = graph.nodes[node]
+            result = {**result, **data}
+            results.append(result)
 
         # Add exact-match multiplier
         for result in results:
             distance = result["distance"]
-            # Multiply by 2 if query is in the NAME
             type = result["type"]
             if type == "file":
                 name = Path(result["id"]).name

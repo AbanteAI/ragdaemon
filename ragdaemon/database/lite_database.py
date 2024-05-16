@@ -13,12 +13,8 @@ class LiteDB(Database):
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
         response = self._collection.query(query, active_checksums)
         results = [
-            {**data, "document": document, "distance": distance}
-            for data, document, distance in zip(
-                response["metadatas"][0],
-                response["documents"][0],
-                response["distances"][0],
-            )
+            {"checksum": id, "distance": distance}
+            for id, distance in zip(response["ids"][0], response["distances"][0])
         ]
         results = sorted(results, key=lambda x: x["distance"])
         return results
@@ -30,7 +26,7 @@ class LiteCollection:
     Matches the chroma Collection API except:
     - No embeddings
     - In-memory
-    - A basic hand-coded search algo
+    - Query returns all distances=1
     """
 
     def __init__(self):
@@ -67,8 +63,6 @@ class LiteCollection:
         ]
         return {
             "ids": [[r["id"] for r in records]],
-            "metadatas": [[r["metadatas"] for r in records]],
-            "documents": [[r["document"] for r in records]],
             "distances": [[1] * len(records)],
         }
 
