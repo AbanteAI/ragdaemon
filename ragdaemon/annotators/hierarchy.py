@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -107,7 +108,7 @@ class Hierarchy(Annotator):
                 data = db_data[checksum]
                 graph.nodes[path.as_posix()].update(data)
             else:
-                data = graph.nodes[path.as_posix()]
+                data = deepcopy(graph.nodes[path.as_posix()])
                 document = data.pop("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
                 if self.verbose and truncate_ratio > 0:
