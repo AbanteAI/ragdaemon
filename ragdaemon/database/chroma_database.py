@@ -13,12 +13,6 @@ from ragdaemon.utils import basic_auth
 
 MAX_INPUTS_PER_CALL = 2048
 
-if TYPE_CHECKING:
-    from chromadb.api.types import (
-        GetResult,
-        Metadata,
-    )
-
 
 def remove_add_to_db_duplicates(
     ids: list[str], documents: list[str], metadatas: list[dict]
@@ -29,6 +23,19 @@ def remove_add_to_db_duplicates(
         if id not in seen:
             output["ids"].append(id)
             output["documents"].append(document)
+            output["metadatas"].append(metadata)
+            seen.add(id)
+    return output
+
+
+def remove_update_db_duplicates(
+    ids: list[str], metadatas: list[dict]
+) -> dict[str, Any]:
+    seen = set()
+    output = {"ids": [], "metadatas": []}
+    for id, metadata in zip(ids, metadatas):
+        if id not in seen:
+            output["ids"].append(id)
             output["metadatas"].append(metadata)
             seen.add(id)
     return output

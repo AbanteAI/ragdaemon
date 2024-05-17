@@ -24,7 +24,11 @@ from typing import Any, Optional
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import (
+    Database,
+    remove_add_to_db_duplicates,
+    remove_update_db_duplicates,
+)
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, get_document, hash_str, truncate
@@ -116,6 +120,7 @@ class Chunker(Annotator):
                 update_db["ids"].append(data["checksum"])
                 metadatas = {self.chunk_field_id: json.dumps(data[self.chunk_field_id])}
                 update_db["metadatas"].append(metadatas)
+            update_db = remove_update_db_duplicates(**update_db)
             db.update(**update_db)
 
         # Process chunks
