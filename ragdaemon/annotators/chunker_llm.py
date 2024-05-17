@@ -37,10 +37,12 @@ class ChunkerLLM(Chunker):
     def __init__(
         self,
         *args,
+        batch_size: int = 800,
         model: Optional[TextModel | str] = DEFAULT_COMPLETION_MODEL,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
+        self.batch_size = batch_size
         self.model = model
 
     async def get_llm_response(
@@ -88,7 +90,7 @@ class ChunkerLLM(Chunker):
         return chunks
 
     async def chunk_document(
-        self, document: str, batch_size: int = 1000, retries: int = 1
+        self, document: str, retries: int = 1
     ) -> list[dict[str, Any]]:
         """Parse file_lines into a list of {id, ref} chunks."""
         lines = document.split("\n")
@@ -100,9 +102,9 @@ class ChunkerLLM(Chunker):
 
         # Get raw llm output: {id, start_line, end_line}
         chunks = list[dict[str, Any]]()
-        n_batches = (len(file_lines) + batch_size - 1) // batch_size
+        n_batches = (len(file_lines) + self.batch_size - 1) // self.batch_size
         for i in range(n_batches):
-            batch_lines = file_lines[i * batch_size : (i + 1) * batch_size]
+            batch_lines = file_lines[i * self.batch_size : (i + 1) * self.batch_size]
             last_chunk = chunks.pop() if chunks else None
             for j in range(retries + 1, 0, -1):
                 try:

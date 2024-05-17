@@ -1,3 +1,4 @@
+from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -6,94 +7,6 @@ from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str, truncate
-
-
-def get_active_checksums(
-    cwd: Path,
-    db: Database,
-    refresh: bool = False,
-    verbose: bool = False,
-    ignore_patterns: set[Path] = set(),
-) -> dict[Path, str]:
-    # Get checksums for all active files
-    checksums: dict[Path, str] = {}
-    paths = get_paths_for_directory(cwd, exclude_patterns=ignore_patterns)
-    add_to_db = {
-        "ids": [],
-        "documents": [],
-        "metadatas": [],
-    }
-    for path in paths:
-        try:
-            path_str = path.as_posix()
-            ref = path_str
-            document = get_document(ref, cwd)
-            checksum = hash_str(document)
-            existing_record = len(db.get(checksum)["ids"]) > 0
-            if refresh or not existing_record:
-                # add new items to db (will generate embeddings)
-                metadatas = {
-                    "id": path_str,
-                    "type": "file",
-                    "ref": ref,
-                    "checksum": checksum,
-                    "active": False,
-                }
-                document, truncate_ratio = truncate(document, db.embedding_model)
-                if truncate_ratio > 0 and verbose:
-                    print(f"Truncated {path_str} by {truncate_ratio:.2%}")
-                add_to_db["ids"].append(checksum)
-                add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(metadatas)
-            checksums[path] = checksum
-        except UnicodeDecodeError:  # Ignore non-text files
-            pass
-        except RagdaemonError as e:
-            if verbose:
-                print(f"Error processing path {path}: {e}")
-
-    # Get checksums for all active directories
-    directories = set()
-    for path in paths:
-        for parent in path.parents:
-            if parent not in paths:
-                directories.add(parent)
-    for path in directories:
-        ref = path.as_posix()
-        document = get_document(ref, cwd, type="directory")
-
-        # The checksum for a directory is the hash of the checksums of its subpaths,
-        # which are listed in the document and were computed above.
-        subdir_checksums = ""
-        for subpath in document.split("\n")[1:]:
-            subpath = Path(ref) / subpath
-            if subpath in checksums:
-                subdir_checksums += checksums[subpath]
-            else:
-                raise RagdaemonError(f"Checksum not found for {subpath}")
-        checksum = hash_str(subdir_checksums)
-
-        existing_record = len(db.get(checksum)["ids"]) > 0
-        if refresh or not existing_record:
-            metadatas = {
-                "id": ref,
-                "type": "directory",
-                "ref": ref,
-                "checksum": checksum,
-                "active": False,
-            }
-            document, truncate_ratio = truncate(document, db.embedding_model)
-            if truncate_ratio > 0 and verbose:
-                print(f"Truncated {ref} by {truncate_ratio:.2%}")
-            add_to_db["ids"].append(checksum)
-            add_to_db["documents"].append(document)
-            add_to_db["metadatas"].append(metadatas)
-        checksums[path] = checksum
-
-    if len(add_to_db["ids"]) > 0:
-        add_to_db = remove_add_to_db_duplicates(**add_to_db)
-        db.upsert(**add_to_db)
-    return checksums
 
 
 def files_checksum(cwd: Path, ignore_patterns: set[Path] = set()) -> str:
@@ -124,44 +37,88 @@ class Hierarchy(Annotator):
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
     ) -> KnowledgeGraph:
         """Build a graph of active files and directories with hierarchy edges."""
-        cwd = Path(graph.graph["cwd"])
-        checksums = get_active_checksums(
-            cwd,
-            db,
-            refresh=refresh,
-            verbose=self.verbose,
-            ignore_patterns=self.ignore_patterns,
-        )
-        _files_checksum = files_checksum(cwd, self.ignore_patterns)
 
-        # Initialize an empty graph. We'll build it from scratch.
+        # Initialize a new graph from scratch with same cwd
+        cwd = Path(graph.graph["cwd"])
         graph = KnowledgeGraph()
         graph.graph["cwd"] = str(cwd)
-        edges_to_add = set()
-        for path, checksum in checksums.items():
-            # add db reecord
-            id = path.as_posix() if len(path.parts) > 0 else "ROOT"
-            results = db.get(checksum)
-            data = results["metadatas"][0]
-            graph.add_node(id, **data)
-            if id == "ROOT":
-                continue
 
-            # add hierarchy edges
-            def _link_to_cwd(_path: Path):
-                _parent = _path.parent.as_posix() if len(_path.parts) > 1 else "ROOT"
-                edges_to_add.add((_parent, _path.as_posix()))
-                if _parent != "ROOT":
-                    _link_to_cwd(_path.parent)
+        # Load active files/dirs and checksums
+        checksums = dict[Path, str]()
+        paths = get_paths_for_directory(cwd, exclude_patterns=self.ignore_patterns)
+        directories = set()
+        edges = set()
+        for path in paths:
+            path_str = path.as_posix()
+            document = get_document(path_str, cwd)
+            checksum = hash_str(document)
+            data = {
+                "id": path_str,
+                "type": "file",
+                "ref": path_str,
+                "document": document,
+                "checksum": checksum,
+                "active": False,
+            }
+            graph.add_node(path_str, **data)
+            checksums[path] = checksum
+            # Record parents & edges
+            _last = path
+            for parent in path.parents:
+                if len(parent.parts) == 0:
+                    parent = Path("ROOT")
+                directories.add(parent)
+                edges.add((parent.as_posix(), _last.as_posix()))
+                _last = parent
 
-            _link_to_cwd(path)
+        for dir in directories:
+            dir_str = dir.as_posix()
+            dir_path = dir if dir != Path("ROOT") else Path(".")
+            document = get_document(dir_str, cwd, type="directory")
+            checksum = hash_str(
+                "".join(
+                    checksums[dir_path / subpath]
+                    for subpath in document.split("\n")[1:]
+                )
+            )
+            data = {
+                "id": dir_str,
+                "type": "directory",
+                "ref": dir_str,
+                "document": document,
+                "checksum": checksum,
+                "active": False,
+            }
+            graph.add_node(dir_str, **data)
+            checksums[dir] = checksum
 
-        # Add directory nodes with checksums
-        for source, target in edges_to_add:
+        for source, target in edges:
             for id in (source, target):
                 if id not in graph:
                     raise RagdaemonError(f"Node {id} not found in graph")
             graph.add_edge(source, target, type="hierarchy")
 
-        graph.graph["files_checksum"] = _files_checksum
+        # Sync with remote DB
+        ids = list(set(checksums.values()))
+        response = db.get(ids=ids, include=["metadatas"])
+        db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
+        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        for path, checksum in checksums.items():
+            if checksum in db_data:
+                data = db_data[checksum]
+                graph.nodes[path.as_posix()].update(data)
+            else:
+                data = deepcopy(graph.nodes[path.as_posix()])
+                document = data.pop("document")
+                document, truncate_ratio = truncate(document, db.embedding_model)
+                if self.verbose and truncate_ratio > 0:
+                    print(f"Truncated {path} by {truncate_ratio:.2%}")
+                add_to_db["ids"].append(checksum)
+                add_to_db["documents"].append(document)
+                add_to_db["metadatas"].append(data)
+        if len(add_to_db["ids"]) > 0:
+            add_to_db = remove_add_to_db_duplicates(**add_to_db)
+            db.add(**add_to_db)
+
+        graph.graph["files_checksum"] = files_checksum(cwd, self.ignore_patterns)
         return graph

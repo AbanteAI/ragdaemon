@@ -8,7 +8,7 @@ from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import Database
+from ragdaemon.database import Database, remove_update_db_duplicates
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore, truncate
@@ -70,7 +70,6 @@ def build_filetree(
 def get_document_and_context(
     node: str,
     graph: KnowledgeGraph,
-    db: Database,
     summary_field_id: str = "summary",
     model: Optional[TextModel] = None,
 ) -> tuple[str, str]:
@@ -85,12 +84,12 @@ def get_document_and_context(
     if data.get("type") == "directory":
         document = f"Directory: {node}"
     else:
-        cb = ContextBuilder(graph, db)
+        cb = ContextBuilder(graph)
         cb.add_id(node)
         document = cb.render()
 
     if data.get("type") == "chunk":
-        cb = ContextBuilder(graph, db)
+        cb = ContextBuilder(graph)
 
         # Parent chunks back to the file
         def get_hierarchical_parents(target: str, cb: ContextBuilder):
@@ -212,7 +211,6 @@ class Summarizer(Annotator):
             document, context = get_document_and_context(
                 node,
                 graph,
-                db,
                 summary_field_id=self.summary_field_id,
                 model=self.model,
             )
@@ -225,16 +223,15 @@ class Summarizer(Annotator):
         self,
         node: str,
         graph: KnowledgeGraph,
-        db: Database,
         loading_bar: Optional[tqdm] = None,
         refresh: bool = False,
     ):
-        """Asynchronously generate summary and update graph and db"""
+        """Asynchronously generate summary and update graph"""
         if self.spice_client is None:
             raise RagdaemonError("Spice client not initialized")
 
         document, context = get_document_and_context(
-            node, graph, db, summary_field_id=self.summary_field_id, model=self.model
+            node, graph, summary_field_id=self.summary_field_id, model=self.model
         )
         summary_checksum = hash_str(document + context)
         data = graph.nodes[node]
@@ -263,14 +260,9 @@ class Summarizer(Annotator):
                 )
             summary = response.text
 
-            record = db.get(data["checksum"])
-            metadatas = record["metadatas"][0]
             if summary != "PASS":
-                metadatas[self.summary_field_id] = summary
                 data[self.summary_field_id] = summary
-            metadatas[self.checksum_field_id] = summary_checksum
             data[self.checksum_field_id] = summary_checksum
-            db.update(data["checksum"], metadatas=metadatas)
 
         if loading_bar is not None:
             loading_bar.update(1)
@@ -279,7 +271,6 @@ class Summarizer(Annotator):
         self,
         node: str,
         graph: KnowledgeGraph,
-        db: Database,
         loading_bar: Optional[tqdm] = None,
         refresh: bool = False,
     ):
@@ -291,29 +282,40 @@ class Summarizer(Annotator):
             and graph.nodes[edge[1]].get("type") in self.summarize_nodes
         ]
         if children:
-            tasks = [
-                self.dfs(child, graph, db, loading_bar, refresh) for child in children
-            ]
+            tasks = [self.dfs(child, graph, loading_bar, refresh) for child in children]
             await asyncio.gather(*tasks)
-        await self.generate_summary(node, graph, db, loading_bar, refresh)
+        await self.generate_summary(node, graph, loading_bar, refresh)
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
     ) -> KnowledgeGraph:
         """Asynchronously generate or fetch summaries and add to graph/db"""
+        summaries = dict[str, str]()
+        for node, data in graph.nodes(data=True):
+            if data is not None and data.get("type") in self.summarize_nodes:
+                summaries[node] = data.get(self.checksum_field_id, "")
+
         if self.verbose:
-            n = len(
-                [
-                    node
-                    for node, data in graph.nodes(data=True)
-                    if data is not None and data.get("type") in self.summarize_nodes
-                ]
-            )
-            loading_bar = tqdm(total=n, desc="Summarizing code...")
+            loading_bar = tqdm(total=len(summaries), desc="Summarizing code...")
         else:
             loading_bar = None
 
-        await self.dfs("ROOT", graph, db, loading_bar, refresh)
+        await self.dfs("ROOT", graph, loading_bar, refresh)
+
+        update_db = {"ids": [], "metadatas": []}
+        for node, summary_checksum in summaries.items():
+            if graph.nodes[node].get(self.checksum_field_id) != summary_checksum:
+                data = graph.nodes[node]
+                update_db["ids"].append(data["checksum"])
+                update_db["metadatas"].append(
+                    {
+                        self.summary_field_id: data[self.summary_field_id],
+                        self.checksum_field_id: data[self.checksum_field_id],
+                    }
+                )
+        if len(update_db["ids"]) > 1:
+            update_db = remove_update_db_duplicates(**update_db)
+            db.update(**update_db)
 
         if loading_bar is not None:
             loading_bar.close()

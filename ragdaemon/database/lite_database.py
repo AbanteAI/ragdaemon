@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from ragdaemon.database.database import Database
 
@@ -13,12 +13,8 @@ class LiteDB(Database):
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
         response = self._collection.query(query, active_checksums)
         results = [
-            {**data, "document": document, "distance": distance}
-            for data, document, distance in zip(
-                response["metadatas"][0],
-                response["documents"][0],
-                response["distances"][0],
-            )
+            {"checksum": id, "distance": distance}
+            for id, distance in zip(response["ids"][0], response["distances"][0])
         ]
         results = sorted(results, key=lambda x: x["distance"])
         return results
@@ -30,13 +26,13 @@ class LiteCollection:
     Matches the chroma Collection API except:
     - No embeddings
     - In-memory
-    - A basic hand-coded search algo
+    - Query returns all distances=1
     """
 
     def __init__(self):
         self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
 
-    def get(self, ids: list[str] | str) -> dict:
+    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
         if isinstance(ids, str):
             ids = [ids]
         output = {"ids": [], "metadatas": [], "documents": []}
@@ -45,6 +41,8 @@ class LiteCollection:
                 output["ids"].append(id)
                 output["metadatas"].append(self.data[id]["metadatas"])
                 output["documents"].append(self.data[id]["document"])
+        if include:
+            output = {k: v for k, v in output.items() if k in include or k == "ids"}
         return output
 
     def count(self) -> int:
@@ -65,12 +63,10 @@ class LiteCollection:
         ]
         return {
             "ids": [[r["id"] for r in records]],
-            "metadatas": [[r["metadatas"] for r in records]],
-            "documents": [[r["document"] for r in records]],
             "distances": [[1] * len(records)],
         }
 
-    def upsert(
+    def add(
         self,
         ids: list[str] | str,
         metadatas: list[dict] | dict,

@@ -9,7 +9,7 @@ from spice import SpiceMessages
 from spice.models import TextModel
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database
+from ragdaemon.database import Database, remove_update_db_duplicates
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
@@ -155,13 +155,11 @@ class CallGraph(Annotator):
         node: str,
         data: dict,
         graph: KnowledgeGraph,
-        db: Database,
         retries: int = 1,
     ):
-        """Generate and save call data for a file node to graph and db"""
+        """Generate and save call data for a file node to graph"""
         calls = {}
-        record = db.get(data["checksum"])
-        document = record["documents"][0]
+        document = data["document"]
 
         # Insert line numbers
         lines = document.split("\n")
@@ -184,10 +182,6 @@ class CallGraph(Annotator):
                             else "Skipping."
                         )
 
-        # Save to db and graph
-        metadatas = record["metadatas"][0]
-        metadatas[self.call_field_id] = json.dumps(calls)
-        db.update(data["checksum"], metadatas=metadatas)
         data[self.call_field_id] = calls
 
     async def annotate(
@@ -212,17 +206,27 @@ class CallGraph(Annotator):
                     files_with_calls.append((node, data))
         # Generate/add call data for nodes that don't have it
         tasks = []
+        files_just_updated = set()
         for node, data in files_with_calls:
             if refresh or data.get(self.call_field_id, None) is None:
                 checksum = data.get("checksum")
                 if checksum is None:
                     raise RagdaemonError(f"Node {node} has no checksum.")
-                tasks.append(self.get_file_call_data(node, data, graph, db))
+                tasks.append(self.get_file_call_data(node, data, graph))
+                files_just_updated.add(node)
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Generating call graph")
             else:
                 await asyncio.gather(*tasks)
+            update_db = {"ids": [], "metadatas": []}
+            for node in files_just_updated:
+                data = graph.nodes[node]
+                update_db["ids"].append(data["checksum"])
+                metadatas = {self.call_field_id: json.dumps(data[self.call_field_id])}
+                update_db["metadatas"].append(metadatas)
+            update_db = remove_update_db_duplicates(**update_db)
+            db.update(**update_db)
 
         # Add call edges to graph. Each call should have only ONE source; if there are
         # chunks, the source is the matching chunk, otherwise it's the file.
@@ -244,8 +248,7 @@ class CallGraph(Annotator):
                 checksum = data.get("checksum")
                 if checksum is None:
                     raise RagdaemonError(f"File node {file} is missing checksum field.")
-                record = db.get(checksum)
-                document = record["documents"][0]
+                document = data["document"]
                 for i in range(1, len(document.split("\n")) + 1):
                     line_index[i] = file
             else:

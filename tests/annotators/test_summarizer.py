@@ -1,6 +1,8 @@
+import json
 from pathlib import Path
 
 import pytest
+from networkx.readwrite import json_graph
 
 from ragdaemon.annotators.summarizer import (
     build_filetree,
@@ -46,14 +48,13 @@ async def test_build_filetree(cwd):
 @pytest.mark.asyncio
 async def test_get_document_and_context(cwd):
     graph = KnowledgeGraph.load("tests/data/summarizer_graph.json")  # Chunk data
-    db = LiteDB(cwd=cwd, db_path=Path("."))
     for _, data in graph.nodes(data=True):
         document = get_document(data["ref"], cwd=cwd, type=data["type"])
-        db._collection.upsert(ids=data["checksum"], documents=document, metadatas=data)
+        data["document"] = document
 
     # A chunk
     document, context = get_document_and_context(
-        "src/interface.py:parse_arguments", graph, db
+        "src/interface.py:parse_arguments", graph
     )
     assert (
         document
@@ -107,7 +108,7 @@ main.py (call graph)
     )
 
     # A file
-    document, context = get_document_and_context("src/interface.py", graph, db)
+    document, context = get_document_and_context("src/interface.py", graph)
     assert document.startswith("src/interface.py\n")
     assert (
         context
@@ -131,7 +132,7 @@ src/interface.py:parse_arguments Parse command-line arguments into three compone
     )
 
     # A directory
-    document, context = get_document_and_context("src", graph, db)
+    document, context = get_document_and_context("src", graph)
     assert document == "Directory: src"
     assert (
         context

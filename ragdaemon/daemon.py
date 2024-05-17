@@ -144,9 +144,7 @@ class Daemon:
         return self.db.query_graph(query, self.graph, n=n, node_types=node_types)
 
     def get_document(self, filename: str) -> str:
-        checksum = self.graph.nodes[filename]["checksum"]
-        document = self.db.get(checksum)["documents"][0]
-        return document
+        return self.graph.nodes[filename]["document"]
 
     def get_context(
         self,
@@ -157,7 +155,7 @@ class Daemon:
         model: Model | str = DEFAULT_COMPLETION_MODEL,
     ) -> ContextBuilder:
         if context_builder is None:
-            context = ContextBuilder(self.graph, self.db, self.verbose)
+            context = ContextBuilder(self.graph, self.verbose)
         else:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder

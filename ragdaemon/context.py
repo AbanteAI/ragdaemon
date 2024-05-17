@@ -37,16 +37,15 @@ def render_comments(comments: list[Comment]) -> str:
 class ContextBuilder:
     """Renders items from a graph into an llm-readable string."""
 
-    def __init__(self, graph: KnowledgeGraph, db: Database, verbose: bool = False):
+    def __init__(self, graph: KnowledgeGraph, verbose: bool = False):
         self.graph = graph
-        self.db = db
         self.verbose = verbose
         self.context = dict[
             str, dict[str, Any]
         ]()  # {path: {lines, tags, document, diff}}
 
     def copy(self):
-        duplicate = ContextBuilder(self.graph, self.db, self.verbose)
+        duplicate = ContextBuilder(self.graph, self.verbose)
         duplicate.context = deepcopy(self.context)
         return duplicate
 
@@ -69,20 +68,17 @@ class ContextBuilder:
         """Create a new record in the context for the given path."""
         document = None
         if path_str in self.graph:
-            checksum = self.graph.nodes[path_str]["checksum"]
-            document = self.db.get(checksum)["documents"][0]
+            document = self.graph.nodes[path_str]["document"]
             if document.endswith("[TRUNCATED]"):
                 document = None
         if document is None:  # Truncated or deleted
             try:
-                # Could be an ignored file, in which case load it into graph/db
                 # TODO: Add ignored files to the graph/database
                 cwd = Path(self.graph.graph["cwd"])
                 document = get_document(path_str, cwd, type="file")
             except FileNotFoundError:
                 # Or could be deleted but have a diff
                 document = f"{path_str}\n[DELETED]"
-            checksum = hash_str(document)
         message = {
             "lines": set(),
             "tags": set(),
@@ -258,8 +254,7 @@ class ContextBuilder:
             git_command += f" {diff_str}"
         output += f"{git_command}\n"
         for id in sorted(ids):
-            checksum = self.graph.nodes[id]["checksum"]
-            document = self.db.get(checksum)["documents"][0]
+            document = self.graph.nodes[id]["document"]
             # TODO: Add line numbers
             without_git_command = "\n".join(document.split("\n")[1:])
             output += without_git_command + "\n"

@@ -17,13 +17,18 @@ The Chunker base class below handles everything except step 2.
 
 import asyncio
 import json
+from copy import deepcopy
 from pathlib import Path
-from typing import Any, Coroutine, Optional
+from typing import Any, Optional
 
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import (
+    Database,
+    remove_add_to_db_duplicates,
+    remove_update_db_duplicates,
+)
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, get_document, hash_str, truncate
@@ -64,91 +69,17 @@ class Chunker(Annotator):
         """Return a list of {id, ref} chunks for the given document."""
         raise NotImplementedError()
 
-    async def get_file_chunk_data(self, node, data, db):
+    async def get_file_chunk_data(self, node, data):
         """Generate and save chunk data for a file node to graph and db"""
-        record = db.get(data["checksum"])
-        document = record["documents"][0]
+        document = data["document"]
         try:
             chunks = await self.chunk_document(document)
         except RagdaemonError:
             if self.verbose:
                 print(f"Error chunking {node}; skipping.")
             chunks = []
-        # Save to db and graph
-        metadatas = record["metadatas"][0]
-        metadatas[self.chunk_field_id] = json.dumps(chunks)
-        db.update(data["checksum"], metadatas=metadatas)
+        chunks = sorted(chunks, key=lambda x: len(x["id"]))
         data[self.chunk_field_id] = chunks
-
-    def add_file_chunks_to_graph(
-        self,
-        file: str,
-        data: dict,
-        graph: KnowledgeGraph,
-        db: Database,
-        refresh: bool = False,
-    ) -> dict[str, list[Any]]:
-        """Load chunks from file data into db/graph"""
-
-        # Grab and validate chunks for given file
-        chunks = data.get(self.chunk_field_id)
-        if chunks is None:
-            raise RagdaemonError(f"Node {file} missing {self.chunk_field_id}")
-        if isinstance(chunks, str):
-            chunks = json.loads(chunks)
-            data[self.chunk_field_id] = chunks
-
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
-        if len(chunks) == 0:
-            return add_to_db
-        base_id = f"{file}:BASE"
-        if not any(chunk["id"] == base_id for chunk in chunks):
-            raise RagdaemonError(f"Node {file} missing base chunk")
-        edges_to_add = {(file, base_id)}
-        for chunk in chunks:
-            # Locate or create record for chunk
-            id, ref = chunk["id"], chunk["ref"]
-            document = get_document(ref, Path(graph.graph["cwd"]))
-            checksum = hash_str(document)
-            records = db.get(checksum)["metadatas"]
-            if not refresh and len(records) > 0:
-                record = records[0]
-            else:
-                record = {
-                    "id": id,
-                    "type": "chunk",
-                    "ref": chunk["ref"],
-                    "checksum": checksum,
-                    "active": False,
-                }
-                document, truncate_ratio = truncate(document, db.embedding_model)
-                if truncate_ratio > 0 and self.verbose:
-                    print(f"Truncated {id} by {truncate_ratio:.2%}")
-                add_to_db["ids"].append(checksum)
-                add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(record)
-
-            # Add chunk to graph and connect hierarchy edges
-            graph.add_node(record["id"], **record)
-
-            def _link_to_base_chunk(_id):
-                """Recursively create links from _id to base chunk."""
-                path_str, chunk_str = _id.split(":")
-                chunk_list = chunk_str.split(".")
-                _parent = (
-                    f"{path_str}:{'.'.join(chunk_list[:-1])}"
-                    if len(chunk_list) > 1
-                    else base_id
-                )
-                edges_to_add.add((_parent, _id))
-                if _parent != base_id:
-                    _link_to_base_chunk(_parent)
-
-            if id != base_id:
-                _link_to_base_chunk(id)
-        for source, target in edges_to_add:
-            graph.add_edge(source, target, type="hierarchy")
-        return add_to_db
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: bool = False
@@ -174,37 +105,98 @@ class Chunker(Annotator):
         files_just_chunked = set()
         for node, data in files_with_chunks:
             if refresh or data.get(self.chunk_field_id, None) is None:
-                tasks.append(self.get_file_chunk_data(node, data, db))
+                tasks.append(self.get_file_chunk_data(node, data))
                 files_just_chunked.add(node)
+            elif isinstance(data[self.chunk_field_id], str):
+                data[self.chunk_field_id] = json.loads(data[self.chunk_field_id])
         if len(tasks) > 0:
             if self.verbose:
                 await tqdm.gather(*tasks, desc="Chunking files...")
             else:
                 await asyncio.gather(*tasks)
+            update_db = {"ids": [], "metadatas": []}
+            for node in files_just_chunked:
+                data = graph.nodes[node]
+                update_db["ids"].append(data["checksum"])
+                metadatas = {self.chunk_field_id: json.dumps(data[self.chunk_field_id])}
+                update_db["metadatas"].append(metadatas)
+            update_db = remove_update_db_duplicates(**update_db)
+            db.update(**update_db)
 
         # Process chunks
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
-        remove_from_db = set()
+        # 1. Add all chunks to graph
+        all_chunk_ids = set()
         for file, data in files_with_chunks:
-            try:
-                refresh = refresh or file in files_just_chunked
-                _add_to_db = self.add_file_chunks_to_graph(
-                    file, data, graph, db, refresh
-                )
-                for field, values in _add_to_db.items():
-                    add_to_db[field].extend(values)
-            except RagdaemonError as e:
-                # If there's a problem with the chunks, remove the file from the db.
-                # This, along with 'files_just_chunked', prevents invalid database
-                # records perpetuating.
-                if self.verbose:
-                    print(f"Error adding chunks for {file}:\n{e}. Removing db record.")
-                remove_from_db.add(data["checksum"])
+            if len(data[self.chunk_field_id]) == 0:
                 continue
-        if len(remove_from_db) > 0:
-            db.delete(list(remove_from_db))
-            raise RagdaemonError(f"Chunking error, try again.")
+            # Sort such that "parents" are added before "children"
+            base_id = f"{file}:BASE"
+            chunks = [c for c in data[self.chunk_field_id] if c["id"] != base_id]
+            chunks.sort(key=lambda x: len(x["id"]))
+            base_chunk = [c for c in data[self.chunk_field_id] if c["id"] == base_id]
+            if len(base_chunk) != 1:
+                raise RagdaemonError(f"Node {file} missing base chunk")
+            chunks = base_chunk + chunks
+            # Load chunks into graph
+            for chunk in chunks:
+                id, ref = chunk["id"], chunk["ref"]
+                document = get_document(ref, Path(graph.graph["cwd"]))
+                chunk_data = {
+                    "id": id,
+                    "ref": ref,
+                    "type": "chunk",
+                    "document": document,
+                    "checksum": hash_str(document),
+                    "active": False,
+                }
+                graph.add_node(id, **chunk_data)
+                all_chunk_ids.add(id)
+                # Locate the parent and add hierarchy edge
+                chunk_str = id.split(":")[1]
+                if chunk_str == "BASE":
+                    parent = file
+                elif "." not in chunk_str:
+                    parent = base_id
+                else:
+                    parts = chunk_str.split(".")
+                    while True:
+                        parent = f"{file}:{'.'.join(parts[:-1])}"
+                        if parent in graph:
+                            break
+                        parent_str = parent.split(":")[1]
+                        if "." not in parent_str:
+                            # If we can't find a parent, use the base node.
+                            if self.verbose:
+                                print(f"No parent node found for {id}")
+                            parent = base_id
+                            break
+                        # If intermediate parents are missing, skip them
+                        parts = parent_str.split(".")
+                graph.add_edge(parent, id, type="hierarchy")
+
+        # 2. Get metadata for all chunks from db
+        all_chunk_checksums = [
+            graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids
+        ]
+        response = db.get(ids=all_chunk_checksums, include=["metadatas"])
+        db_data = {data["id"]: data for data in response["metadatas"]}
+        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        for chunk in all_chunk_ids:
+            if chunk in db_data:
+                # 3. Add db metadata for nodes that have it
+                graph.nodes[chunk].update(db_data[chunk])
+            else:
+                # 4. Add to db nodes that don't
+                data = deepcopy(graph.nodes[chunk])
+                document = data.pop("document")
+                document, truncate_ratio = truncate(document, db.embedding_model)
+                if truncate_ratio > 0 and self.verbose:
+                    print(f"Truncated {chunk} by {truncate_ratio:.2%}")
+                add_to_db["ids"].append(data["checksum"])
+                add_to_db["documents"].append(document)
+                add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
-            db.upsert(**add_to_db)
+            db.add(**add_to_db)
+
         return graph

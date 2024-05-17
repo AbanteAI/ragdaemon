@@ -1,5 +1,6 @@
 import json
 import re
+from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -94,86 +95,79 @@ class Diff(Annotator):
             if data and data.get("type") == "diff"
         }
         graph.remove_nodes_from(graph_nodes)
+
+        checksums = dict[str, str]()
         document = get_document(self.diff_args, cwd, type="diff")
         checksum = hash_str(document)
-        existing_records = db.get(checksum)
-        if refresh or len(existing_records["ids"]) == 0:
-            chunks = get_chunks_from_diff(id=self.id, diff=document)
-            data = {
-                "id": self.id,
-                "ref": self.diff_args,
-                "type": "diff",
-                "checksum": checksum,
-                "chunks": json.dumps(chunks),
-                "active": False,
-            }
-
-            # If the full diff is too long to embed, it is truncated. Anything
-            # removed will be captured in chunks.
-            document, truncate_ratio = truncate(document, db.embedding_model)
-            if truncate_ratio > 0 and self.verbose:
-                print(f"Truncated diff by {truncate_ratio:.2%}")
-            db.upsert(ids=checksum, documents=document, metadatas=data)
-        else:
-            data = existing_records["metadatas"][0]
-        data["chunks"] = json.loads(data["chunks"])
+        chunks = get_chunks_from_diff(id=self.id, diff=document)
+        data = {
+            "id": self.id,
+            "ref": self.diff_args,
+            "type": "diff",
+            "document": document,
+            "checksum": checksum,
+            "chunks": chunks,
+            "active": False,
+        }
         graph.add_node(self.id, **data)
+        checksums[self.id] = checksum
 
-        # Add chunks
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
-        edges_to_add = set()
-        for chunk_id, chunk_ref in data["chunks"].items():
+        for chunk_id, chunk_ref in chunks.items():
             document = get_document(chunk_ref, cwd, type="diff")
             chunk_checksum = hash_str(document)
-            existing_records = db.get(chunk_checksum)
-            if refresh or len(existing_records["ids"]) == 0:
-                data = {
-                    "id": chunk_id,
-                    "ref": chunk_ref,
-                    "type": "diff",
-                    "checksum": chunk_checksum,
-                    "active": False,
-                }
-                document, truncate_ratio = truncate(document, db.embedding_model)
-                if truncate_ratio > 0 and self.verbose:
-                    print(f"Truncated diff chunk {chunk_id} by {truncate_ratio:.2%}")
-                add_to_db["ids"].append(chunk_checksum)
-                add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(data)
-            else:
-                data = existing_records["metadatas"][0]
+            data = {
+                "id": chunk_id,
+                "ref": chunk_ref,
+                "type": "diff",
+                "document": document,
+                "checksum": chunk_checksum,
+                "active": False,
+            }
             graph.add_node(chunk_id, **data)
-            edges_to_add.add((self.id, chunk_id))
-            # Match file/chunk nodes in graph
-            path_ref = chunk_id.split(":", 1)[1]
-            file, lines = parse_path_ref(path_ref)
-            file_str = str(file)
-            if file_str not in graph:  # Removed files
-                if self.verbose:
-                    print(f"File {file_str} not in graph")
+            graph.add_edge(self.id, chunk_id, type="diff")
+            checksums[chunk_id] = chunk_checksum
+
+            # Link it to all overlapping chunks (if file has chunks) or to the file
+            _, path, lines = parse_diff_id(chunk_id)
+            if not path:
                 continue
-            edges_to_add.add((chunk_id, file_str))
+            path_str = path.as_posix()
+            if path_str not in graph:  # Removed files
+                if self.verbose:
+                    print(f"File {path_str} not in graph")
+                continue
+            link_to = set()
+            for node, data in graph.nodes(data=True):
+                if not node.startswith(f"{path_str}:") or data.get("type") != "chunk":
+                    continue
+                _, _lines = parse_path_ref(data["ref"])
+                if lines and _lines and lines.intersection(_lines):
+                    link_to.add(node)
+            if len(link_to) == 0:
+                link_to.add(path_str)
+            for node in link_to:
+                graph.add_edge(node, chunk_id, type="link")
 
-            def _link_to_successors(_node, visited=set()):
-                for successor in graph.successors(_node):
-                    if successor in visited:
-                        continue
-                    visited.add(successor)
-                    edge = (chunk_id, successor)
-                    _data = graph.nodes[successor]
-                    if _data.get("type") not in ["file", "chunk"]:
-                        continue
-                    _, _lines = parse_path_ref(_data["ref"])
-                    if lines and _lines and lines.intersection(_lines):
-                        edges_to_add.add(edge)
-                    _link_to_successors(successor, visited)
-
-            _link_to_successors(file_str)
-
-        for source, target in edges_to_add:
-            graph.add_edge(source, target, type="diff")
+        # Sync with remote DB
+        ids = list(set(checksums.values()))
+        response = db.get(ids=ids, include=[])
+        db_data = set(response["ids"])
+        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        for id, checksum in checksums.items():
+            if checksum in db_data:
+                continue
+            data = deepcopy(graph.nodes[id])
+            document = data.pop("document")
+            if "chunks" in data:
+                data["chunks"] = json.dumps(data["chunks"])
+            document, truncate_ratio = truncate(document, db.embedding_model)
+            if self.verbose and truncate_ratio > 0:
+                print(f"Truncated {id} by {truncate_ratio:.2%}")
+            add_to_db["ids"].append(checksum)
+            add_to_db["documents"].append(document)
+            add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
-            db.upsert(**add_to_db)
+            db.add(**add_to_db)
 
         return graph

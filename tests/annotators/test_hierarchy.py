@@ -4,28 +4,8 @@ from pathlib import Path
 from networkx.readwrite import json_graph
 import pytest
 
-from ragdaemon.annotators.hierarchy import Hierarchy, get_active_checksums
+from ragdaemon.annotators.hierarchy import Hierarchy
 from ragdaemon.graph import KnowledgeGraph
-
-
-def test_get_active_checksums(cwd, mock_db):
-    checksums = get_active_checksums(cwd, mock_db)
-    assert isinstance(checksums, dict), "Checksums is not a dict"
-    assert all(isinstance(k, Path) for k in checksums), "Keys are not all Paths"
-    assert all(
-        isinstance(v, str) for v in checksums.values()
-    ), "Values are not all strings"
-
-    hierarchy_graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
-    expected = {
-        (node, data["checksum"])
-        for node, data in hierarchy_graph.nodes(data=True)
-        if data and "checksum" in data
-    }
-    # Replace checksums "." with "ROOT"
-    checksums[Path("ROOT")] = checksums.pop(Path("."))
-    actual = {(path.as_posix(), checksum) for path, checksum in checksums.items()}
-    assert actual == expected, "Checksums are not equal"
 
 
 def test_hierarchy_is_complete(cwd, mock_db):

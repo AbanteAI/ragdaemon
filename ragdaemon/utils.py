@@ -6,7 +6,7 @@ from base64 import b64encode
 from pathlib import Path
 
 from spice import Spice
-from spice.models import GPT_4_TURBO, Model, UnknownModel
+from spice.models import GPT_4o_2024_05_13, Model, UnknownModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
@@ -41,7 +41,7 @@ DEFAULT_CODE_EXTENSIONS = [
 ]
 
 
-DEFAULT_COMPLETION_MODEL = GPT_4_TURBO
+DEFAULT_COMPLETION_MODEL = GPT_4o_2024_05_13
 
 
 def hash_str(string: str) -> str:

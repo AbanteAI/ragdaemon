@@ -59,7 +59,7 @@ async def test_diff_render(git_history, mock_db):
     await daemon.update(refresh=True)
 
     # Only diffs
-    context = ContextBuilder(daemon.graph, daemon.db)
+    context = ContextBuilder(daemon.graph)
     context.add_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_diff("DEFAULT:src/operations.py:8-10")
