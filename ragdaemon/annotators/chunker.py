@@ -74,6 +74,7 @@ class Chunker(Annotator):
             if self.verbose:
                 print(f"Error chunking {node}; skipping.")
             chunks = []
+        chunks = sorted(chunks, key=lambda x: len(x["id"]))
         data[self.chunk_field_id] = chunks
 
     async def annotate(
@@ -157,14 +158,15 @@ class Chunker(Annotator):
                         parent = f"{file}:{'.'.join(parts[:-1])}"
                         if parent in graph:
                             break
-                        if "." not in parent:
+                        parent_str = parent.split(":")[1]
+                        if "." not in parent_str:
                             # If we can't find a parent, use the base node.
                             if self.verbose:
                                 print(f"No parent node found for {id}")
                             parent = base_id
                             break
                         # If intermediate parents are missing, skip them
-                        parts = parent.split(".")
+                        parts = parent_str.split(".")
                 graph.add_edge(parent, id, type="hierarchy")
 
         # 2. Get metadata for all chunks from db

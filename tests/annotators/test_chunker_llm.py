@@ -37,7 +37,7 @@ def expected_chunks():
 async def test_chunker_llm_edge_cases(cwd, expected_chunks):
     # NOTE: TO RUN THIS YOU HAVE TO COMMENT_OUT tests/conftest.py/mock_openai_api_key
     daemon = Daemon(cwd, annotators={"hierarchy": {}})
-    chunker = ChunkerLLM(spice_client=daemon.spice_client)
+    chunker = ChunkerLLM(spice_client=daemon.spice_client, batch_size=10)
 
     # One example with all the edge cases (when batch_size = 10 lines):
     # - First batch ends mid-class, so second batch needs 'call path'
@@ -45,7 +45,7 @@ async def test_chunker_llm_edge_cases(cwd, expected_chunks):
     # - Third batch is all inside one function, so needs to pass call forward.
     text = Path("tests/data/hard_to_chunk.txt").read_text()
     document = f"src/calculator.py\n{text}"
-    actual_chunks = await chunker.chunk_document(document, batch_size=10)
+    actual_chunks = await chunker.chunk_document(document)
 
     print(actual_chunks)
 
