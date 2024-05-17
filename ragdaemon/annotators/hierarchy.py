@@ -104,7 +104,7 @@ class Hierarchy(Annotator):
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for path, checksum in checksums.items():
-            if not refresh and checksum in db_data:
+            if checksum in db_data:
                 data = db_data[checksum]
                 graph.nodes[path.as_posix()].update(data)
             else:
@@ -118,7 +118,7 @@ class Hierarchy(Annotator):
                 add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
-            db.upsert(**add_to_db)
+            db.add(**add_to_db)
 
         graph.graph["files_checksum"] = files_checksum(cwd, self.ignore_patterns)
         return graph

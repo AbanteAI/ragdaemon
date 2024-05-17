@@ -192,6 +192,6 @@ class Chunker(Annotator):
                 add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
-            db.upsert(**add_to_db)
+            db.add(**add_to_db)
 
         return graph

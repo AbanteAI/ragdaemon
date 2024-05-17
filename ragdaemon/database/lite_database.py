@@ -66,7 +66,7 @@ class LiteCollection:
             "distances": [[1] * len(records)],
         }
 
-    def upsert(
+    def add(
         self,
         ids: list[str] | str,
         metadatas: list[dict] | dict,

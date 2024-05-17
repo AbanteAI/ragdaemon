@@ -150,11 +150,11 @@ class Diff(Annotator):
 
         # Sync with remote DB
         ids = list(set(checksums.values()))
-        response = db.get(ids=ids, include=["metadatas"])
-        db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
+        response = db.get(ids=ids, include=[])
+        db_data = set(response["ids"])
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
         for id, checksum in checksums.items():
-            if not refresh and checksum in db_data:
+            if checksum in db_data:
                 continue
             data = deepcopy(graph.nodes[id])
             document = data.pop("document")
@@ -168,6 +168,6 @@ class Diff(Annotator):
             add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
-            db.upsert(**add_to_db)
+            db.add(**add_to_db)
 
         return graph
