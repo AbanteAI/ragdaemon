@@ -184,9 +184,9 @@ class Chunker(Annotator):
                 graph.add_edge(parent, id, type="hierarchy")
 
         # 2. Get metadata for all chunks from db
-        all_chunk_checksums = [
-            graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids
-        ]
+        all_chunk_checksums = list(
+            set(graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids)
+        )
         response = db.get(ids=all_chunk_checksums, include=["metadatas"])
         db_data = {data["id"]: data for data in response["metadatas"]}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}

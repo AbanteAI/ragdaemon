@@ -136,7 +136,11 @@ class ChunkerLLM(Chunker):
             if child_chunks:
                 # Make sure end_line of each 'parent' chunk covers all children
                 start_line = min(parent_lines)
-                end_line = max(max(v) for v in child_chunks.values())
+                end_line = start_line
+                for child_lines in child_chunks.values():
+                    if not child_lines:
+                        continue
+                    end_line = max(end_line, max(child_lines))
                 parent_lines = set(range(start_line, end_line + 1))
                 # Remove child lines from parent lines
                 for child_lines in child_chunks.values():
