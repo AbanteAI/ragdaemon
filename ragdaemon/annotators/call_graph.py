@@ -15,6 +15,7 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
     DEFAULT_CODE_EXTENSIONS,
     DEFAULT_COMPLETION_MODEL,
+    match_refresh,
     parse_path_ref,
     semaphore,
 )
@@ -185,7 +186,7 @@ class CallGraph(Annotator):
         data[self.call_field_id] = calls
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         # Remove any existing call edges
         graph.remove_edges_from(
@@ -208,7 +209,10 @@ class CallGraph(Annotator):
         tasks = []
         files_just_updated = set()
         for node, data in files_with_calls:
-            if refresh or data.get(self.call_field_id, None) is None:
+            if (
+                match_refresh(refresh, node)
+                or data.get(self.call_field_id, None) is None
+            ):
                 checksum = data.get("checksum")
                 if checksum is None:
                     raise RagdaemonError(f"Node {node} has no checksum.")

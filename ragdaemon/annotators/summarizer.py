@@ -11,7 +11,13 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.database import Database, remove_update_db_duplicates
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, hash_str, semaphore, truncate
+from ragdaemon.utils import (
+    DEFAULT_COMPLETION_MODEL,
+    hash_str,
+    match_refresh,
+    semaphore,
+    truncate,
+)
 
 
 def count_leaf_nodes_any_depth(
@@ -224,7 +230,7 @@ class Summarizer(Annotator):
         node: str,
         graph: KnowledgeGraph,
         loading_bar: Optional[tqdm] = None,
-        refresh: bool = False,
+        refresh: str | bool = False,
     ):
         """Asynchronously generate summary and update graph"""
         if self.spice_client is None:
@@ -235,13 +241,14 @@ class Summarizer(Annotator):
         )
         summary_checksum = hash_str(document + context)
         data = graph.nodes[node]
+        _refresh = match_refresh(refresh, node)
         if (
-            refresh
+            _refresh
             or data.get(self.summary_field_id) is None
             or summary_checksum != data.get(self.checksum_field_id)
         ):
             subprompt = "root" if node == "ROOT" else data.get("type", "")
-            previous_summary = "" if refresh else data.get(self.summary_field_id, "")
+            previous_summary = "" if _refresh else data.get(self.summary_field_id, "")
 
             messages = SpiceMessages(self.spice_client)
             messages.add_system_prompt(
@@ -272,7 +279,7 @@ class Summarizer(Annotator):
         node: str,
         graph: KnowledgeGraph,
         loading_bar: Optional[tqdm] = None,
-        refresh: bool = False,
+        refresh: str | bool = False,
     ):
         """Depth-first search to generate summaries for all nodes"""
         children = [
@@ -287,7 +294,7 @@ class Summarizer(Annotator):
         await self.generate_summary(node, graph, loading_bar, refresh)
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         """Asynchronously generate or fetch summaries and add to graph/db"""
         summaries = dict[str, str]()

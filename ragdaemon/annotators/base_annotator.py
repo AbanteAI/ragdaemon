@@ -25,6 +25,6 @@ class Annotator:
         raise NotImplementedError()
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         raise NotImplementedError()

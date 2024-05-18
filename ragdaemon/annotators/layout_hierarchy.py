@@ -98,7 +98,7 @@ class LayoutHierarchy(Annotator):
         self,
         graph: KnowledgeGraph,
         db: Database,
-        refresh: bool = False,
+        refresh: str | bool = False,
         iterations: int = 40,
     ) -> KnowledgeGraph:
         """

@@ -34,7 +34,7 @@ class Hierarchy(Annotator):
         )
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         """Build a graph of active files and directories with hierarchy edges."""
 

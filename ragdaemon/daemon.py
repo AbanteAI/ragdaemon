@@ -16,7 +16,7 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.locate import locate
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path, match_refresh
 
 
 def default_annotators():
@@ -103,12 +103,23 @@ class Daemon:
         if self.verbose:
             print(f"Saved updated graph to {self.graph_path}")
 
-    async def update(self, refresh=False):
-        """Iteratively build the knowledge graph"""
+    async def update(self, refresh: str | bool = False):
+        """Iteratively build the knowledge graph
+
+        Refresh can be
+        - boolean to refresh all annotators/nodes
+        - string matching annotator names / node ids, e.g. ("chunker_llm")
+        - string with wildcard operators to fuzzy-match annotators/nodes, e.g. ("*diff*")
+        """
         _graph = self.graph.copy()
-        for annotator in self.pipeline.values():
-            if refresh or not annotator.is_complete(_graph, self.db):
-                _graph = await annotator.annotate(_graph, self.db, refresh=refresh)
+        for name, annotator in self.pipeline.items():
+            _refresh = (
+                match_refresh(refresh, name)
+                if isinstance(refresh, str) and refresh in self.pipeline
+                else refresh
+            )
+            if _refresh or not annotator.is_complete(_graph, self.db):
+                _graph = await annotator.annotate(_graph, self.db, refresh=_refresh)
         self.graph = _graph
         self.save()
 

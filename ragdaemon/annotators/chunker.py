@@ -31,7 +31,13 @@ from ragdaemon.database import (
 )
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, get_document, hash_str, truncate
+from ragdaemon.utils import (
+    DEFAULT_CODE_EXTENSIONS,
+    get_document,
+    hash_str,
+    match_refresh,
+    truncate,
+)
 
 
 class Chunker(Annotator):
@@ -82,7 +88,7 @@ class Chunker(Annotator):
         data[self.chunk_field_id] = chunks
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         # Select file nodes and remove all existing chunk nodes from graph.
         files_with_chunks = []
@@ -104,7 +110,10 @@ class Chunker(Annotator):
         tasks = []
         files_just_chunked = set()
         for node, data in files_with_chunks:
-            if refresh or data.get(self.chunk_field_id, None) is None:
+            if (
+                match_refresh(refresh, node)
+                or data.get(self.chunk_field_id, None) is None
+            ):
                 tasks.append(self.get_file_chunk_data(node, data))
                 files_just_chunked.add(node)
             elif isinstance(data[self.chunk_field_id], str):

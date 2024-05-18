@@ -83,7 +83,7 @@ class Diff(Annotator):
         return self.id in graph and graph.nodes[self.id]["checksum"] == checksum
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         cwd = Path(graph.graph["cwd"])
         if not get_git_root_for_path(cwd, raise_error=False):
