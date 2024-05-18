@@ -10,6 +10,10 @@ The code may be provided in BATCHES, so you might see incomplete functions
 or function signatures at the end of the file. Return them as if they were 
 complete functions, and they'll be repaired later.
 
+For items without an explicit name, e.g. anonymous functions, if/for/while 
+loops, direct callback assignments, entry points etc., do not count them as 
+chunks.
+
 EXAMPLE:
 --------------------------------------------------------------------------------
 <path>
@@ -56,7 +60,8 @@ Do your best to infer the correct position from the LAST CHUNK. For example:
 use the class name from the LAST CHUNK in your first chunk's `id`. Do your best to infer from
 context, spacing or other clues whether it is a continuation or a new section.
 - If the `end_line` of the last chunk is the last line before the provided code file,
-it may be a continuation of the LAST CHUNK, so return it with updated `end_line`."""
+it may be a continuation of the LAST CHUNK, so return it with updated `end_line`.
+- The current code might contain no new chunks! In that case just return the duplicated last chunk."""
 
 user="""\
 <path>

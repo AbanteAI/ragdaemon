@@ -188,3 +188,19 @@ def lines_set_to_ref(lines: set[int]) -> str:
     else:
         refs.append(f"{start}-{end}")
     return ",".join(refs)
+
+
+def match_refresh(refresh: str | bool, target: str) -> bool:
+    if isinstance(refresh, bool):
+        return refresh
+
+    front_wildcard = refresh.startswith("*")
+    back_wildcard = refresh.endswith("*")
+    if front_wildcard and back_wildcard:
+        return refresh[1:-1] in target
+    elif front_wildcard:
+        return target.endswith(refresh[1:])
+    elif back_wildcard:
+        return target.startswith(refresh[:-1])
+    else:
+        return refresh == target

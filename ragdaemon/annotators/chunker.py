@@ -31,7 +31,32 @@ from ragdaemon.database import (
 )
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import DEFAULT_CODE_EXTENSIONS, get_document, hash_str, truncate
+from ragdaemon.utils import (
+    DEFAULT_CODE_EXTENSIONS,
+    get_document,
+    hash_str,
+    match_refresh,
+    truncate,
+)
+
+
+def resolve_chunk_parent(id: str, nodes: set[str]) -> str | None:
+    file, chunk_str = id.split(":")
+    if chunk_str == "BASE":
+        return file
+    elif "." not in chunk_str:
+        return f"{file}:BASE"
+    else:
+        parts = chunk_str.split(".")
+        while True:
+            parent = f"{file}:{'.'.join(parts[:-1])}"
+            if parent in nodes:
+                return parent
+            parent_str = parent.split(":")[1]
+            if "." not in parent_str:
+                return None
+            # If intermediate parents are missing, skip them
+            parts = parent_str.split(".")
 
 
 class Chunker(Annotator):
@@ -82,7 +107,7 @@ class Chunker(Annotator):
         data[self.chunk_field_id] = chunks
 
     async def annotate(
-        self, graph: KnowledgeGraph, db: Database, refresh: bool = False
+        self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         # Select file nodes and remove all existing chunk nodes from graph.
         files_with_chunks = []
@@ -104,7 +129,10 @@ class Chunker(Annotator):
         tasks = []
         files_just_chunked = set()
         for node, data in files_with_chunks:
-            if refresh or data.get(self.chunk_field_id, None) is None:
+            if (
+                match_refresh(refresh, node)
+                or data.get(self.chunk_field_id, None) is None
+            ):
                 tasks.append(self.get_file_chunk_data(node, data))
                 files_just_chunked.add(node)
             elif isinstance(data[self.chunk_field_id], str):
@@ -151,33 +179,19 @@ class Chunker(Annotator):
                 }
                 graph.add_node(id, **chunk_data)
                 all_chunk_ids.add(id)
-                # Locate the parent and add hierarchy edge
-                chunk_str = id.split(":")[1]
-                if chunk_str == "BASE":
-                    parent = file
-                elif "." not in chunk_str:
-                    parent = base_id
-                else:
-                    parts = chunk_str.split(".")
-                    while True:
-                        parent = f"{file}:{'.'.join(parts[:-1])}"
-                        if parent in graph:
-                            break
-                        parent_str = parent.split(":")[1]
-                        if "." not in parent_str:
-                            # If we can't find a parent, use the base node.
-                            if self.verbose:
-                                print(f"No parent node found for {id}")
-                            parent = base_id
-                            break
-                        # If intermediate parents are missing, skip them
-                        parts = parent_str.split(".")
+
+                all_nodes = set(graph.nodes)
+                parent = resolve_chunk_parent(id, all_nodes)
+                if parent is None:
+                    if self.verbose:
+                        print(f"No parent node found for {id}")
+                    parent = f"{file}:BASE"
                 graph.add_edge(parent, id, type="hierarchy")
 
         # 2. Get metadata for all chunks from db
-        all_chunk_checksums = [
-            graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids
-        ]
+        all_chunk_checksums = list(
+            set(graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids)
+        )
         response = db.get(ids=all_chunk_checksums, include=["metadatas"])
         db_data = {data["id"]: data for data in response["metadatas"]}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
