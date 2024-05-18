@@ -1,5 +1,5 @@
-import asyncio
 import json
+from functools import partial
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
 
@@ -11,23 +11,44 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, lines_set_to_ref, semaphore
 
 
-def is_chunk_valid(chunk: dict, last_valid_line: int):
-    if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
-        raise RagdaemonError(f"Chunk is missing fields: {chunk}")
-    halves = chunk["id"].split(":")
-    if len(halves) != 2 or not halves[0] or not halves[1]:
-        raise RagdaemonError(f"Chunk ID is not in the correct format: {chunk}")
-    start, end = chunk.get("start_line"), chunk.get("end_line")
-    if start is None or end is None:
-        raise RagdaemonError(f"Chunk lines are missing: {chunk}")
-    # Sometimes output is int, sometimes string. This accomodates either.
-    start, end = str(start), str(end)
-    if not start.isdigit() or not end.isdigit():
-        raise RagdaemonError(f"Chunk lines are not valid: {chunk}")
-    start, end = int(start), int(end)
-    if not 1 <= start <= end <= last_valid_line:
-        raise RagdaemonError(f"Chunk lines are out of bounds: {chunk}")
-    # TODO: Validate the ref, i.e. a parent chunk exists
+def validate(
+    response: str, file: str, max_line: int, last_chunk: Optional[dict[str, Any]]
+):
+    try:
+        chunks = json.loads(response).get("chunks")
+    except JSONDecodeError:
+        return False
+    if not isinstance(chunks, list):
+        return False
+
+    for chunk in chunks:
+        if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
+            return False  # Chunk is missing fields
+
+        halves = chunk["id"].split(":")
+        if len(halves) != 2 or not halves[0] or not halves[1]:
+            return False  # Chunk ID is not in the correct format
+        if halves[0] != file:
+            return False
+
+        start, end = chunk.get("start_line"), chunk.get("end_line")
+        if start is None or end is None:
+            return False  # Chunk lines are missing
+
+        # Sometimes output is int, sometimes string. This accomodates either.
+        start, end = str(start), str(end)
+        if not start.isdigit() or not end.isdigit():
+            return False  # Chunk lines are not valid
+        start, end = int(start), int(end)
+
+        if not 1 <= start <= end <= max_line:
+            return False  # Chunk lines are out of bounds
+        # TODO: Validate the ref, i.e. a parent chunk exists
+
+    if last_chunk is not None:
+        if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
+            return False
+    return True
 
 
 class ChunkerLLM(Chunker):
@@ -65,33 +86,28 @@ class ChunkerLLM(Chunker):
             "chunker_llm.user", path=file, code="\n".join(file_lines)
         )
 
+        max_line = int(file_lines[-1].split(":")[0])  # Extract line number
+        validator = partial(
+            validate, file=file, max_line=max_line, last_chunk=last_chunk
+        )
         async with semaphore:
-            response = await self.spice_client.get_response(
-                messages=messages,
-                model=self.model,
-                response_format={"type": "json_object"},
-            )
-        try:
-            chunks = json.loads(response.text)["chunks"]
-        except JSONDecodeError:
-            raise RagdaemonError(
-                "Failed to parse JSON response. This could mean that the output is too "
-                "long, i.e. there are too many functions to chunk in one pass. If this "
-                "is the case, decrease the batch size and try again."
-            )
-        last_valid_line = int(file_lines[-1].split(":")[0])
-        for chunk in chunks:
-            is_chunk_valid(chunk, last_valid_line)
-        if last_chunk is not None:
-            if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
-                raise RagdaemonError(
-                    f"Last chunk replacement ({last_chunk['id']}) not found in response."
+            try:
+                response = await self.spice_client.get_response(
+                    messages=messages,
+                    model=self.model,
+                    response_format={"type": "json_object"},
+                    validator=validator,
+                    retries=2,
                 )
-        return chunks
+                return json.loads(response.text).get("chunks")
+            except ValueError:  # Raised after all retries fail
+                if self.verbose:
+                    print(
+                        f"Failed to get response for {file} batch ending at line {max_line}."
+                    )
+                return []
 
-    async def chunk_document(
-        self, document: str, retries: int = 1
-    ) -> list[dict[str, Any]]:
+    async def chunk_document(self, document: str) -> list[dict[str, Any]]:
         """Parse file_lines into a list of {id, ref} chunks."""
         lines = document.split("\n")
         file = lines[0]
@@ -106,21 +122,8 @@ class ChunkerLLM(Chunker):
         for i in range(n_batches):
             batch_lines = file_lines[i * self.batch_size : (i + 1) * self.batch_size]
             last_chunk = chunks.pop() if chunks else None
-            for j in range(retries + 1, 0, -1):
-                try:
-                    _chunks = await self.get_llm_response(file, batch_lines, last_chunk)
-                    chunks.extend(_chunks)
-                    break
-                except RagdaemonError as e:
-                    if self.verbose:
-                        print(
-                            f"Error chunking {file} batch {i+1}/{n_batches}:\n{e}\n"
-                            + f"{j-1} retries left."
-                            if j > 1
-                            else "Skipping."
-                        )
-                    if j == 1:
-                        return []
+            _chunks = await self.get_llm_response(file, batch_lines, last_chunk)
+            chunks.extend(_chunks)
 
         # Convert to {id: set(lines)} for easier manipulation
         chunks = {
