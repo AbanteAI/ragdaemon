@@ -6,19 +6,25 @@ from typing import Any, Dict, List, Optional
 from spice import SpiceMessages
 from spice.models import TextModel
 
-from ragdaemon.annotators.chunker import Chunker
+from ragdaemon.annotators.chunker import Chunker, resolve_chunk_parent
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, lines_set_to_ref, semaphore
 
 
 def validate(
-    response: str, file: str, max_line: int, last_chunk: Optional[dict[str, Any]]
+    response: str,
+    file: str,
+    max_line: int,
+    file_chunks: set[str] | None,
+    last_chunk: Optional[dict[str, Any]],
 ):
     try:
         chunks = json.loads(response).get("chunks")
     except JSONDecodeError:
         return False
     if not isinstance(chunks, list):
+        return False
+    if not all(isinstance(chunk, dict) for chunk in chunks):
         return False
 
     for chunk in chunks:
@@ -48,6 +54,15 @@ def validate(
     if last_chunk is not None:
         if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
             return False
+
+    if file_chunks is not None:
+        valid_parents = file_chunks.copy()
+        chunks_shortest_first = sorted(chunks, key=lambda x: len(x["id"]))
+        for chunk in chunks_shortest_first:
+            if not resolve_chunk_parent(chunk["id"], valid_parents):
+                return False
+            valid_parents.add(chunk["id"])
+
     return True
 
 
@@ -70,6 +85,7 @@ class ChunkerLLM(Chunker):
         self,
         file: str,
         file_lines: list[str],
+        file_chunks: set[str],
         last_chunk: Optional[dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Get one chunking response from the LLM model."""
@@ -88,7 +104,11 @@ class ChunkerLLM(Chunker):
 
         max_line = int(file_lines[-1].split(":")[0])  # Extract line number
         validator = partial(
-            validate, file=file, max_line=max_line, last_chunk=last_chunk
+            validate,
+            file=file,
+            max_line=max_line,
+            file_chunks=file_chunks,
+            last_chunk=last_chunk,
         )
         async with semaphore:
             try:
@@ -100,7 +120,27 @@ class ChunkerLLM(Chunker):
                     retries=2,
                 )
                 return json.loads(response.text).get("chunks")
-            except ValueError:  # Raised after all retries fail
+            except ValueError:
+                pass
+            # It's possible the parent chunk just doens't exist. So try once more and
+            # disregard that - it will just be linked to the BASE chunk instead.
+            validator = partial(
+                validate,
+                file=file,
+                max_line=max_line,
+                file_chunks=None,
+                last_chunk=last_chunk,
+            )
+            try:
+                response = await self.spice_client.get_response(
+                    messages=messages,
+                    model=self.model,
+                    response_format={"type": "json_object"},
+                    validator=validator,
+                    retries=1,
+                )
+                return json.loads(response.text).get("chunks")
+            except ValueError:
                 if self.verbose:
                     print(
                         f"Failed to get response for {file} batch ending at line {max_line}."
@@ -121,8 +161,11 @@ class ChunkerLLM(Chunker):
         n_batches = (len(file_lines) + self.batch_size - 1) // self.batch_size
         for i in range(n_batches):
             batch_lines = file_lines[i * self.batch_size : (i + 1) * self.batch_size]
+            file_chunks = set(chunk["id"] for chunk in chunks)
             last_chunk = chunks.pop() if chunks else None
-            _chunks = await self.get_llm_response(file, batch_lines, last_chunk)
+            _chunks = await self.get_llm_response(
+                file, batch_lines, file_chunks, last_chunk
+            )
             chunks.extend(_chunks)
 
         # Convert to {id: set(lines)} for easier manipulation

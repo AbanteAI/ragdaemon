@@ -40,6 +40,25 @@ from ragdaemon.utils import (
 )
 
 
+def resolve_chunk_parent(id: str, nodes: set[str]) -> str | None:
+    file, chunk_str = id.split(":")
+    if chunk_str == "BASE":
+        return file
+    elif "." not in chunk_str:
+        return f"{file}:BASE"
+    else:
+        parts = chunk_str.split(".")
+        while True:
+            parent = f"{file}:{'.'.join(parts[:-1])}"
+            if parent in nodes:
+                return parent
+            parent_str = parent.split(":")[1]
+            if "." not in parent_str:
+                return None
+            # If intermediate parents are missing, skip them
+            parts = parent_str.split(".")
+
+
 class Chunker(Annotator):
     name = "chunker"
     chunk_field_id = "chunks"
@@ -160,27 +179,13 @@ class Chunker(Annotator):
                 }
                 graph.add_node(id, **chunk_data)
                 all_chunk_ids.add(id)
-                # Locate the parent and add hierarchy edge
-                chunk_str = id.split(":")[1]
-                if chunk_str == "BASE":
-                    parent = file
-                elif "." not in chunk_str:
-                    parent = base_id
-                else:
-                    parts = chunk_str.split(".")
-                    while True:
-                        parent = f"{file}:{'.'.join(parts[:-1])}"
-                        if parent in graph:
-                            break
-                        parent_str = parent.split(":")[1]
-                        if "." not in parent_str:
-                            # If we can't find a parent, use the base node.
-                            if self.verbose:
-                                print(f"No parent node found for {id}")
-                            parent = base_id
-                            break
-                        # If intermediate parents are missing, skip them
-                        parts = parent_str.split(".")
+
+                all_nodes = set(graph.nodes)
+                parent = resolve_chunk_parent(id, all_nodes)
+                if parent is None:
+                    if self.verbose:
+                        print(f"No parent node found for {id}")
+                    parent = f"{file}:BASE"
                 graph.add_edge(parent, id, type="hierarchy")
 
         # 2. Get metadata for all chunks from db

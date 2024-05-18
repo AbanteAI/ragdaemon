@@ -17,7 +17,7 @@ class Calculator:
     def exp_numbers(self):
         return math.pow(self.a, self.b)
     
-    def call():
+    def call(self):
         if self.operation == "add":
             return self.add_numbers()
         elif self.operation == "subtract":
