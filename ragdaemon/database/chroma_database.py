@@ -125,7 +125,7 @@ class ChromaDB(Database):
             return []
         results = [
             {"checksum": id, "distance": distance}
-            for id, distance in zip(ids, distances)
+            for id, distance in zip(ids[0], distances[0])
         ]
         results = sorted(results, key=lambda x: x["distance"])
         return results
