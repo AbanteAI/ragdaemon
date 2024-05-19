@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import Any, Optional, cast
 
 import dotenv
 from chromadb.config import Settings
@@ -54,6 +54,7 @@ class ChromaDB(Database):
         self.cwd = cwd
         self.db_path = db_path
         self.embedding_model = embedding_model
+        self.verbose = verbose
 
         import chromadb  # Imports are slow so do it lazily
         from chromadb.api.types import (
@@ -98,7 +99,7 @@ class ChromaDB(Database):
                 settings=Settings(allow_reset=True, anonymized_telemetry=False),
             )
         except KeyError:
-            if verbose:
+            if self.verbose:
                 print(
                     "No Chroma HTTP client environment variables found. Defaulting to PersistentClient."
                 )
@@ -152,4 +153,21 @@ class ChromaDB(Database):
             for id, distance in zip(response["ids"][0], response["distances"][0])
         ]
         results = sorted(results, key=lambda x: x["distance"])
+
+        # If a query is interrupted before removing the flags, or if two queries
+        # are sent at the same times, the active flags can get messed up. This is
+        # a workaround to ensure the flags are always correct.
+        if any(result["checksum"] not in valid_checksums for result in results):
+            if self.verbose:
+                print(
+                    f"Corrupt records found in {self.cwd.name}. Resetting active flags."
+                )
+            corrupt_records = self._collection.get(include=[])["ids"]
+            updates = {
+                "ids": corrupt_records,
+                "metadatas": [{"active": False} for _ in corrupt_records],
+            }
+            self._collection.update(**updates)
+            return self.query(query, active_checksums)
+
         return results
