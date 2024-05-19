@@ -7,7 +7,6 @@
     },
     "nodes": [
         {
-            "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "chunks": "[]",
             "ref": "README.md",
@@ -34,7 +33,6 @@
             "id": "ROOT"
         },
         {
-            "active": false,
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
             "chunks": "[]",
             "ref": "main.py",
@@ -61,7 +59,6 @@
             "id": "src"
         },
         {
-            "active": false,
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
             "chunks": "[]",
             "ref": "src/__init__.py",
@@ -76,7 +73,6 @@
             "id": "src/__init__.py"
         },
         {
-            "active": false,
             "checksum": "e0544d192b0bc55d5a33071baae809e2",
             "chunks": "[]",
             "ref": "src/interface.py",
@@ -91,7 +87,6 @@
             "id": "src/interface.py"
         },
         {
-            "active": false,
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
             "chunks": "[]",
             "ref": "src/operations.py",

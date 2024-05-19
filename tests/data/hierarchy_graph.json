@@ -7,56 +7,48 @@
     },
     "nodes": [
         {
-            "active": false,
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
             "id": "src/__init__.py",
             "ref": "src/__init__.py",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "id": "README.md",
             "ref": "README.md",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
             "id": "main.py",
             "ref": "main.py",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "0d78297d1a17a762d876be21cc8692cb",
             "id": "src/interface.py",
             "ref": "src/interface.py",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
             "id": "src/operations.py",
             "ref": "src/operations.py",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "39611184a249763e91b60432ae324486",
             "id": ".gitignore",
             "ref": ".gitignore",
             "type": "file"
         },
         {
-            "active": false,
             "checksum": "b97e74d824fca5e980257ed15bb800b3",
             "id": "ROOT",
             "type": "directory",
             "ref": "ROOT"
         },
         {
-            "active": false,
             "checksum": "6a31bb042874e065fea5bcbc36362d58",
             "id": "src",
             "type": "directory",

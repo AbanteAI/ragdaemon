@@ -1,4 +1,5 @@
 import json
+from collections import Counter, defaultdict
 from functools import partial
 from json.decoder import JSONDecodeError
 from typing import Any, Dict, List, Optional
@@ -11,11 +12,15 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, lines_set_to_ref, semaphore
 
 
+class ChunkErrorInPreviousBatch(RagdaemonError):
+    pass
+
+
 def validate(
     response: str,
     file: str,
     max_line: int,
-    file_chunks: set[str] | None,
+    file_chunks: Optional[set[str]],
     last_chunk: Optional[dict[str, Any]],
 ):
     try:
@@ -55,13 +60,33 @@ def validate(
         if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
             return False
 
+    # Sometimes the model returns chunks with invalid parents. Most of the time
+    # this is an error so we want to retry. If it keeps getting it wrong though,
+    # we'd rather accept the incorrect ones (they'll be linked to BASE later on)
+    # so we can bypass this check by passing file_chunks=None.
     if file_chunks is not None:
         valid_parents = file_chunks.copy()
         chunks_shortest_first = sorted(chunks, key=lambda x: len(x["id"]))
+        chunks_missing_parents = set()
         for chunk in chunks_shortest_first:
             if not resolve_chunk_parent(chunk["id"], valid_parents):
-                return False
+                chunks_missing_parents.add(chunk["id"])
             valid_parents.add(chunk["id"])
+
+        # If multiple chunks are missing the same parent, it's likely an
+        # issue with the prior chunk. Raise an error to revert the outer loop
+        # one step and try the previous chunk again.
+        if len(chunks_missing_parents) > 1:
+            missing_parents = []
+            for chunk in chunks_missing_parents:
+                file, chunk_str = chunk.split(":")
+                parts = chunk_str.split(".")
+                missing_parents.append(f"{file}:{'.'.join(parts[:-1])}")
+            mp_counts = Counter(missing_parents)
+            parent, count = mp_counts.most_common(1)[0]
+            if count > 1:
+                raise ChunkErrorInPreviousBatch(parent)
+            return False
 
     return True
 
@@ -85,7 +110,7 @@ class ChunkerLLM(Chunker):
         self,
         file: str,
         file_lines: list[str],
-        file_chunks: set[str],
+        file_chunks: Optional[set[str]] = None,
         last_chunk: Optional[dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Get one chunking response from the LLM model."""
@@ -147,7 +172,7 @@ class ChunkerLLM(Chunker):
                     )
                 return []
 
-    async def chunk_document(self, document: str) -> list[dict[str, Any]]:
+    async def chunk_document(self, document: str, retries=1) -> list[dict[str, Any]]:
         """Parse file_lines into a list of {id, ref} chunks."""
         lines = document.split("\n")
         file = lines[0]
@@ -159,14 +184,32 @@ class ChunkerLLM(Chunker):
         # Get raw llm output: {id, start_line, end_line}
         chunks = list[dict[str, Any]]()
         n_batches = (len(file_lines) + self.batch_size - 1) // self.batch_size
-        for i in range(n_batches):
-            batch_lines = file_lines[i * self.batch_size : (i + 1) * self.batch_size]
-            file_chunks = set(chunk["id"] for chunk in chunks)
-            last_chunk = chunks.pop() if chunks else None
-            _chunks = await self.get_llm_response(
-                file, batch_lines, file_chunks, last_chunk
-            )
-            chunks.extend(_chunks)
+        retries_by_batch = {i: retries for i in range(n_batches)}
+        chunk_index_by_batch = defaultdict(int)
+        i = 0
+        while i < n_batches:
+            while retries_by_batch[i] >= 0:
+                batch_lines = file_lines[
+                    i * self.batch_size : (i + 1) * self.batch_size
+                ]
+                chunk_index_by_batch[i] = len(chunks)
+                last_chunk = chunks.pop() if chunks else None
+                file_chunks = (
+                    {c["id"] for c in chunks} if retries_by_batch[i] > 0 else None
+                )
+                try:
+                    _chunks = await self.get_llm_response(
+                        file, batch_lines, file_chunks, last_chunk
+                    )
+                    chunks.extend(_chunks)
+                    i += 1
+                    break
+                except ChunkErrorInPreviousBatch as e:
+                    if self.verbose:
+                        print(f"Chunker missed parent {e} in file {file}, retrying.")
+                    retries_by_batch[i] -= 1
+                    chunks = chunks[: chunk_index_by_batch[i]]
+                    i -= 1
 
         # Convert to {id: set(lines)} for easier manipulation
         chunks = {

@@ -58,7 +58,6 @@ class Hierarchy(Annotator):
                 "ref": path_str,
                 "document": document,
                 "checksum": checksum,
-                "active": False,
             }
             graph.add_node(path_str, **data)
             checksums[path] = checksum
@@ -87,7 +86,6 @@ class Hierarchy(Annotator):
                 "ref": dir_str,
                 "document": document,
                 "checksum": checksum,
-                "active": False,
             }
             graph.add_node(dir_str, **data)
             checksums[dir] = checksum

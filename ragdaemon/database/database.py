@@ -25,11 +25,7 @@ class Database:
         n: Optional[int] = None,
         node_types: Iterable[str] = ("file", "chunk", "diff"),
     ) -> list[dict]:
-        """Return documents, metadatas and distances, sorted, for nodes in the graph.
-
-        Chroma's default search covers all records, including inactive ones, so we
-        manually flag the active records, query them, and then unflag them.
-        """
+        """Return documents, metadatas and distances, sorted, for nodes in the graph."""
         checksum_index = {
             data["checksum"]: node
             for node, data in graph.nodes(data=True)
