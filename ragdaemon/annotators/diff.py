@@ -107,7 +107,6 @@ class Diff(Annotator):
             "document": document,
             "checksum": checksum,
             "chunks": chunks,
-            "active": False,
         }
         graph.add_node(self.id, **data)
         checksums[self.id] = checksum
@@ -121,7 +120,6 @@ class Diff(Annotator):
                 "type": "diff",
                 "document": document,
                 "checksum": chunk_checksum,
-                "active": False,
             }
             graph.add_node(chunk_id, **data)
             graph.add_edge(self.id, chunk_id, type="diff")

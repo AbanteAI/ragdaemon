@@ -176,7 +176,6 @@ class Chunker(Annotator):
                     "type": "chunk",
                     "document": document,
                     "checksum": checksum,
-                    "active": False,
                 }
                 graph.add_node(id, **chunk_data)
                 checksums[id] = checksum

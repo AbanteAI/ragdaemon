@@ -7,7 +7,6 @@
     },
     "nodes": [
         {
-            "active": false,
             "calls": "{}",
             "checksum": "0d78297d1a17a762d876be21cc8692cb",
             "chunks_llm": [
@@ -32,7 +31,6 @@
             "document": "src/interface.py\nimport argparse\nimport re\n\n\ndef parse_arguments():\n    parser = argparse.ArgumentParser(description=\"Basic Calculator\")\n    parser.add_argument(\"operation\", type=str, help=\"Calculation operation\")\n    args = parser.parse_args()\n\n    # use re to parse symbol, nubmer before, nubmer after\n    match = re.match(r\"(\\d+)(\\D)(\\d+)\", args.operation)\n    if match is None:\n        raise ValueError(\"Invalid operation\")\n    return int(match.group(1)), match.group(2), int(match.group(3))\n\n\ndef render_response(result):\n    print(result)\n"
         },
         {
-            "active": false,
             "checksum": "332606dfbd176bd16b6158acd375689d",
             "id": "README.md",
             "ref": "README.md",
@@ -42,7 +40,6 @@
             "document": "README.md\nAn unnecessarily convoluted app to test the boundaries of the treesitter parser\n"
         },
         {
-            "active": false,
             "calls": "{}",
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
             "chunks_llm": [],
@@ -54,7 +51,6 @@
             "document": "src/__init__.py\n"
         },
         {
-            "active": false,
             "checksum": "39611184a249763e91b60432ae324486",
             "id": ".gitignore",
             "ref": ".gitignore",
@@ -64,7 +60,6 @@
             "document": ".gitignore\n.ragdaemon\n**/.*\n**/__pycache__\n!.gitignore\n"
         },
         {
-            "active": false,
             "calls": "{}",
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
             "chunks_llm": [
@@ -101,7 +96,6 @@
             "document": "src/operations.py\nimport math\n\n\ndef add(a, b):\n    return a + b\n\n\ndef subtract(a, b):\n    return a - b\n\n\ndef multiply(a, b):\n    return a * b\n\n\ndef divide(a, b):\n    return a / b\n\n\ndef sqrt(a):\n    return math.sqrt(a)\n"
         },
         {
-            "active": false,
             "calls": "{\"src/interface.py:parse_arguments\": [6], \"src/interface.py:render_response\": [19], \"src/operations.py:add\": [9], \"src/operations.py:subtract\": [11], \"src/operations.py:multiply\": [13], \"src/operations.py:divide\": [15]}",
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
             "chunks_llm": [
@@ -122,7 +116,6 @@
             "document": "main.py\nfrom src.interface import parse_arguments, render_response\nfrom src.operations import add, divide, multiply, subtract\n\n\ndef main():\n    a, op, b = parse_arguments()\n\n    if op == \"+\":\n        result = add(a, b)\n    elif op == \"-\":\n        result = subtract(a, b)\n    elif op == \"*\":\n        result = multiply(a, b)\n    elif op == \"/\":\n        result = divide(a, b)\n    else:\n        raise ValueError(\"Unsupported operation\")\n\n    render_response(result)\n\n\nif __name__ == \"__main__\":\n    main()\n"
         },
         {
-            "active": false,
             "checksum": "b97e74d824fca5e980257ed15bb800b3",
             "id": "ROOT",
             "ref": ".",
@@ -132,7 +125,6 @@
             "document": ".\n.gitignore\nREADME.md\nmain.py\nsrc/__init__.py\nsrc/interface.py\nsrc/operations.py"
         },
         {
-            "active": false,
             "checksum": "6a31bb042874e065fea5bcbc36362d58",
             "id": "src",
             "ref": "src",
@@ -142,7 +134,6 @@
             "document": "src\n__init__.py\ninterface.py\noperations.py"
         },
         {
-            "active": false,
             "checksum": "1f2a24668c773ee52d6067e78aa20988",
             "id": "src/interface.py:BASE",
             "ref": "src/interface.py:1-4,15-16,19",
@@ -152,7 +143,6 @@
             "document": "src/interface.py:1-4,15-16,19\nimport argparse\nimport re\n\n\n\n\n\n"
         },
         {
-            "active": false,
             "checksum": "9d3f1e521d73b8280485d5c1153ed428",
             "id": "src/interface.py:parse_arguments",
             "ref": "src/interface.py:5-14",
@@ -162,7 +152,6 @@
             "document": "src/interface.py:5-14\ndef parse_arguments():\n    parser = argparse.ArgumentParser(description=\"Basic Calculator\")\n    parser.add_argument(\"operation\", type=str, help=\"Calculation operation\")\n    args = parser.parse_args()\n\n    # use re to parse symbol, nubmer before, nubmer after\n    match = re.match(r\"(\\d+)(\\D)(\\d+)\", args.operation)\n    if match is None:\n        raise ValueError(\"Invalid operation\")\n    return int(match.group(1)), match.group(2), int(match.group(3))\n"
         },
         {
-            "active": false,
             "checksum": "1ccdd90fad048efd1dcb0f09c169620c",
             "id": "src/interface.py:render_response",
             "ref": "src/interface.py:17-18",
@@ -172,7 +161,6 @@
             "document": "src/interface.py:17-18\ndef render_response(result):\n    print(result)\n"
         },
         {
-            "active": false,
             "checksum": "dc61d9d0a9b01aa0b099f859f7409d6c",
             "id": "src/operations.py:BASE",
             "ref": "src/operations.py:1-3,6-7,10-11,14-15,18-19,22",
@@ -182,7 +170,6 @@
             "document": "src/operations.py:1-3,6-7,10-11,14-15,18-19,22\nimport math\n\n\n\n\n\n\n\n\n\n\n\n"
         },
         {
-            "active": false,
             "checksum": "85e2229ba0d05c63100d164fa3dddc52",
             "id": "src/operations.py:add",
             "ref": "src/operations.py:4-5",
@@ -192,7 +179,6 @@
             "document": "src/operations.py:4-5\ndef add(a, b):\n    return a + b\n"
         },
         {
-            "active": false,
             "checksum": "d71832a93bf084918e90d981da01207c",
             "id": "src/operations.py:subtract",
             "ref": "src/operations.py:8-9",
@@ -202,7 +188,6 @@
             "document": "src/operations.py:8-9\ndef subtract(a, b):\n    return a - b\n"
         },
         {
-            "active": false,
             "checksum": "28efbdcfc7543aafe04c2e16e54221b7",
             "id": "src/operations.py:multiply",
             "ref": "src/operations.py:12-13",
@@ -212,7 +197,6 @@
             "document": "src/operations.py:12-13\ndef multiply(a, b):\n    return a * b\n"
         },
         {
-            "active": false,
             "checksum": "7c35cdfb2a9b7374e992709ae4e2d62d",
             "id": "src/operations.py:divide",
             "ref": "src/operations.py:16-17",
@@ -222,7 +206,6 @@
             "document": "src/operations.py:16-17\ndef divide(a, b):\n    return a / b\n"
         },
         {
-            "active": false,
             "checksum": "b2502cd76efe086ad3603c9f90e9ad1a",
             "id": "src/operations.py:sqrt",
             "ref": "src/operations.py:20-21",
@@ -232,7 +215,6 @@
             "document": "src/operations.py:20-21\ndef sqrt(a):\n    return math.sqrt(a)\n"
         },
         {
-            "active": false,
             "checksum": "eb2c4b770fcef0986d21af9dc424123a",
             "id": "main.py:BASE",
             "ref": "main.py:1-4,20-24",
@@ -242,7 +224,6 @@
             "document": "main.py:1-4,20-24\nfrom src.interface import parse_arguments, render_response\nfrom src.operations import add, divide, multiply, subtract\n\n\n\n\nif __name__ == \"__main__\":\n    main()\n\n"
         },
         {
-            "active": false,
             "checksum": "1823a6ee66760debfae5286bb2f53447",
             "id": "main.py:main",
             "ref": "main.py:5-19",

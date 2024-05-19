@@ -12,7 +12,6 @@ class NodeMetadata(TypedDict):
         str
     ]  # Used to fetch document: path/to/file:start-end, diff_ref:start-end
     checksum: Optional[str]  # Unique identifier for chroma; sha256 of the document
-    active: bool  # Used to filter nodes for search
     chunks: Optional[
         list[dict[str, str]]
     ]  # For files, func/class/method. For diff, by file/hunk

@@ -113,61 +113,19 @@ class ChromaDB(Database):
         )
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
-        """
-        Since we add many different versions of each file to Chroma, we can't do a
-        straightforward query, because it'd return multiple version of the same file.
-
-        The best workaround I've found for this is using the 'active' flag in metadata.
-        The downside is that it requires 2 additional calls to the database each time:
-        one to set it, another to unset it. The extra time is negligible for local DBs
-        and hopefully not unreasonable for remote.
-
-        There's a third "extra" call to validate the active_checksums. If we don't do
-        this it will still function properly but it will print a lot of warnings.
-        """
-        valid_checksums = self._collection.get(ids=active_checksums, include=[])["ids"]
-        # Flag active records
-        updates = {
-            "ids": valid_checksums,
-            "metadatas": [{"active": True} for _ in valid_checksums],
-        }
-        self._collection.update(**updates)
-        # Query
         response = self._collection.query(
             query_texts=query,
-            where={"active": True},
-            n_results=len(valid_checksums),
+            where={"checksum": {"$in": active_checksums}},  # type: ignore
+            n_results=len(active_checksums),
             include=["distances"],
         )
-        # Remove flags
-        updates = {
-            "ids": valid_checksums,
-            "metadatas": [{"active": False} for _ in valid_checksums],
-        }
-        self._collection.update(**updates)
-        if response is None or response["distances"] is None:
+        ids = response["ids"]
+        distances = response["distances"]
+        if not ids or not distances:
             return []
-        # Parse results. Return results for the 'first query' only
         results = [
             {"checksum": id, "distance": distance}
-            for id, distance in zip(response["ids"][0], response["distances"][0])
+            for id, distance in zip(ids, distances)
         ]
         results = sorted(results, key=lambda x: x["distance"])
-
-        # If a query is interrupted before removing the flags, or if two queries
-        # are sent at the same times, the active flags can get messed up. This is
-        # a workaround to ensure the flags are always correct.
-        if any(result["checksum"] not in valid_checksums for result in results):
-            if self.verbose:
-                print(
-                    f"Corrupt records found in {self.cwd.name}. Resetting active flags."
-                )
-            corrupt_records = self._collection.get(include=[])["ids"]
-            updates = {
-                "ids": corrupt_records,
-                "metadatas": [{"active": False} for _ in corrupt_records],
-            }
-            self._collection.update(**updates)
-            return self.query(query, active_checksums)
-
         return results
