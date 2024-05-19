@@ -153,7 +153,7 @@ class Chunker(Annotator):
 
         # Process chunks
         # 1. Add all chunks to graph
-        all_chunk_ids = set()
+        checksums = dict[str, str]()
         for file, data in files_with_chunks:
             if len(data[self.chunk_field_id]) == 0:
                 continue
@@ -169,16 +169,17 @@ class Chunker(Annotator):
             for chunk in chunks:
                 id, ref = chunk["id"], chunk["ref"]
                 document = get_document(ref, Path(graph.graph["cwd"]))
+                checksum = hash_str(document)
                 chunk_data = {
                     "id": id,
                     "ref": ref,
                     "type": "chunk",
                     "document": document,
-                    "checksum": hash_str(document),
+                    "checksum": checksum,
                     "active": False,
                 }
                 graph.add_node(id, **chunk_data)
-                all_chunk_ids.add(id)
+                checksums[id] = checksum
 
                 all_nodes = set(graph.nodes)
                 parent = resolve_chunk_parent(id, all_nodes)
@@ -188,25 +189,22 @@ class Chunker(Annotator):
                     parent = f"{file}:BASE"
                 graph.add_edge(parent, id, type="hierarchy")
 
-        # 2. Get metadata for all chunks from db
-        all_chunk_checksums = list(
-            set(graph.nodes[chunk]["checksum"] for chunk in all_chunk_ids)
-        )
-        response = db.get(ids=all_chunk_checksums, include=["metadatas"])
-        db_data = {data["id"]: data for data in response["metadatas"]}
+        # Sync with remote DB
+        ids = list(set(checksums.values()))
+        response = db.get(ids=ids, include=["metadatas"])
+        db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
         add_to_db = {"ids": [], "documents": [], "metadatas": []}
-        for chunk in all_chunk_ids:
-            if chunk in db_data:
-                # 3. Add db metadata for nodes that have it
-                graph.nodes[chunk].update(db_data[chunk])
+        for node, checksum in checksums.items():
+            if checksum in db_data:
+                data = db_data[checksum]
+                graph.nodes[node].update(data)
             else:
-                # 4. Add to db nodes that don't
-                data = deepcopy(graph.nodes[chunk])
+                data = deepcopy(graph.nodes[node])
                 document = data.pop("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
                 if truncate_ratio > 0 and self.verbose:
-                    print(f"Truncated {chunk} by {truncate_ratio:.2%}")
-                add_to_db["ids"].append(data["checksum"])
+                    print(f"Truncated {node} by {truncate_ratio:.2%}")
+                add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
