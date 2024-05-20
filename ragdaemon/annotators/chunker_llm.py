@@ -34,37 +34,48 @@ def validate(
 
     for chunk in chunks:
         if not set(chunk.keys()) == {"id", "start_line", "end_line"}:
-            return False  # Chunk is missing fields
+            return False
 
         halves = chunk["id"].split(":")
         if len(halves) != 2 or not halves[0] or not halves[1]:
-            return False  # Chunk ID is not in the correct format
+            return False
         if halves[0] != file:
             return False
 
         start, end = chunk.get("start_line"), chunk.get("end_line")
         if start is None or end is None:
-            return False  # Chunk lines are missing
+            return False
 
         # Sometimes output is int, sometimes string. This accomodates either.
         start, end = str(start), str(end)
         if not start.isdigit() or not end.isdigit():
-            return False  # Chunk lines are not valid
+            return False
         start, end = int(start), int(end)
 
         if not 1 <= start <= end <= max_line:
-            return False  # Chunk lines are out of bounds
-        # TODO: Validate the ref, i.e. a parent chunk exists
+            return False
 
     if last_chunk is not None:
         if not any(chunk["id"] == last_chunk["id"] for chunk in chunks):
             return False
 
-    # Sometimes the model returns chunks with invalid parents. Most of the time
-    # this is an error so we want to retry. If it keeps getting it wrong though,
-    # we'd rather accept the incorrect ones (they'll be linked to BASE later on)
-    # so we can bypass this check by passing file_chunks=None.
-    if file_chunks is not None:
+    """
+    The LLM sometimes returns invalid parents (i.e. path/to/file.ext:parent.chunk).
+    There are 3 cases why they might be invalid:
+    A) The LLM made a typo here. In that case, return False to try again.
+    B) The LLM made a typo when parsing the parent in a previous batch. In that case,
+       go back and redo the previous batch. We distinguish this from case A) by checking
+       if multiple chunks reference the same invalid parent.
+    C) An edge case where our schema breaks down, e.g. Javascript event handlers 
+       usually try to set "document" as their parent, but that won't be a node.
+    
+    Case A) should be resolved by Spice's validator loop, i.e. this function returning 
+    "False". For Case B), raise a special exception and step back one batch in the 
+    chunk_document loop. Any chunks still referencing invalid parents after these two 
+    loops are exhausted (including case C)) will just be accepted and linked to 
+    path/to/file.ext:BASE.
+    """
+    if file_chunks:  # else, loops exhausted or Case C)
         valid_parents = file_chunks.copy()
         chunks_shortest_first = sorted(chunks, key=lambda x: len(x["id"]))
         chunks_missing_parents = set()
@@ -73,9 +84,6 @@ def validate(
                 chunks_missing_parents.add(chunk["id"])
             valid_parents.add(chunk["id"])
 
-        # If multiple chunks are missing the same parent, it's likely an
-        # issue with the prior chunk. Raise an error to revert the outer loop
-        # one step and try the previous chunk again.
         if len(chunks_missing_parents) > 1:
             missing_parents = []
             for chunk in chunks_missing_parents:
@@ -85,8 +93,8 @@ def validate(
             mp_counts = Counter(missing_parents)
             parent, count = mp_counts.most_common(1)[0]
             if count > 1:
-                raise ChunkErrorInPreviousBatch(parent)
-            return False
+                raise ChunkErrorInPreviousBatch(parent)  # Case B)
+            return False  # Case A)
 
     return True
 
@@ -147,13 +155,11 @@ class ChunkerLLM(Chunker):
                 return json.loads(response.text).get("chunks")
             except ValueError:
                 pass
-            # It's possible the parent chunk just doens't exist. So try once more and
-            # disregard that - it will just be linked to the BASE chunk instead.
             validator = partial(
                 validate,
                 file=file,
                 max_line=max_line,
-                file_chunks=None,
+                file_chunks=None,  # Skip parent chunk validation
                 last_chunk=last_chunk,
             )
             try:
@@ -194,9 +200,10 @@ class ChunkerLLM(Chunker):
                 ]
                 chunk_index_by_batch[i] = len(chunks)
                 last_chunk = chunks.pop() if chunks else None
-                file_chunks = (
-                    {c["id"] for c in chunks} if retries_by_batch[i] > 0 else None
-                )
+                if retries_by_batch[i] > 0:
+                    file_chunks = {c["id"] for c in chunks}
+                else:
+                    file_chunks = None  # Skip parent chunk validation
                 try:
                     _chunks = await self.get_llm_response(
                         file, batch_lines, file_chunks, last_chunk

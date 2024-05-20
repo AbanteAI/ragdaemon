@@ -13,7 +13,6 @@ from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
     DEFAULT_COMPLETION_MODEL,
-    hash_str,
     match_refresh,
     semaphore,
     truncate,
@@ -212,15 +211,15 @@ class Summarizer(Annotator):
                 raise RagdaemonError(f"Node {node} has no data.")
             if data.get("type") not in self.summarize_nodes:
                 continue
+            if data.get("checksum") is None:
+                raise RagdaemonError(f"Node {node} missing checksum.")
             if data.get(self.summary_field_id) is None:
                 return False
-            document, context = get_document_and_context(
-                node,
-                graph,
-                summary_field_id=self.summary_field_id,
-                model=self.model,
-            )
-            summary_checksum = hash_str(document + context)
+            # Checksum used to be hash_str(document + context) using the above method. This is
+            # technically more correct, because the summary context includes adjacent summaries
+            # so the whole system updates iteratively. In practice it was just too much looping
+            # so for now we just reuse the checksum generated in hierarchy (hash_str(document)).
+            summary_checksum = data["checksum"]
             if summary_checksum != data.get(self.checksum_field_id):
                 return False
         return True
@@ -236,17 +235,17 @@ class Summarizer(Annotator):
         if self.spice_client is None:
             raise RagdaemonError("Spice client not initialized")
 
-        document, context = get_document_and_context(
-            node, graph, summary_field_id=self.summary_field_id, model=self.model
-        )
-        summary_checksum = hash_str(document + context)
         data = graph.nodes[node]
+        summary_checksum = data["checksum"]
         _refresh = match_refresh(refresh, node)
         if (
             _refresh
             or data.get(self.summary_field_id) is None
             or summary_checksum != data.get(self.checksum_field_id)
         ):
+            document, context = get_document_and_context(
+                node, graph, summary_field_id=self.summary_field_id, model=self.model
+            )
             subprompt = "root" if node == "ROOT" else data.get("type", "")
             previous_summary = "" if _refresh else data.get(self.summary_field_id, "")
 
