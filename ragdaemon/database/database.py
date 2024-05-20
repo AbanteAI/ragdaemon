@@ -26,6 +26,18 @@ class Database:
         node_types: Iterable[str] = ("file", "chunk", "diff"),
     ) -> list[dict]:
         """Return documents, metadatas and distances, sorted, for nodes in the graph."""
+        # If query is empty, searching DB will raise "RuntimeError('Cannot return the
+        # results in a contigious 2D array. Probably ef or M is too small')"
+        if not query:
+            results = [
+                {**data, "distance": 1}
+                for _, data in graph.nodes(data=True)
+                if data and "checksum" in data and data["type"] in node_types
+            ]
+            if n:
+                results = results[:n]
+            return results
+
         checksum_index = {
             data["checksum"]: node
             for node, data in graph.nodes(data=True)
