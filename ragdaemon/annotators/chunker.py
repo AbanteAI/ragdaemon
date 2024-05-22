@@ -100,7 +100,7 @@ class Chunker(Annotator):
         try:
             chunks = await self.chunk_document(document)
         except RagdaemonError:
-            if self.verbose:
+            if self.verbose > 0:
                 print(f"Error chunking {node}; skipping.")
             chunks = []
         chunks = sorted(chunks, key=lambda x: len(x["id"]))
@@ -138,7 +138,7 @@ class Chunker(Annotator):
             elif isinstance(data[self.chunk_field_id], str):
                 data[self.chunk_field_id] = json.loads(data[self.chunk_field_id])
         if len(tasks) > 0:
-            if self.verbose:
+            if self.verbose > 1:
                 await tqdm.gather(*tasks, desc="Chunking files...")
             else:
                 await asyncio.gather(*tasks)
@@ -183,7 +183,7 @@ class Chunker(Annotator):
                 all_nodes = set(graph.nodes)
                 parent = resolve_chunk_parent(id, all_nodes)
                 if parent is None:
-                    if self.verbose:
+                    if self.verbose > 1:
                         print(f"No parent node found for {id}")
                     parent = f"{file}:BASE"
                 graph.add_edge(parent, id, type="hierarchy")
@@ -201,7 +201,7 @@ class Chunker(Annotator):
                 data = deepcopy(graph.nodes[node])
                 document = data.pop("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
-                if truncate_ratio > 0 and self.verbose:
+                if truncate_ratio > 0 and self.verbose > 1:
                     print(f"Truncated {node} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)

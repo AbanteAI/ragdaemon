@@ -21,7 +21,7 @@ def get_db(
     spice_client: Spice,
     embedding_model: str | None = None,
     embedding_provider: Optional[str] = None,
-    verbose: bool = False,
+    verbose: int = 0,
 ) -> Database:
     db_path = mentat_dir_path / "chroma"
     db_path.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ def get_db(
             db.delete(ids="test")
             return db
         except Exception as e:
-            if verbose:
+            if verbose > 1:
                 print(f"Failed to initialize ChromaDB: {e}. Falling back to LiteDB.")
             pass
     return LiteDB(cwd=cwd, db_path=db_path)

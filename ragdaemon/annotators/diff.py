@@ -131,7 +131,7 @@ class Diff(Annotator):
                 continue
             path_str = path.as_posix()
             if path_str not in graph:  # Removed files
-                if self.verbose:
+                if self.verbose > 1:
                     print(f"File {path_str} not in graph")
                 continue
             link_to = set()
@@ -159,7 +159,7 @@ class Diff(Annotator):
             if "chunks" in data:
                 data["chunks"] = json.dumps(data["chunks"])
             document, truncate_ratio = truncate(document, db.embedding_model)
-            if self.verbose and truncate_ratio > 0:
+            if self.verbose > 1 and truncate_ratio > 0:
                 print(f"Truncated {id} by {truncate_ratio:.2%}")
             add_to_db["ids"].append(checksum)
             add_to_db["documents"].append(document)

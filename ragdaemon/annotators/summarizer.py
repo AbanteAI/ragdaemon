@@ -301,7 +301,7 @@ class Summarizer(Annotator):
             if data is not None and data.get("type") in self.summarize_nodes:
                 summaries[node] = data.get(self.checksum_field_id, "")
 
-        if self.verbose:
+        if self.verbose > 1:
             loading_bar = tqdm(total=len(summaries), desc="Summarizing code...")
         else:
             loading_bar = None

@@ -172,9 +172,9 @@ class ChunkerLLM(Chunker):
                 )
                 return json.loads(response.text).get("chunks")
             except ValueError:
-                if self.verbose:
+                if self.verbose > 0:
                     print(
-                        f"Failed to get response for {file} batch ending at line {max_line}."
+                        f"Failed to get chunks for {file} batch ending at line {max_line}."
                     )
                 return []
 
@@ -212,7 +212,7 @@ class ChunkerLLM(Chunker):
                     i += 1
                     break
                 except ChunkErrorInPreviousBatch as e:
-                    if self.verbose:
+                    if self.verbose > 1:
                         print(f"Chunker missed parent {e} in file {file}, retrying.")
                     retries_by_batch[i] -= 1
                     chunks = chunks[: chunk_index_by_batch[i]]
