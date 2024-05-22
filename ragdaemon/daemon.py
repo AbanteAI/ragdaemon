@@ -40,6 +40,7 @@ class Daemon:
         verbose: bool | int = 0,
         graph_path: Optional[Path] = None,
         spice_client: Optional[Spice] = None,
+        logging_dir: Optional[Path | str] = None,
         model: str = DEFAULT_EMBEDDING_MODEL,
         provider: Optional[str] = None,
     ):
@@ -55,12 +56,10 @@ class Daemon:
             )
         self.graph_path.parent.mkdir(parents=True, exist_ok=True)
         if spice_client is None:
-            logging_dir = mentat_dir_path / "ragdaemon" / "spice_logs"
-            logging_dir.mkdir(parents=True, exist_ok=True)
             spice_client = Spice(
                 default_text_model=DEFAULT_COMPLETION_MODEL,
                 default_embeddings_model=model,
-                logging_dir=mentat_dir_path / "ragdaemon" / "spice_logs",
+                logging_dir=logging_dir,
             )
         self.spice_client = spice_client
         self.spice_client.load_dir(Path(__file__).parent / "prompts")

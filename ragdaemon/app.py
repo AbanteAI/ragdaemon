@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from ragdaemon.daemon import Daemon
+from ragdaemon.utils import mentat_dir_path
 
 # Load daemon with command line arguments and visualization annotators
 parser = argparse.ArgumentParser(description="Start the ragdaemon server.")
@@ -45,7 +46,13 @@ annotators = {
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }
-daemon = Daemon(Path.cwd(), annotators=annotators, verbose=verbose)
+logging_dir = mentat_dir_path / "ragdaemon" / "spice_logs"
+daemon = Daemon(
+    Path.cwd(), 
+    annotators=annotators, 
+    logging_dir=logging_dir, 
+    verbose=verbose
+)
 
 
 # Start/run daemon in the background
