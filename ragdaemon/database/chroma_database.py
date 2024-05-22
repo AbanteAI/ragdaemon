@@ -49,7 +49,7 @@ class ChromaDB(Database):
         spice_client: Spice,
         embedding_model: str,
         embedding_provider: Optional[str] = None,
-        verbose: bool = False,
+        verbose: int = 0,
     ) -> None:
         self.cwd = cwd
         self.db_path = db_path
@@ -99,7 +99,7 @@ class ChromaDB(Database):
                 settings=Settings(allow_reset=True, anonymized_telemetry=False),
             )
         except KeyError:
-            if self.verbose:
+            if self.verbose > 0:
                 print(
                     "No Chroma HTTP client environment variables found. Defaulting to PersistentClient."
                 )

@@ -13,7 +13,7 @@ class Annotator:
 
     def __init__(
         self,
-        verbose: bool = False,
+        verbose: int = 0,
         spice_client: Optional[Spice] = None,
         pipeline: Optional[dict[str, Annotator]] = None,
     ):

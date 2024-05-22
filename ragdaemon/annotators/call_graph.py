@@ -117,7 +117,7 @@ class CallGraph(Annotator):
                     retries=2,
                 )
             except ValueError:  # Raised after all retries fail
-                if self.verbose:
+                if self.verbose > 0:
                     file = document.split("\n")[0]
                     print(
                         f"Failed to generate call graph for {file} after 3 tries, Skipping."
@@ -175,7 +175,7 @@ class CallGraph(Annotator):
                     calls = await self.get_llm_response(document, graph)
                     break
                 except RagdaemonError as e:
-                    if self.verbose:
+                    if self.verbose > 1:
                         print(
                             f"Error generating call graph for {node}:\n{e}\n"
                             + f"{i-1} retries left."
@@ -219,7 +219,7 @@ class CallGraph(Annotator):
                 tasks.append(self.get_file_call_data(node, data, graph))
                 files_just_updated.add(node)
         if len(tasks) > 0:
-            if self.verbose:
+            if self.verbose > 1:
                 await tqdm.gather(*tasks, desc="Generating call graph")
             else:
                 await asyncio.gather(*tasks)

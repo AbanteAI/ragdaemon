@@ -37,7 +37,7 @@ def render_comments(comments: list[Comment]) -> str:
 class ContextBuilder:
     """Renders items from a graph into an llm-readable string."""
 
-    def __init__(self, graph: KnowledgeGraph, verbose: bool = False):
+    def __init__(self, graph: KnowledgeGraph, verbose: int = 0):
         self.graph = graph
         self.verbose = verbose
         self.context = dict[
@@ -150,7 +150,7 @@ class ContextBuilder:
 
     def remove_comments(self, path_str: str, tags: list[str] = []):
         if path_str not in self.context:
-            if self.verbose:
+            if self.verbose > 0:
                 print(f"Warning: no matching message found for {path_str}.")
             return
         if tags:
@@ -166,7 +166,7 @@ class ContextBuilder:
         path, lines = parse_path_ref(ref)
         path_str = path.as_posix()
         if path_str not in self.context:
-            if self.verbose:
+            if self.verbose > 0:
                 print(f"Warning: no matching message found for {path_str}.")
             return
         if lines:
@@ -186,7 +186,7 @@ class ContextBuilder:
             return
         path_str = path.as_posix()
         if path_str not in self.context:
-            if self.verbose:
+            if self.verbose > 0:
                 print(f"Warning: no matching message found for {path_str}.")
             return
         self.context[path_str]["diffs"].remove(id)

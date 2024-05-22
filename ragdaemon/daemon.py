@@ -37,13 +37,15 @@ class Daemon:
         self,
         cwd: Path,
         annotators: Optional[dict[str, dict]] = None,
-        verbose: bool = False,
+        verbose: bool | int = 0,
         graph_path: Optional[Path] = None,
         spice_client: Optional[Spice] = None,
         model: str = DEFAULT_EMBEDDING_MODEL,
         provider: Optional[str] = None,
     ):
         self.cwd = cwd
+        if isinstance(verbose, bool):
+            verbose = 1 if verbose else 0
         self.verbose = verbose
         if graph_path is not None:
             self.graph_path = (cwd / graph_path).resolve()
@@ -68,11 +70,11 @@ class Daemon:
         # Initialize an empty graph
         self.graph = KnowledgeGraph()
         self.graph.graph["cwd"] = self.cwd.as_posix()
-        if self.verbose:
+        if self.verbose > 1:
             print("Initialized empty graph.")
 
         annotators = annotators if annotators is not None else default_annotators()
-        if self.verbose:
+        if self.verbose > 1:
             print(f"Initializing annotators: {list(annotators.keys())}...")
         self.pipeline = {}
         for ann, kwargs in annotators.items():
@@ -100,7 +102,7 @@ class Daemon:
         data = json_graph.node_link_data(self.graph)
         with open(self.graph_path, "w") as f:
             json.dump(data, f, indent=4)
-        if self.verbose:
+        if self.verbose > 1:
             print(f"Saved updated graph to {self.graph_path}")
 
     async def update(self, refresh: str | bool = False):

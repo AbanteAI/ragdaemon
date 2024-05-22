@@ -13,7 +13,7 @@ def fruchterman_reingold_3d(
     repulsive_force=0.2,
     spring_length=0.2,
     dt=0.1,
-    verbose: bool = False,
+    verbose: int = 0,
 ):
     # Initialize node positions with random values
     pos = {
@@ -67,7 +67,7 @@ def fruchterman_reingold_3d(
             )
 
     # Main loop
-    if verbose:
+    if verbose > 1:
         for iteration in tqdm(
             range(iterations), desc="Generating hierarchical layout..."
         ):

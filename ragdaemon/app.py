@@ -33,7 +33,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 refresh = args.refresh
-verbose = True  # Always verbose in server mode
+verbose = 2  # Always verbose in server mode
 code_extensions = None if args.code_extensions is None else set(args.code_extensions)
 diff = args.diff
 annotators = {

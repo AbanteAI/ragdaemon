@@ -109,7 +109,7 @@ class Hierarchy(Annotator):
                 data = deepcopy(graph.nodes[path.as_posix()])
                 document = data.pop("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
-                if self.verbose and truncate_ratio > 0:
+                if self.verbose > 1 and truncate_ratio > 0:
                     print(f"Truncated {path} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
