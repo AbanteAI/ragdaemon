@@ -132,6 +132,7 @@ class ChromaDB(Database):
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,
+            metadata={"hsnw:M": 50},
         )
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
