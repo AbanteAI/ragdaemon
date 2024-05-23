@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 from typing import Any, Optional, cast
 
@@ -39,6 +40,26 @@ def remove_update_db_duplicates(
             output["metadatas"].append(metadata)
             seen.add(id)
     return output
+
+
+def get_repo_name_or_dir(cwd: Path):
+    try:
+        # Attempt to get the remote URL
+        repo_url = (
+            subprocess.check_output(
+                ["git", "remote", "get-url", "origin"],
+                cwd=cwd,
+                stderr=subprocess.STDOUT,
+            )
+            .strip()
+            .decode()
+        )
+        # Extract the repository name from the URL
+        repo_name = os.path.basename(repo_url).replace(".git", "")
+        return repo_name
+    except subprocess.CalledProcessError:
+        # If it's not a git repository, return the current directory name
+        return os.path.basename(os.getcwd())
 
 
 class ChromaDB(Database):
@@ -106,7 +127,8 @@ class ChromaDB(Database):
             _client = chromadb.PersistentClient(path=str(db_path))
 
         minor_version = ".".join(__version__.split(".")[:2])
-        name = f"ragdaemon-{minor_version}-{self.embedding_model}"
+        project_name = get_repo_name_or_dir(self.cwd)
+        name = f"ragdaemon-{minor_version}-{self.embedding_model}-{project_name}"
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,

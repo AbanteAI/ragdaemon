@@ -48,10 +48,7 @@ annotators = {
 }
 logging_dir = mentat_dir_path / "ragdaemon" / "spice_logs"
 daemon = Daemon(
-    Path.cwd(), 
-    annotators=annotators, 
-    logging_dir=logging_dir, 
-    verbose=verbose
+    Path.cwd(), annotators=annotators, logging_dir=logging_dir, verbose=verbose
 )
 
 
