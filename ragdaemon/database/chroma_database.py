@@ -137,10 +137,8 @@ class ChromaDB(Database):
             _client = chromadb.PersistentClient(path=str(db_path))
 
         minor_version = ".".join(__version__.split(".")[:2])
-        print(f"Self.cwd = {self.cwd}")
         project_name = get_repo_name_or_dir(self.cwd)
         name = f"ragdaemon-{minor_version}-{self.embedding_model}-{project_name}"
-        print(f"Using ChromaDB collection: {name}")
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,
