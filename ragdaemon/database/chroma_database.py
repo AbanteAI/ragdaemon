@@ -44,22 +44,32 @@ def remove_update_db_duplicates(
 
 def get_repo_name_or_dir(cwd: Path):
     try:
-        # Attempt to get the remote URL
+        remotes = (
+            subprocess.check_output(
+                ["git", "remote"],
+                cwd=cwd,
+                stderr=subprocess.STDOUT,
+            )
+            .strip()
+            .decode()
+            .split()
+        )
+        if not remotes:
+            raise subprocess.CalledProcessError(1, "No remotes found")
+        remote_name = remotes[0]
         repo_url = (
             subprocess.check_output(
-                ["git", "remote", "get-url", "origin"],
+                ["git", "remote", "get-url", remote_name],
                 cwd=cwd,
                 stderr=subprocess.STDOUT,
             )
             .strip()
             .decode()
         )
-        # Extract the repository name from the URL
-        repo_name = os.path.basename(repo_url).replace(".git", "")
+        repo_name = repo_url.split("/")[-1].replace(".git", "")
         return repo_name
     except subprocess.CalledProcessError:
-        # If it's not a git repository, return the current directory name
-        return os.path.basename(os.getcwd())
+        return cwd.name
 
 
 class ChromaDB(Database):
@@ -127,8 +137,10 @@ class ChromaDB(Database):
             _client = chromadb.PersistentClient(path=str(db_path))
 
         minor_version = ".".join(__version__.split(".")[:2])
+        print(f"Self.cwd = {self.cwd}")
         project_name = get_repo_name_or_dir(self.cwd)
         name = f"ragdaemon-{minor_version}-{self.embedding_model}-{project_name}"
+        print(f"Using ChromaDB collection: {name}")
         self._collection = _client.get_or_create_collection(
             name=name,
             embedding_function=embedding_function,
