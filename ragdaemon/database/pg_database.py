@@ -18,7 +18,8 @@ class DocumentMetadata(Base):
     __tablename__ = "document_metadata"
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    chunks_llm: Mapped[str]
+    # We serialize whatever we get, which can be 'null', so we need Optional
+    chunks_llm: Mapped[Optional[str]]
 
 
 class Engine:
@@ -61,9 +62,9 @@ class Engine:
     def update_document_metadata(self, id: str, metadata: Dict):
         with Session(self.engine) as session:
             metadata_object = session.get(DocumentMetadata, id)
-            assert (
-                metadata_object is not None
-            ), f"No document metadata found with id {id}!"
+            if metadata_object is None:
+                metadata_object = DocumentMetadata(id=id)
+                session.add(metadata_object)
             for k, v in metadata.items():
                 setattr(metadata_object, k, json.dumps(v))
             session.commit()
@@ -76,9 +77,10 @@ class Engine:
 
         serialized_metadata = metadata_object.__dict__.copy()
         del serialized_metadata["_sa_instance_state"]
+        del serialized_metadata["id"]
         metadata = {}
-        for k, v in serialized_metadata:
-            metadata[k] = json.loads(v)
+        for k, v in serialized_metadata.items():
+            metadata[k] = v if v is None else json.loads(v)
         return metadata
 
 
