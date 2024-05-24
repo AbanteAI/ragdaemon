@@ -70,8 +70,9 @@ class Database:
                 distance *= 0.5
             elif query in result["id"]:
                 distance *= 0.75
-            elif query in result["document"]:
-                distance *= 0.9
+            # Replaced by BM25
+            # elif query in result["document"]:
+            #     distance *= 0.9
 
             result["distance"] = distance
         results = sorted(results, key=lambda x: x["distance"])
