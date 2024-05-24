@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Optional, cast
 
 import dotenv
-from chromadb.config import Settings
 from spice import Spice
 
 from ragdaemon import __version__
@@ -62,6 +61,7 @@ class ChromaDB(Database):
             EmbeddingFunction,
             Embeddings,
         )
+        from chromadb.config import Settings
 
         class SpiceEmbeddingFunction(EmbeddingFunction[Embeddable]):
             def __call__(self, input_texts: Embeddable) -> Embeddings:
