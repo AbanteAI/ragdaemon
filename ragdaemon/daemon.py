@@ -16,7 +16,7 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.locate import locate
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path, match_refresh
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, match_refresh, mentat_dir_path
 
 
 def default_annotators():
