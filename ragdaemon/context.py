@@ -6,10 +6,9 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from dict2xml import dict2xml
-from ragdaemon.database import Database
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import get_document, hash_str, parse_diff_id, parse_path_ref
+from ragdaemon.utils import get_document, parse_diff_id, parse_path_ref
 
 NestedStrDict = Union[str, Dict[str, "NestedStrDict"]]
 

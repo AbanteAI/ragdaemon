@@ -16,7 +16,7 @@ from ragdaemon.errors import RagdaemonError
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.locate import locate
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, mentat_dir_path, match_refresh
+from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, match_refresh, mentat_dir_path
 
 
 def default_annotators():
@@ -202,7 +202,7 @@ class Daemon:
     ) -> list[str]:
         """Use summaries to scan the codebase and return relevant nodes."""
         if "summarizer" not in self.pipeline:
-            raise RagdaemonError(f"Summarizer annotator required for locate.")
+            raise RagdaemonError("Summarizer annotator required for locate.")
         if instruction is None:
             instruction = "Return items which are relevant to fulfilling the query."
         if isinstance(model, str):
