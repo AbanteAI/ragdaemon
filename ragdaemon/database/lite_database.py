@@ -11,10 +11,11 @@ def tokenize(document: str) -> list[str]:
 
 
 class LiteDB(Database):
-    def __init__(self, cwd: Path, db_path: Path):
+    def __init__(self, cwd: Path, db_path: Path, verbose: int = 0):
         self.cwd = cwd
         self.db_path = db_path
-        self._collection = LiteCollection()
+        self.verbose = verbose
+        self._collection = LiteCollection(self.verbose)
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
         return self._collection.query(query, active_checksums)
@@ -32,8 +33,9 @@ class LiteCollection:
     bm25: BM25Okapi
     bm25_index: list[str]
 
-    def __init__(self):
+    def __init__(self, verbose: int = 0):
         self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
+        self.verbose = verbose
 
     def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
         if isinstance(ids, str):

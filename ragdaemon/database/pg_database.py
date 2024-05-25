@@ -1,7 +1,7 @@
 import json
 import os
-from pathlib import Path
-from typing import Dict, Optional
+from collections import defaultdict
+from typing import Any, Dict, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
@@ -23,7 +23,7 @@ class DocumentMetadata(Base):
 
 
 class Engine:
-    def __init__(self):
+    def __init__(self, verbose: int = 0):
         database = "ragdaemon"
         host = os.environ.get("RAGDAEMON_DB_ENDPOINT", None)
         port = os.environ.get("RAGDAEMON_DB_PORT", 5432)
@@ -37,7 +37,8 @@ class Engine:
 
         url = f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
         self.engine = create_engine(url)
-        print("Connected to PGDB.")
+        if verbose > 1:
+            print("Connected to PGDB.")
 
     def migrate(self):
         if input(
@@ -50,44 +51,64 @@ class Engine:
             Base.metadata.create_all(self.engine)
             print("PGDB migrated successfully.")
 
-    def add_document_metadata(self, id: str, metadata: Dict):
+    def add_document_metadata(self, ids: str | list[str], metadatas: Dict | list[Dict]):
+        ids = ids if isinstance(ids, list) else [ids]
+        metadatas = metadatas if isinstance(metadatas, list) else [metadatas]
+        if len(ids) != len(metadatas):
+            raise ValueError("ids and metadatas must have the same length.")
         with Session(self.engine) as session:
-            serialized_metadata = {}
-            for k, v in metadata.items():
-                serialized_metadata[k] = json.dumps(v)
-            metadata_object = DocumentMetadata(id=id, **serialized_metadata)
-            session.add(metadata_object)
-            session.commit()
-
-    def update_document_metadata(self, id: str, metadata: Dict):
-        with Session(self.engine) as session:
-            metadata_object = session.get(DocumentMetadata, id)
-            if metadata_object is None:
-                metadata_object = DocumentMetadata(id=id)
+            for id, metadata in zip(ids, metadatas):
+                serialized_metadata = {}
+                for k, v in metadata.items():
+                    if not isinstance(v, str):
+                        v = json.dumps(v)
+                    serialized_metadata[k] = v
+                metadata_object = DocumentMetadata(id=id, **serialized_metadata)
                 session.add(metadata_object)
-            for k, v in metadata.items():
-                setattr(metadata_object, k, json.dumps(v))
             session.commit()
 
-    def get_document_metadata(self, id: str) -> Optional[Dict]:
+    def update_document_metadata(
+        self, ids: str | list[str], metadatas: Dict | list[Dict]
+    ):
+        ids = ids if isinstance(ids, list) else [ids]
+        metadatas = metadatas if isinstance(metadatas, list) else [metadatas]
+        if len(ids) != len(metadatas):
+            raise ValueError("ids and metadatas must have the same length.")
         with Session(self.engine) as session:
-            metadata_object = session.get(DocumentMetadata, id)
-        if metadata_object is None:
-            return metadata_object
+            for id, metadata in zip(ids, metadatas):
+                metadata_object = session.get(DocumentMetadata, id)
+                if metadata_object is None:
+                    metadata_object = DocumentMetadata(id=id)
+                    session.add(metadata_object)
+                for k, v in metadata.items():
+                    if not isinstance(v, str):
+                        v = json.dumps(v)
+                    setattr(metadata_object, k, v)
+            session.commit()
 
-        serialized_metadata = metadata_object.__dict__.copy()
-        del serialized_metadata["_sa_instance_state"]
-        del serialized_metadata["id"]
-        metadata = {}
-        for k, v in serialized_metadata.items():
-            metadata[k] = v if v is None else json.loads(v)
-        return metadata
+    def get_document_metadata(self, ids: str | list[str]) -> Dict[str, Dict]:
+        if not isinstance(ids, list):
+            ids = [ids]
+        with Session(self.engine) as session:
+            metadata_objects = (
+                session.query(DocumentMetadata)
+                .filter(DocumentMetadata.id.in_(ids))
+                .all()
+            )
+        result = dict[str, Dict]()
+        for object in metadata_objects:
+            id = object.id
+            serialized_metadata = object.__dict__.copy()
+            del serialized_metadata["_sa_instance_state"]
+            del serialized_metadata["id"]
+            result[id] = dict(serialized_metadata)  # Deserialization logic is elsewhere
+        return result
 
 
 class PGDB(LiteDB):
-    def __init__(self, cwd: Path, db_path: Path):
-        super().__init__(cwd, db_path)
-        self._collection = PGCollection()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._collection = PGCollection(self.verbose)
 
 
 class PGCollection(LiteCollection):
@@ -95,13 +116,19 @@ class PGCollection(LiteCollection):
 
     def __init__(self, *args, fields: list[str] = ["chunks_llm"], **kwargs):
         super().__init__(*args, **kwargs)
-        self.engine = Engine()
+        self.engine = Engine(self.verbose)
         self.fields = fields
 
     @override
     def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
+        remote_records = defaultdict(dict)
         for id, metadata in zip(ids, metadatas):
-            self.engine.update_document_metadata(id, metadata)
+            for k, v in metadata.items():
+                if k in self.fields:
+                    remote_records[id][k] = v
+        self.engine.update_document_metadata(
+            ids=list(remote_records.keys()), metadatas=list(remote_records.values())
+        )
         super().update(ids, metadatas)
 
     @override
@@ -111,11 +138,35 @@ class PGCollection(LiteCollection):
         metadatas: list[dict] | dict,
         documents: list[str] | str,
     ) -> list[str]:
+        remote_metadatas = self.engine.get_document_metadata(ids)
         for id, metadata in zip(ids, metadatas):
-            remote_metadata = self.engine.get_document_metadata(id)
-            if remote_metadata is not None:
-                metadata.update(remote_metadata)
+            if id in remote_metadatas:
+                metadata.update(remote_metadatas[id])
         return super().add(ids, metadatas, documents)
+
+    @override
+    def get(
+        self,
+        ids: list[str] | str,
+        include: list[str] | None = None,
+    ):
+        response = super().get(ids, include)
+        if include is not None and "metadatas" in include:
+            if not isinstance(ids, list):
+                ids = [ids]
+            remote_metadatas = self.engine.get_document_metadata(ids)
+            seen = set()
+            for id, metadata in zip(
+                response.get("ids", []), response.get("metadatas", [])
+            ):
+                if id in remote_metadatas:
+                    metadata.update(remote_metadatas[id])
+                    seen.add(id)
+            for k, v in remote_metadatas.items():
+                if k not in seen:
+                    response["ids"].append(k)
+                    response["metadatas"].append(v)
+        return response
 
 
 if __name__ == "__main__":

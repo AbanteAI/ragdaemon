@@ -39,7 +39,7 @@ def get_db(
             # # In case the api key is wrong, try to embed something to trigger an error.
             # _ = db.add(ids="test", documents="test doc")
             # db.delete(ids="test")
-            db = PGDB(cwd=cwd, db_path=db_path)
+            db = PGDB(cwd=cwd, db_path=db_path, verbose=verbose)
             return db
         except Exception as e:
             if verbose > 1:
@@ -47,4 +47,4 @@ def get_db(
                     f"Failed to initialize Postgres Database: {e}. Falling back to LiteDB."
                 )
             pass
-    return LiteDB(cwd=cwd, db_path=db_path)
+    return LiteDB(cwd=cwd, db_path=db_path, verbose=verbose)
