@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import Dict, Optional
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from typing_extensions import override
 
@@ -20,6 +21,20 @@ class DocumentMetadata(Base):
     id: Mapped[str] = mapped_column(primary_key=True)
     # We serialize whatever we get, which can be 'null', so we need Optional
     chunks_llm: Mapped[Optional[str]]
+
+
+def retry_on_exception(retries: int=3, exceptions={OperationalError}):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for i in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    print(f"Caught exception: {e}")
+                    if i == retries - 1:
+                        raise e
+        return wrapper
+    return decorator
 
 
 class Engine:
@@ -51,6 +66,7 @@ class Engine:
             Base.metadata.create_all(self.engine)
             print("PGDB migrated successfully.")
 
+    @retry_on_exception()
     def add_document_metadata(self, ids: str | list[str], metadatas: Dict | list[Dict]):
         ids = ids if isinstance(ids, list) else [ids]
         metadatas = metadatas if isinstance(metadatas, list) else [metadatas]
@@ -67,6 +83,7 @@ class Engine:
                 session.add(metadata_object)
             session.commit()
 
+    @retry_on_exception()
     def update_document_metadata(
         self, ids: str | list[str], metadatas: Dict | list[Dict]
     ):
@@ -86,6 +103,7 @@ class Engine:
                     setattr(metadata_object, k, v)
             session.commit()
 
+    @retry_on_exception()
     def get_document_metadata(self, ids: str | list[str]) -> Dict[str, Dict]:
         if not isinstance(ids, list):
             ids = [ids]
