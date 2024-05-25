@@ -1,15 +1,10 @@
-import json
-from pathlib import Path
-
 import pytest
-from networkx.readwrite import json_graph
 
 from ragdaemon.annotators.summarizer import (
     build_filetree,
     get_document_and_context,
 )
 from ragdaemon.daemon import Daemon
-from ragdaemon.database import LiteDB
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document
 

@@ -1,4 +1,4 @@
-from typing import Any, Coroutine
+from typing import Any
 
 from ragdaemon.annotators.chunker import Chunker
 

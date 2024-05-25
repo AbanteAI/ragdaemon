@@ -202,7 +202,7 @@ class Daemon:
     ) -> list[str]:
         """Use summaries to scan the codebase and return relevant nodes."""
         if "summarizer" not in self.pipeline:
-            raise RagdaemonError(f"Summarizer annotator required for locate.")
+            raise RagdaemonError("Summarizer annotator required for locate.")
         if instruction is None:
             instruction = "Return items which are relevant to fulfilling the query."
         if isinstance(model, str):

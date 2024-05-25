@@ -6,8 +6,8 @@ from spice import Spice
 
 from ragdaemon.database.chroma_database import (
     # ChromaDB,
-    remove_add_to_db_duplicates,
-    remove_update_db_duplicates,
+    remove_add_to_db_duplicates,  # noqa: F401
+    remove_update_db_duplicates,  # noqa: F401
 )
 from ragdaemon.database.database import Database
 from ragdaemon.database.lite_database import LiteDB

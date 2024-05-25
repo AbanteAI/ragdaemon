@@ -254,7 +254,7 @@ class Summarizer(Annotator):
                 name=f"summarizer.{subprompt}", previous_summary=previous_summary
             )
             messages.add_user_prompt(
-                name=f"summarizer.user",
+                name="summarizer.user",
                 document=document,
                 context=context,
                 previous_summary=previous_summary,
