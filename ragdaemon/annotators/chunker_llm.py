@@ -216,7 +216,7 @@ class ChunkerLLM(Chunker):
                         print(f"Chunker missed parent {e} in file {file}, retrying.")
                     retries_by_batch[i] -= 1
                     chunks = chunks[: chunk_index_by_batch[i]]
-                    i -= 1
+                    i = max(0, i - 1)
 
         # Convert to {id: set(lines)} for easier manipulation
         chunks = {
