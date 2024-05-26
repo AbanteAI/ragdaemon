@@ -9,7 +9,7 @@
         {
             "calls": "{}",
             "checksum": "0d78297d1a17a762d876be21cc8692cb",
-            "chunks_llm": [
+            "chunks": [
                 {
                     "id": "src/interface.py:BASE",
                     "ref": "src/interface.py:1-4,15-16,19"
@@ -42,7 +42,7 @@
         {
             "calls": "{}",
             "checksum": "b9ba74388a4d956f0aff968bfc165db3",
-            "chunks_llm": [],
+            "chunks": [],
             "id": "src/__init__.py",
             "ref": "src/__init__.py",
             "summary": "Establish the 'src' as a Python package to organize related modules concerning command-line based arithmetic operations, without adding any explicit functionality.",
@@ -62,7 +62,7 @@
         {
             "calls": "{}",
             "checksum": "cfe1b2f9cda812d0e1f68eac86539e94",
-            "chunks_llm": [
+            "chunks": [
                 {
                     "id": "src/operations.py:BASE",
                     "ref": "src/operations.py:1-3,6-7,10-11,14-15,18-19,22"
@@ -98,7 +98,7 @@
         {
             "calls": "{\"src/interface.py:parse_arguments\": [6], \"src/interface.py:render_response\": [19], \"src/operations.py:add\": [9], \"src/operations.py:subtract\": [11], \"src/operations.py:multiply\": [13], \"src/operations.py:divide\": [15]}",
             "checksum": "30a15283b0f5d5ac17a2d890a00675d9",
-            "chunks_llm": [
+            "chunks": [
                 {
                     "id": "main.py:BASE",
                     "ref": "main.py:1-4,20-24"

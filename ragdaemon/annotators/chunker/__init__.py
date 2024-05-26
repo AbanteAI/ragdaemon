@@ -1,26 +1,10 @@
-"""
-Chunk data a list of objects following [
-    {id: path/to/file:class.method, start_line: int, end_line: int}
-]
-
-It's stored on the file node as data['chunks'] and json.dumped into the database.
-
-A chunker annotator:
-1. Is complete when all files (with matching extensions) have a 'chunks' field
-2. Generates chunks using a subclass method (llm, ctags..)
-3. Adds that data to each file's graph node and database record
-4. Add graph nodes (and db records) for each of those chunks
-5. Add hierarchy edges connecting everything back to cwd
-
-The Chunker base class below handles everything except step 2.
-"""
-
 import asyncio
 import json
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
-from typing import Any, Optional
 
+from astroid.exceptions import AstroidSyntaxError
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
@@ -29,6 +13,11 @@ from ragdaemon.database import (
     remove_add_to_db_duplicates,
     remove_update_db_duplicates,
 )
+from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
+from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_astroid
+from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
+from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
+
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -40,34 +29,36 @@ from ragdaemon.utils import (
 )
 
 
-def resolve_chunk_parent(id: str, nodes: set[str]) -> str | None:
-    file, chunk_str = id.split(":")
-    if chunk_str == "BASE":
-        return file
-    elif "." not in chunk_str:
-        return f"{file}:BASE"
-    else:
-        parts = chunk_str.split(".")
-        while True:
-            parent = f"{file}:{'.'.join(parts[:-1])}"
-            if parent in nodes:
-                return parent
-            parent_str = parent.split(":")[1]
-            if "." not in parent_str:
-                return None
-            # If intermediate parents are missing, skip them
-            parts = parent_str.split(".")
-
-
 class Chunker(Annotator):
     name = "chunker"
     chunk_field_id = "chunks"
 
-    def __init__(self, *args, chunk_extensions: Optional[list[str]] = None, **kwargs):
+    def __init__(self, *args, use_llm: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        if chunk_extensions is None:
-            chunk_extensions = DEFAULT_CODE_EXTENSIONS
-        self.chunk_extensions = chunk_extensions
+        
+
+        # By default, use either the LLM chunker or a basic line chunker.
+        if use_llm and self.spice_client is not None:
+            default_chunk_fn = partial(chunk_llm, spice_client=self.spice_client, verbose=self.verbose)
+        else:
+            default_chunk_fn = chunk_line
+
+        # For python files, try to use astroid. If that fails, fall back to the default chunker.
+        async def python_chunk_fn(document: str):
+            try:
+                return await chunk_astroid(document)
+            except AstroidSyntaxError:
+                if self.verbose > 0:
+                    file = document.split("\n")[0]
+                    print(f"Error chunking {file} with astroid; falling back to default chunker.")
+                return await default_chunk_fn(document)
+
+        self.chunk_extensions_map = {}
+        for extension in DEFAULT_CODE_EXTENSIONS:
+            if extension == ".py":
+                self.chunk_extensions_map[extension] = python_chunk_fn
+            else:
+                self.chunk_extensions_map[extension] = default_chunk_fn
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         for node, data in graph.nodes(data=True):
@@ -77,10 +68,10 @@ class Chunker(Annotator):
                 continue
             chunks = data.get(self.chunk_field_id, None)
             if chunks is None:
-                if self.chunk_extensions is None:
+                if self.chunk_extensions_map is None:
                     return False
                 extension = Path(data["ref"]).suffix
-                if extension in self.chunk_extensions:
+                if extension in self.chunk_extensions_map:
                     return False
             else:
                 if not isinstance(chunks, list):
@@ -90,15 +81,12 @@ class Chunker(Annotator):
                         return False
         return True
 
-    async def chunk_document(self, document: str) -> list[dict[str, Any]]:
-        """Return a list of {id, ref} chunks for the given document."""
-        raise NotImplementedError()
-
     async def get_file_chunk_data(self, node, data):
         """Generate and save chunk data for a file node to graph and db"""
         document = data["document"]
+        extension = Path(data["ref"]).suffix
         try:
-            chunks = await self.chunk_document(document)
+            chunks = await self.chunk_extensions_map[extension](document)
         except RagdaemonError:
             if self.verbose > 0:
                 print(f"Error chunking {node}; skipping.")
@@ -118,11 +106,11 @@ class Chunker(Annotator):
             if data.get("type") == "chunk":
                 graph.remove_node(node)
             elif data.get("type") == "file":
-                if self.chunk_extensions is None:
+                if self.chunk_extensions_map is None:
                     files_with_chunks.append((node, data))
                 else:
                     extension = Path(data["ref"]).suffix
-                    if extension in self.chunk_extensions:
+                    if extension in self.chunk_extensions_map:
                         files_with_chunks.append((node, data))
 
         # Generate/add chunk data for nodes that don't have it

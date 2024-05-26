@@ -20,7 +20,7 @@ class DocumentMetadata(Base):
 
     id: Mapped[str] = mapped_column(primary_key=True)
     # We serialize whatever we get, which can be 'null', so we need Optional
-    chunks_llm: Mapped[Optional[str]]
+    chunks: Mapped[Optional[str]]
 
 
 def retry_on_exception(retries: int=3, exceptions={OperationalError}):
@@ -132,7 +132,7 @@ class PGDB(LiteDB):
 class PGCollection(LiteCollection):
     """Wraps a LiteDB and adds/gets targeted fields from a remote Postgres Database."""
 
-    def __init__(self, *args, fields: list[str] = ["chunks_llm"], **kwargs):
+    def __init__(self, *args, fields: list[str] = ["chunks"], **kwargs):
         super().__init__(*args, **kwargs)
         self.engine = Engine(self.verbose)
         self.fields = fields
@@ -169,21 +169,14 @@ class PGCollection(LiteCollection):
         include: list[str] | None = None,
     ):
         response = super().get(ids, include)
-        if include is not None and "metadatas" in include:
-            if not isinstance(ids, list):
-                ids = [ids]
-            remote_metadatas = self.engine.get_document_metadata(ids)
-            seen = set()
+        response_ids = response.get("ids", [])
+        if response_ids and include is not None and "metadatas" in include:
+            remote_metadatas = self.engine.get_document_metadata(response_ids)
             for id, metadata in zip(
                 response.get("ids", []), response.get("metadatas", [])
             ):
                 if id in remote_metadatas:
                     metadata.update(remote_metadatas[id])
-                    seen.add(id)
-            for k, v in remote_metadatas.items():
-                if k not in seen:
-                    response["ids"].append(k)
-                    response["metadatas"].append(v)
         return response
 
 
