@@ -1,5 +1,6 @@
 import asyncio
-from typing import Optional
+from collections import deque
+from typing import List, Optional
 
 from spice import Spice, SpiceMessages
 from spice.models import TextModel
@@ -19,24 +20,28 @@ from ragdaemon.utils import (
 )
 
 
-def count_leaf_nodes_any_depth(
+def get_leaf_nodes(
     graph: KnowledgeGraph,
     node: str,
     edge_type: str = "hierarchy",
     seen: Optional[set[str]] = None,
-) -> int:
-    """Return the number of leaf nodes in the hierarchy rooted at the given node."""
+) -> list[str]:
+    """Return all leaf nodes in the hierarchy rooted at the given node, breadth-first"""
     if seen is None:
         seen = set()
-    seen.add(node)
-    leaf_nodes = 0
-    for edge in graph.out_edges(node, data=True):
-        if edge[-1].get("type") == edge_type:
-            child = edge[1]
-            if child not in seen:
-                leaf_nodes += count_leaf_nodes_any_depth(graph, child, edge_type, seen)
-    if leaf_nodes == 0:
-        leaf_nodes = 1
+    queue: deque = deque([node])
+    leaf_nodes: List[str] = []
+
+    while queue:
+        current = queue.popleft()
+        if current not in seen:
+            seen.add(current)
+            children = [edge[1] for edge in graph.out_edges(current, data=True) if edge[-1].get("type") == edge_type]
+            if children:
+                queue.extend(children)
+            else:
+                leaf_nodes.append(current)
+
     return leaf_nodes
 
 
@@ -55,7 +60,7 @@ def build_filetree(
             child = edge[1]
             line = child
             summary = graph.nodes[child].get(summary_field_id)
-            leaf_nodes = count_leaf_nodes_any_depth(graph, child)
+            leaf_nodes = len(get_leaf_nodes(graph, child))
             if leaf_nodes > 1:
                 line += f" ({leaf_nodes} items)"
             if summary:

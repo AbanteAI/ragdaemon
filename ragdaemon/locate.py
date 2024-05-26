@@ -3,25 +3,27 @@ import asyncio
 from spice import Spice, SpiceMessages
 from spice.models import TextModel
 
+from ragdaemon.annotators.summarizer import get_leaf_nodes
 from ragdaemon.graph import KnowledgeGraph
 
 
 async def scan(
     nodes: list[str],
     graph: KnowledgeGraph,
+    edge_type: str,
     spice_client: Spice,
-    summary_field_id: str,
     instruction: str,
     query: str,
     model: TextModel,
 ) -> list[str]:
     """Use an LLM to select relevant nodes from a list."""
-    items = "\n".join(
-        [
-            f"{i+1}: {graph.nodes[child][summary_field_id]}"
-            for i, child in enumerate(nodes)
-        ]
-    )
+    items = []
+    for i, node in enumerate(nodes):
+        children = get_leaf_nodes(graph, node, edge_type)
+        message = f"{i+1}: {node} | {len(children)} children: {', '.join(children[:10])}"
+        if len(children) > 10:
+            message += "..."
+        items.append(message)
 
     def validator(text: str) -> bool:
         if not text:
@@ -54,7 +56,6 @@ async def bfs(
     node: str,
     graph: KnowledgeGraph,
     edge_type: str,
-    summary_field_id: str,
     spice_client: Spice,
     instruction: str,
     query: str,
@@ -65,12 +66,11 @@ async def bfs(
         edge[1]
         for edge in graph.out_edges(node, data=True)
         if edge[-1].get("type") == edge_type
-        and graph.nodes[edge[1]].get(summary_field_id) is not None
     ]
     if len(child_nodes) == 0:
         return [node]  # Leaf node (chunk or file)
     nodes = await scan(
-        child_nodes, graph, spice_client, summary_field_id, instruction, query, model
+        child_nodes, graph, edge_type, spice_client, instruction, query, model
     )
     if not nodes:
         return []
@@ -79,7 +79,6 @@ async def bfs(
             child,
             graph,
             edge_type,
-            summary_field_id,
             spice_client,
             instruction,
             query,
@@ -94,7 +93,6 @@ async def bfs(
 async def locate(
     graph: KnowledgeGraph,
     edge_type: str,
-    summary_field_id: str,
     spice_client: Spice,
     instruction: str,
     query: str,
@@ -106,7 +104,6 @@ async def locate(
         "ROOT",
         graph,
         edge_type,
-        summary_field_id,
         spice_client,
         instruction,
         query,
@@ -114,6 +111,6 @@ async def locate(
     )
     if revise:
         nodes = await scan(
-            nodes, graph, spice_client, summary_field_id, instruction, query, model
+            nodes, graph, edge_type, spice_client, instruction, query, model
         )
     return nodes
