@@ -1,10 +1,26 @@
 import asyncio
+from functools import partial
 
 from spice import Spice, SpiceMessages
 from spice.models import TextModel
 
 from ragdaemon.annotators.summarizer import get_leaf_nodes
 from ragdaemon.graph import KnowledgeGraph
+
+
+def validate(text: str, n_items: int) -> bool:
+    if not text:
+        return True
+    try:
+        ints = [int(i) for i in text.split(",")]
+    except ValueError:
+        return False
+
+    if not all(1 <= i <= n_items for i in ints):
+        print(f"OFFENDING TEXT: {text}")
+        return False
+
+    return True
 
 
 async def scan(
@@ -20,20 +36,10 @@ async def scan(
     items = []
     for i, node in enumerate(nodes):
         children = get_leaf_nodes(graph, node, edge_type)
-        message = f"{i+1}: {node} | {len(children)} children: {', '.join(children[:10])}"
-        if len(children) > 10:
-            message += "..."
+        message = f"{i+1}: {node} ({len(children)} children)"
         items.append(message)
 
-    def validator(text: str) -> bool:
-        if not text:
-            return True
-        try:
-            _ = [int(i) for i in text.split(",")]
-            return True
-        except ValueError:
-            return False
-
+    validator = partial(validate, n_items=len(items))
     messages = SpiceMessages(spice_client)
     messages.add_system_prompt("locate.base")
     messages.add_user_prompt(
@@ -43,7 +49,7 @@ async def scan(
         messages=messages,
         model=model,
         validator=validator,
-        retries=1,
+        retries=2,
     )
 
     selected = response.text

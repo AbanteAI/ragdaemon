@@ -1,6 +1,8 @@
 base="""\
 Read the user's query and item summaries, and return a list of indices of items which fulfill their instructions.
 Respond with a comma-separated string of integers and nothing else.
+Take the number at the beginning of each line as the index.
+If no items are relevant, return an empty string. Do NOT return 0.
 
 Unless explicitly instructed otherwise:
 * Err on the side of inclusivity. Especially with directories - if there's a chance it may be relevant, include it.

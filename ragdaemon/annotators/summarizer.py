@@ -36,7 +36,11 @@ def get_leaf_nodes(
         current = queue.popleft()
         if current not in seen:
             seen.add(current)
-            children = [edge[1] for edge in graph.out_edges(current, data=True) if edge[-1].get("type") == edge_type]
+            children = [
+                edge[1]
+                for edge in graph.out_edges(current, data=True)
+                if edge[-1].get("type") == edge_type
+            ]
             if children:
                 queue.extend(children)
             else:
