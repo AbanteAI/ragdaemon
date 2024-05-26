@@ -23,7 +23,7 @@ class DocumentMetadata(Base):
     chunks: Mapped[Optional[str]]
 
 
-def retry_on_exception(retries: int=3, exceptions={OperationalError}):
+def retry_on_exception(retries: int = 3, exceptions={OperationalError}):
     def decorator(func):
         def wrapper(*args, **kwargs):
             for i in range(retries):
@@ -33,7 +33,9 @@ def retry_on_exception(retries: int=3, exceptions={OperationalError}):
                     print(f"Caught exception: {e}")
                     if i == retries - 1:
                         raise e
+
         return wrapper
+
     return decorator
 
 

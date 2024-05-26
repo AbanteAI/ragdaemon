@@ -1,4 +1,6 @@
-async def chunk_document(document: str, lines_per_chunk: int = 100) -> list[dict[str, str]]:
+async def chunk_document(
+    document: str, lines_per_chunk: int = 100
+) -> list[dict[str, str]]:
     lines = document.split("\n")
     file = lines[0]
     file_lines = lines[1:]
@@ -13,7 +15,9 @@ async def chunk_document(document: str, lines_per_chunk: int = 100) -> list[dict
                 "ref": f"{file}:1-{lines_per_chunk}",
             }
         )  # First N lines is always the base chunk
-        for i, start_line in enumerate(range(lines_per_chunk + 1, len(file_lines), lines_per_chunk)):
+        for i, start_line in enumerate(
+            range(lines_per_chunk + 1, len(file_lines), lines_per_chunk)
+        ):
             end_line = min(start_line + lines_per_chunk - 1, len(file_lines))
             chunks.append(
                 {

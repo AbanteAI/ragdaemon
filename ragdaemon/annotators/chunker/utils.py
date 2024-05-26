@@ -2,6 +2,7 @@ from typing import TypedDict
 
 from ragdaemon.utils import lines_set_to_ref
 
+
 class RawChunk(TypedDict):
     id: str
     start_line: int
@@ -31,9 +32,10 @@ def resolve_chunk_parent(id: str, nodes: set[str]) -> str | None:
             # If intermediate parents are missing, skip them
             parts = parent_str.split(".")
 
+
 def resolve_raw_chunks(document: str, chunks: list[RawChunk]) -> list[Chunk]:
     """Take a list of {id, start_line, end_line} and return a corrected list of {id, ref}."""
-    
+
     # Convert to {id: set(lines)} for easier manipulation
     id_sets = {c["id"]: set(range(c["start_line"], c["end_line"] + 1)) for c in chunks}
 

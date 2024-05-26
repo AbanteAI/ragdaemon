@@ -3,8 +3,8 @@ import astroid
 from ragdaemon.annotators.chunker.utils import Chunk, RawChunk, resolve_raw_chunks
 from ragdaemon.errors import RagdaemonError
 
-async def chunk_document(document: str) -> list[Chunk]:
 
+async def chunk_document(document: str) -> list[Chunk]:
     # Parse the code into an astroid AST
     lines = document.split("\n")
     file_path = lines[0].strip()
@@ -21,7 +21,9 @@ async def chunk_document(document: str) -> list[Chunk]:
             start_line, end_line = node.lineno, node.end_lineno
             if start_line is None or end_line is None:
                 raise RagdaemonError(f"Function {node.name} has no line numbers.")
-            chunks.append(RawChunk(id=current_path, start_line=start_line, end_line=end_line))
+            chunks.append(
+                RawChunk(id=current_path, start_line=start_line, end_line=end_line)
+            )
             # Recursively handle nested functions
             for child in node.body:
                 extract_chunks(child, parent_path=current_path)

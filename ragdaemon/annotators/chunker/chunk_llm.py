@@ -7,7 +7,12 @@ from typing import List, Optional
 from spice import Spice, SpiceMessages
 from spice.models import GPT_4o
 
-from ragdaemon.annotators.chunker.utils import Chunk, RawChunk, resolve_chunk_parent, resolve_raw_chunks
+from ragdaemon.annotators.chunker.utils import (
+    Chunk,
+    RawChunk,
+    resolve_chunk_parent,
+    resolve_raw_chunks,
+)
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import semaphore
 
@@ -111,12 +116,8 @@ async def get_llm_response(
     messages = SpiceMessages(spice_client)
     messages.add_system_prompt(name="chunk_llm.base")
     if last_chunk is not None:
-        messages.add_system_prompt(
-            "chunk_llm.continuation", last_chunk=last_chunk
-        )
-    messages.add_user_prompt(
-        "chunk_llm.user", path=file, code="\n".join(file_lines)
-    )
+        messages.add_system_prompt("chunk_llm.continuation", last_chunk=last_chunk)
+    messages.add_user_prompt("chunk_llm.user", path=file, code="\n".join(file_lines))
 
     max_line = int(file_lines[-1].split(":")[0])  # Extract line number
     validator = partial(
@@ -161,11 +162,12 @@ async def get_llm_response(
                 )
             return []
 
+
 async def chunk_document(
-    document: str, 
+    document: str,
     spice_client: Spice,
-    retries=1, 
-    batch_size: int = 800, 
+    retries=1,
+    batch_size: int = 800,
     verbose: int = 0,
 ) -> list[Chunk]:
     """Parse file_lines into a list of {id, ref} chunks."""
@@ -184,9 +186,7 @@ async def chunk_document(
     i = 0
     while i < n_batches:
         while retries_by_batch[i] >= 0:
-            batch_lines = file_lines[
-                i * batch_size : (i + 1) * batch_size
-            ]
+            batch_lines = file_lines[i * batch_size : (i + 1) * batch_size]
             chunk_index_by_batch[i] = len(chunks)
             last_chunk = chunks.pop() if chunks else None
             if retries_by_batch[i] > 0:
@@ -195,11 +195,11 @@ async def chunk_document(
                 file_chunks = None  # Skip parent chunk validation
             try:
                 _chunks = await get_llm_response(
-                    spice_client, 
-                    file, 
-                    batch_lines, 
-                    file_chunks, 
-                    last_chunk, 
+                    spice_client,
+                    file,
+                    batch_lines,
+                    file_chunks,
+                    last_chunk,
                 )
                 chunks.extend(_chunks)
                 i += 1

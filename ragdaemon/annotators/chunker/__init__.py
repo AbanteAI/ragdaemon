@@ -35,11 +35,12 @@ class Chunker(Annotator):
 
     def __init__(self, *args, use_llm: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        
 
         # By default, use either the LLM chunker or a basic line chunker.
         if use_llm and self.spice_client is not None:
-            default_chunk_fn = partial(chunk_llm, spice_client=self.spice_client, verbose=self.verbose)
+            default_chunk_fn = partial(
+                chunk_llm, spice_client=self.spice_client, verbose=self.verbose
+            )
         else:
             default_chunk_fn = chunk_line
 
@@ -50,7 +51,9 @@ class Chunker(Annotator):
             except AstroidSyntaxError:
                 if self.verbose > 0:
                     file = document.split("\n")[0]
-                    print(f"Error chunking {file} with astroid; falling back to default chunker.")
+                    print(
+                        f"Error chunking {file} with astroid; falling back to default chunker."
+                    )
                 return await default_chunk_fn(document)
 
         self.chunk_extensions_map = {}
