@@ -22,7 +22,7 @@ from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, match_refresh, mentat_dir_
 def default_annotators():
     return {
         "hierarchy": {},
-        "chunker_line": {"lines_per_chunk": 30},
+        "chunker": {"use_llm": False},
         "diff": {},
     }
 
@@ -109,7 +109,7 @@ class Daemon:
 
         Refresh can be
         - boolean to refresh all annotators/nodes
-        - string matching annotator names / node ids, e.g. ("chunker_llm")
+        - string matching annotator names / node ids, e.g. ("chunker")
         - string with wildcard operators to fuzzy-match annotators/nodes, e.g. ("*diff*")
         """
         _graph = self.graph.copy()

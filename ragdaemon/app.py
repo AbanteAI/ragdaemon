@@ -39,7 +39,7 @@ code_extensions = None if args.code_extensions is None else set(args.code_extens
 diff = args.diff
 annotators = {
     "hierarchy": {},
-    "chunker_llm": {"chunk_extensions": code_extensions},
+    "chunker": {"use_llm": True},
     # "summarizer": {},
     # "clusterer_binary": {},
     # "call_graph": {"call_extensions": code_extensions},
