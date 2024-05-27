@@ -284,3 +284,26 @@ class ContextBuilder:
                 segments.append(current_segment)
             refs[path] = ",".join(segments)
         return [f"{path}:{ref}" for path, ref in refs.items()]
+
+    def to_ids(self) -> list[str]:
+        """Return a list of ids for everything in current context.
+
+        NOTE: Returns chunks if available by default. So if a full file is added,
+        this will return all of the chunks ids, not the file id.
+        """
+        ids = set()
+        targets = []
+        refs = self.to_refs()
+        for ref in refs:
+            path, lines = parse_path_ref(ref)
+            targets.append((path, lines))
+        for node, data in self.graph.nodes(data=True):
+            for path, lines in targets:
+                if node.startswith(path.as_posix()):
+                    _, node_lines = parse_path_ref(data["ref"])
+                    if lines is None and node_lines is None:
+                        ids.add(node)
+                    elif lines is not None and node_lines is not None:
+                        if node_lines.intersection(lines):
+                            ids.add(node)
+        return list(ids)
