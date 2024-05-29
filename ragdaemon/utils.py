@@ -95,7 +95,9 @@ def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
     return diff_ref, path, lines
 
 
-def get_document(ref: str, cwd: Path, type: str = "file") -> str:
+def get_document(
+    ref: str, cwd: Path, type: str = "file", ignore_patterns: set[Path] = set()
+) -> str:
     if type == "diff":
         if ":" in ref:
             diff_ref, lines_ref = ref.split(":", 1)
@@ -113,7 +115,12 @@ def get_document(ref: str, cwd: Path, type: str = "file") -> str:
 
     elif type == "directory":
         path = cwd if ref == "ROOT" else cwd / ref
-        paths = sorted([p.as_posix() for p in get_paths_for_directory(path)])
+        paths = sorted(
+            [
+                p.as_posix()
+                for p in get_paths_for_directory(path, exclude_patterns=ignore_patterns)
+            ]
+        )
         text = "\n".join(paths)
 
     elif type in {"file", "chunk"}:

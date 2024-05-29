@@ -73,10 +73,12 @@ class Hierarchy(Annotator):
         for dir in directories:
             dir_str = dir.as_posix()
             dir_path = dir if dir != Path("ROOT") else Path(".")
-            document = get_document(dir_str, cwd, type="directory")
+            document = get_document(
+                dir_str, cwd, type="directory", ignore_patterns=self.ignore_patterns
+            )
             checksum = hash_str(
                 "".join(
-                    checksums[dir_path / subpath]
+                    checksums.get(dir_path / subpath, "")
                     for subpath in document.split("\n")[1:]
                 )
             )
