@@ -10,6 +10,7 @@ from spice.models import Model, TextModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.annotators import annotators_map
+from ragdaemon.cerebrus import cerebrus
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
 from ragdaemon.errors import RagdaemonError
@@ -218,3 +219,7 @@ class Daemon:
             model,
             revise=revise,
         )
+
+    async def answer(self, query: str, leash: Optional[bool] = None):
+        leash = self.verbose > 1 if leash is None else leash
+        return await cerebrus(query, self.graph, self.spice_client, leash)
