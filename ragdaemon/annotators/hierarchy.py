@@ -13,7 +13,7 @@ def files_checksum(cwd: Path, ignore_patterns: set[Path] = set()) -> str:
     timestamps = ""
     for path in get_paths_for_directory(cwd, exclude_patterns=ignore_patterns):
         try:
-            timestamps += str(path.stat().st_mtime)
+            timestamps += str((cwd / path).stat().st_mtime)
         except FileNotFoundError:
             pass
     return hash_str(timestamps)
