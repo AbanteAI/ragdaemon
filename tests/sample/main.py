@@ -1,5 +1,5 @@
-from src.interface import parse_arguments, render_response
-from src.operations import add, divide, multiply, subtract
+from src.interface import parse_arguments, render_response  # pyright: ignore
+from src.operations import add, divide, multiply, subtract  # pyright: ignore
 
 
 def main():
