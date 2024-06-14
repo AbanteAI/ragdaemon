@@ -113,6 +113,8 @@ class Chunker(Annotator):
             if data.get("type") == "chunk":
                 graph.remove_node(node)
             elif data.get("type") == "file":
+                if self.files is not None and node not in self.files:
+                    continue
                 if self.chunk_extensions_map is None:
                     files_with_chunks.append((node, data))
                 else:
@@ -124,9 +126,6 @@ class Chunker(Annotator):
         tasks = []
         files_just_chunked = set()
         for node, data in files_with_chunks:
-            if self.files is not None and node not in self.files:
-                continue
-
             if (
                 match_refresh(refresh, node)
                 or data.get(self.chunk_field_id, None) is None
@@ -153,7 +152,7 @@ class Chunker(Annotator):
         # 1. Add all chunks to graph
         checksums = dict[str, str]()
         for file, data in files_with_chunks:
-            if self.chunk_field_id not in data or len(data[self.chunk_field_id]) == 0:
+            if len(data[self.chunk_field_id]) == 0:
                 continue
             # Sort such that "parents" are added before "children"
             base_id = f"{file}:BASE"
