@@ -124,7 +124,7 @@ class Chunker(Annotator):
         tasks = []
         files_just_chunked = set()
         for node, data in files_with_chunks:
-            if self.files != None and node not in self.files:
+            if self.files is not None and node not in self.files:
                 continue
 
             if (
