@@ -3,21 +3,21 @@ import json
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
+from typing import Optional, Set
 
 from astroid.exceptions import AstroidSyntaxError
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
+from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_astroid
+from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
+from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
+from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
 from ragdaemon.database import (
     Database,
     remove_add_to_db_duplicates,
     remove_update_db_duplicates,
 )
-from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
-from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_astroid
-from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
-from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
-
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -33,8 +33,12 @@ class Chunker(Annotator):
     name = "chunker"
     chunk_field_id = "chunks"
 
-    def __init__(self, *args, use_llm: bool = False, **kwargs):
+    def __init__(
+        self, *args, files: Optional[Set[str]] = None, use_llm: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
+
+        self.files = files
 
         # By default, use either the LLM chunker or a basic line chunker.
         if use_llm and self.spice_client is not None:
@@ -120,6 +124,9 @@ class Chunker(Annotator):
         tasks = []
         files_just_chunked = set()
         for node, data in files_with_chunks:
+            if self.files != None and node not in self.files:
+                continue
+
             if (
                 match_refresh(refresh, node)
                 or data.get(self.chunk_field_id, None) is None
@@ -146,7 +153,7 @@ class Chunker(Annotator):
         # 1. Add all chunks to graph
         checksums = dict[str, str]()
         for file, data in files_with_chunks:
-            if len(data[self.chunk_field_id]) == 0:
+            if self.chunk_field_id not in data or len(data[self.chunk_field_id]) == 0:
                 continue
             # Sort such that "parents" are added before "children"
             base_id = f"{file}:BASE"
