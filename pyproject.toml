@@ -45,3 +45,6 @@ dev = [
     "pytest",
     "pytest-asyncio"
 ]
+
+[tool.pyright]
+ignore = ["tests/sample"]
