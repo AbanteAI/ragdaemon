@@ -3,21 +3,21 @@ import json
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
+from typing import Optional, Set
 
 from astroid.exceptions import AstroidSyntaxError
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
+from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_astroid
+from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
+from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
+from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
 from ragdaemon.database import (
     Database,
     remove_add_to_db_duplicates,
     remove_update_db_duplicates,
 )
-from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
-from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_astroid
-from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
-from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
-
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -33,8 +33,12 @@ class Chunker(Annotator):
     name = "chunker"
     chunk_field_id = "chunks"
 
-    def __init__(self, *args, use_llm: bool = False, **kwargs):
+    def __init__(
+        self, *args, files: Optional[Set[str]] = None, use_llm: bool = False, **kwargs
+    ):
         super().__init__(*args, **kwargs)
+
+        self.files = files
 
         # By default, use either the LLM chunker or a basic line chunker.
         if use_llm and self.spice_client is not None:
@@ -109,6 +113,8 @@ class Chunker(Annotator):
             if data.get("type") == "chunk":
                 graph.remove_node(node)
             elif data.get("type") == "file":
+                if self.files is not None and node not in self.files:
+                    continue
                 if self.chunk_extensions_map is None:
                     files_with_chunks.append((node, data))
                 else:

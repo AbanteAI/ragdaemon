@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from networkx.readwrite import json_graph
 from spice import Spice
@@ -73,6 +73,9 @@ class Daemon:
         if self.verbose > 1:
             print("Initialized empty graph.")
 
+        self.set_annotators(annotators)
+
+    def set_annotators(self, annotators: Optional[Dict[str, Dict]] = None):
         annotators = annotators if annotators is not None else default_annotators()
         if self.verbose > 1:
             print(f"Initializing annotators: {list(annotators.keys())}...")
@@ -81,7 +84,7 @@ class Daemon:
             self.pipeline[ann] = annotators_map[ann](
                 **kwargs,
                 verbose=self.verbose,
-                spice_client=spice_client,
+                spice_client=self.spice_client,
                 pipeline=self.pipeline,
             )
 

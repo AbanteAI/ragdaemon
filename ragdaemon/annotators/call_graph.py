@@ -1,17 +1,17 @@
 import asyncio
-from functools import partial
 import json
+from functools import partial
 from pathlib import Path
 from typing import Any, Optional
 
-from tqdm.asyncio import tqdm
 from spice import SpiceMessages
 from spice.models import TextModel
+from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database, remove_update_db_duplicates
-from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
     DEFAULT_CODE_EXTENSIONS,
     DEFAULT_COMPLETION_MODEL,
