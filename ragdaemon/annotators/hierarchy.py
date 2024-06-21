@@ -66,37 +66,32 @@ class Hierarchy(Annotator):
             for parent in path.parents:
                 if len(parent.parts) == 0:
                     parent = Path("ROOT")
-                directories.add(parent)
+                directories.add(parent.as_posix())
                 edges.add((parent.as_posix(), _last.as_posix()))
                 _last = parent
 
-        for dir in directories:
-            dir_str = dir.as_posix()
-            dir_path = dir if dir != Path("ROOT") else Path(".")
-            document = get_document(
-                dir_str, cwd, type="directory", ignore_patterns=self.ignore_patterns
-            )
-            checksum = hash_str(
-                "".join(
-                    checksums.get(dir_path / subpath, "")
-                    for subpath in document.split("\n")[1:]
-                )
-            )
+        for source, target in edges:
+            for id in (source, target):
+                if id not in graph and id not in directories:
+                    raise RagdaemonError(f"Node {id} not found in graph")
+            graph.add_edge(source, target, type="hierarchy")
+
+        # Fill-in directory data (same process as get_document for dirs, but more efficient)
+        for dir in sorted(
+            directories, key=lambda x: len(x) if x != "ROOT" else 0, reverse=True
+        ):
+            children = sorted(node for node in graph.successors(dir))
+            document = f"{dir}\n" + "\n".join(children)
+            checksum = hash_str("".join(checksums[Path(child)] for child in children))
             data = {
-                "id": dir_str,
+                "id": dir,
                 "type": "directory",
-                "ref": dir_str,
+                "ref": dir,
                 "document": document,
                 "checksum": checksum,
             }
-            graph.add_node(dir_str, **data)
-            checksums[dir] = checksum
-
-        for source, target in edges:
-            for id in (source, target):
-                if id not in graph:
-                    raise RagdaemonError(f"Node {id} not found in graph")
-            graph.add_edge(source, target, type="hierarchy")
+            checksums[Path(dir)] = checksum
+            graph.nodes[dir].update(data)
 
         # Sync with remote DB
         ids = list(set(checksums.values()))
