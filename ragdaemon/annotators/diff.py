@@ -72,7 +72,7 @@ class Diff(Annotator):
         return "DEFAULT" if not self.diff_args else self.diff_args
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
-        if not self.io.get_git_root_for_path(raise_error=False):
+        if not self.io.is_git_repo():
             return True
 
         document = get_document(self.diff_args, self.io, type="diff")
@@ -82,7 +82,7 @@ class Diff(Annotator):
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
-        if not self.io.get_git_root_for_path(raise_error=False):
+        if not self.io.is_git_repo():
             return graph
 
         graph_nodes = {
