@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 import pytest
 
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
+from ragdaemon.io import LocalIO
 
 
 @pytest.fixture
@@ -16,10 +17,13 @@ def cwd():
 
 
 @pytest.fixture
-def mock_db(cwd):
-    return get_db(
-        cwd, spice_client=AsyncMock(), embedding_model=DEFAULT_EMBEDDING_MODEL
-    )
+def io(cwd):
+    return LocalIO(cwd)
+
+
+@pytest.fixture
+def mock_db():
+    return get_db(spice_client=AsyncMock(), embedding_model=DEFAULT_EMBEDDING_MODEL)
 
 
 @pytest.fixture(scope="function")

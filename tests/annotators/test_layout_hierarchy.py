@@ -4,8 +4,8 @@ from ragdaemon.annotators.layout_hierarchy import LayoutHierarchy
 from ragdaemon.graph import KnowledgeGraph
 
 
-def test_layout_hierarchy_is_complete(cwd, mock_db):
-    layout_hierarchy = LayoutHierarchy()
+def test_layout_hierarchy_is_complete(io, mock_db):
+    layout_hierarchy = LayoutHierarchy(io)
 
     empty_graph = KnowledgeGraph()
     assert layout_hierarchy.is_complete(
@@ -35,9 +35,9 @@ def test_layout_hierarchy_is_complete(cwd, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_layout_hierarchy_annotate(cwd, mock_db):
+async def test_layout_hierarchy_annotate(io, mock_db):
     hierarchy_graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
-    actual = await LayoutHierarchy().annotate(hierarchy_graph, mock_db)
+    actual = await LayoutHierarchy(io).annotate(hierarchy_graph, mock_db)
 
     all_coordinates = set()
     for node, data in actual.nodes(data=True):

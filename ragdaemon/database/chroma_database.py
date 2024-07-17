@@ -43,14 +43,12 @@ def remove_update_db_duplicates(
 class ChromaDB(Database):
     def __init__(
         self,
-        cwd: Path,
         db_path: Path,
         spice_client: Spice,
         embedding_model: str,
         embedding_provider: Optional[str] = None,
         verbose: int = 0,
     ) -> None:
-        self.cwd = cwd
         self.db_path = db_path
         self.embedding_model = embedding_model
         self.verbose = verbose

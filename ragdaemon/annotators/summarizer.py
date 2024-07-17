@@ -12,6 +12,7 @@ from ragdaemon.context import ContextBuilder
 from ragdaemon.database import Database, remove_update_db_duplicates
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.io import IO
 from ragdaemon.utils import (
     DEFAULT_COMPLETION_MODEL,
     match_refresh,
@@ -84,6 +85,7 @@ def build_filetree(
 def get_document_and_context(
     node: str,
     graph: KnowledgeGraph,
+    io: IO,
     summary_field_id: str = "summary",
     model: Optional[TextModel] = None,
 ) -> tuple[str, str]:
@@ -98,12 +100,12 @@ def get_document_and_context(
     if data.get("type") == "directory":
         document = f"Directory: {node}"
     else:
-        cb = ContextBuilder(graph)
+        cb = ContextBuilder(graph, io)
         cb.add_id(node)
         document = cb.render()
 
     if data.get("type") == "chunk":
-        cb = ContextBuilder(graph)
+        cb = ContextBuilder(graph, io)
 
         # Parent chunks back to the file
         def get_hierarchical_parents(target: str, cb: ContextBuilder):
@@ -253,7 +255,11 @@ class Summarizer(Annotator):
             or summary_checksum != data.get(self.checksum_field_id)
         ):
             document, context = get_document_and_context(
-                node, graph, summary_field_id=self.summary_field_id, model=self.model
+                node,
+                graph,
+                self.io,
+                summary_field_id=self.summary_field_id,
+                model=self.model,
             )
             subprompt = "root" if node == "ROOT" else data.get("type", "")
             previous_summary = "" if _refresh else data.get(self.summary_field_id, "")

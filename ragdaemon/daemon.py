@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
+from docker.models.containers import Container
 from networkx.readwrite import json_graph
 from spice import Spice
 from spice.models import Model, TextModel
@@ -14,8 +15,8 @@ from ragdaemon.cerebrus import cerebrus
 from ragdaemon.context import ContextBuilder
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
+from ragdaemon.io import DockerIO, IO, LocalIO
 from ragdaemon.locate import locate
 from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, match_refresh, mentat_dir_path
 
@@ -39,22 +40,23 @@ class Daemon:
         cwd: Path,
         annotators: Optional[dict[str, dict]] = None,
         verbose: bool | int = 0,
-        graph_path: Optional[Path] = None,
         spice_client: Optional[Spice] = None,
         logging_dir: Optional[Path | str] = None,
         model: str = DEFAULT_EMBEDDING_MODEL,
         provider: Optional[str] = None,
+        container: Optional[Container] = None,
     ):
         self.cwd = cwd
+        if container is not None:
+            self.io: IO = DockerIO(cwd, container)
+        else:
+            self.io: IO = LocalIO(cwd)
         if isinstance(verbose, bool):
             verbose = 1 if verbose else 0
         self.verbose = verbose
-        if graph_path is not None:
-            self.graph_path = (cwd / graph_path).resolve()
-        else:
-            self.graph_path = (
-                mentat_dir_path / "ragdaemon" / f"ragdaemon-{self.cwd.name}.json"
-            )
+        self.graph_path = (
+            mentat_dir_path / "ragdaemon" / f"ragdaemon-{self.cwd.name}.json"
+        )
         self.graph_path.parent.mkdir(parents=True, exist_ok=True)
         if spice_client is None:
             spice_client = Spice(
@@ -82,6 +84,7 @@ class Daemon:
         self.pipeline = {}
         for ann, kwargs in annotators.items():
             self.pipeline[ann] = annotators_map[ann](
+                io=self.io,
                 **kwargs,
                 verbose=self.verbose,
                 spice_client=self.spice_client,
@@ -92,7 +95,6 @@ class Daemon:
     def db(self) -> Database:
         if not hasattr(self, "_db"):
             self._db = get_db(
-                self.cwd,
                 spice_client=self.spice_client,
                 embedding_model=self.embedding_model,
                 embedding_provider=self.embedding_provider,
@@ -130,13 +132,13 @@ class Daemon:
 
     async def watch(self, interval=2, debounce=5):
         """Calls self.update interval debounce seconds after a file is modified."""
-        paths = get_paths_for_directory(self.cwd)
+        paths = self.io.get_paths_for_directory()
         last_updated = 0
         _update_task = None
         while True:
             await asyncio.sleep(interval)
-            paths = get_paths_for_directory(self.cwd)
-            _last_updated = max((self.cwd / path).stat().st_mtime for path in paths)
+            paths = self.io.get_paths_for_directory()
+            _last_updated = max(self.io.last_modified(path) for path in paths)
             if (
                 _last_updated > last_updated
                 and (time.time() - _last_updated) > debounce
@@ -171,7 +173,7 @@ class Daemon:
         model: Model | str = DEFAULT_COMPLETION_MODEL,
     ) -> ContextBuilder:
         if context_builder is None:
-            context = ContextBuilder(self.graph, self.verbose)
+            context = ContextBuilder(self.graph, self.io, self.verbose)
         else:
             # TODO: Compare graph hashes, reconcile changes
             context = context_builder

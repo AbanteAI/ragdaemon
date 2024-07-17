@@ -10,7 +10,7 @@ async def test_comment_render(git_history, mock_db):
     daemon = Daemon(cwd=git_history)
     await daemon.update(refresh=True)
 
-    context = ContextBuilder(daemon.graph)
+    context = ContextBuilder(daemon.graph, daemon.io)
     context.add_ref("src/operations.py")
     context.add_comment(
         "src/operations.py", {"comment": "What is this file for?"}, tags=["test-flag"]

@@ -165,7 +165,7 @@ class Chunker(Annotator):
             # Load chunks into graph
             for chunk in chunks:
                 id, ref = chunk["id"], chunk["ref"]
-                document = get_document(ref, Path(graph.graph["cwd"]))
+                document = get_document(ref, self.io, type="chunk")
                 checksum = hash_str(document)
                 chunk_data = {
                     "id": id,

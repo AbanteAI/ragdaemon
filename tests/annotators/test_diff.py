@@ -7,11 +7,12 @@ from ragdaemon.annotators.diff import Diff, get_chunks_from_diff, parse_diff_id
 from ragdaemon.context import ContextBuilder
 from ragdaemon.daemon import Daemon
 from ragdaemon.graph import KnowledgeGraph
-from ragdaemon.utils import get_git_diff
+from ragdaemon.io import LocalIO
 
 
 def test_diff_get_chunks_from_diff(git_history):
-    diff = get_git_diff("HEAD", cwd=git_history)
+    io = LocalIO(git_history)
+    diff = io.get_git_diff("HEAD")
     actual = get_chunks_from_diff("HEAD", diff)
     expected = {
         "HEAD:main.py": "HEAD:5-28",
@@ -39,7 +40,8 @@ def test_diff_parse_diff_id():
 async def test_diff_annotate(git_history, mock_db):
     graph = KnowledgeGraph.load("tests/data/hierarchy_graph.json")
     graph.graph["cwd"] = git_history.as_posix()
-    annotator = Diff()
+    io = LocalIO(git_history)
+    annotator = Diff(io)
     actual = await annotator.annotate(graph, mock_db)
     actual_nodes = {n for n, d in actual.nodes(data=True) if d and d["type"] == "diff"}
 
@@ -59,7 +61,7 @@ async def test_diff_render(git_history, mock_db):
     await daemon.update(refresh=True)
 
     # Only diffs
-    context = ContextBuilder(daemon.graph)
+    context = ContextBuilder(daemon.graph, daemon.io)
     context.add_diff("DEFAULT:main.py")
     context.add_diff("DEFAULT:src/operations.py:1-5")
     context.add_diff("DEFAULT:src/operations.py:8-10")

@@ -8,17 +8,17 @@ from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import get_document
 
 
-def test_daemon_render_context(cwd):
+def test_daemon_render_context(io):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Base Chunk
-    context = ContextBuilder(KnowledgeGraph())
+    context = ContextBuilder(KnowledgeGraph(), io)
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),
             "tags": ["test-flag"],
-            "document": get_document(ref, cwd),
+            "document": get_document(ref, io),
             "diffs": set(),
             "comments": dict(),
         }
@@ -43,7 +43,7 @@ src/interface.py (test-flag)
         path_str: {
             "lines": set([5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
             "tags": ["test-flag"],
-            "document": get_document(ref, cwd),
+            "document": get_document(ref, io),
             "diffs": set(),
             "comments": dict(),
         }
@@ -94,17 +94,17 @@ async def test_context_builder_methods(cwd, mock_db):
     assert combined_context.context["src/operations.py"]["lines"] == set(range(1, 23))
 
 
-def test_to_refs(cwd, mock_db):
+def test_to_refs(io, mock_db):
     path_str = Path("src/interface.py").as_posix()
     ref = path_str
 
     # Setup Context
-    context = ContextBuilder(KnowledgeGraph())
+    context = ContextBuilder(KnowledgeGraph(), io)
     context.context = {
         path_str: {
             "lines": set([1, 2, 3, 4, 15]),
             "tags": ["test-flag"],
-            "document": get_document(ref, cwd),
+            "document": get_document(ref, io),
             "diffs": set(),
             "comments": dict(),
         }

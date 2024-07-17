@@ -41,15 +41,15 @@ async def test_build_filetree(cwd):
 
 
 @pytest.mark.asyncio
-async def test_get_document_and_context(cwd):
+async def test_get_document_and_context(io):
     graph = KnowledgeGraph.load("tests/data/summarizer_graph.json")  # Chunk data
     for _, data in graph.nodes(data=True):
-        document = get_document(data["ref"], cwd=cwd, type=data["type"])
+        document = get_document(data["ref"], io, type=data["type"])
         data["document"] = document
 
     # A chunk
     document, context = get_document_and_context(
-        "src/interface.py:parse_arguments", graph
+        "src/interface.py:parse_arguments", graph, io
     )
     assert (
         document
@@ -103,7 +103,7 @@ main.py (call graph)
     )
 
     # A file
-    document, context = get_document_and_context("src/interface.py", graph)
+    document, context = get_document_and_context("src/interface.py", graph, io)
     assert document.startswith("src/interface.py\n")
     assert (
         context
@@ -127,7 +127,7 @@ src/interface.py:parse_arguments Parse command-line arguments into three compone
     )
 
     # A directory
-    document, context = get_document_and_context("src", graph)
+    document, context = get_document_and_context("src", graph, io)
     assert document == "Directory: src"
     assert (
         context
