@@ -1,9 +1,10 @@
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, Set
+from typing import Iterator, Optional, Set
 
 from ragdaemon.get_paths import get_paths_for_directory
+from ragdaemon.io.file_like import FileLike
 
 
 class LocalIO:
@@ -11,7 +12,7 @@ class LocalIO:
         self.cwd = cwd
 
     @contextmanager
-    def open(self, path: Path, mode: str = "r"):
+    def open(self, path: Path, mode: str = "r") -> Iterator[FileLike]:
         with open(self.cwd / path, mode) as file:
             yield file
 
@@ -40,3 +41,15 @@ class LocalIO:
             args += diff_args.split(" ")
         diff = subprocess.check_output(args, cwd=self.cwd, text=True)
         return diff
+
+    def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False):
+        (self.cwd / path).mkdir(parents=parents, exist_ok=exist_ok)
+
+    def unlink(self, path: Path):
+        (self.cwd / path).unlink()
+
+    def rename(self, src: Path, dst: Path):
+        (self.cwd / src).rename(self.cwd / dst)
+
+    def exists(self, path: Path) -> bool:
+        return (self.cwd / path).exists()
