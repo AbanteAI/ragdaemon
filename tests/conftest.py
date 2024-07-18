@@ -78,24 +78,35 @@ def mock_openai_api_key():
     os.environ["OPENAI_API_KEY"] = "fake_key"
 
 
-@pytest.fixture(scope="session")
-def docker_client():
+"""
+GithubActions for Linux comes with Docker pre-installed.
+Setting up a Docker environment for MacOS and Windows in Github Actions is tedious.
+The purpose of supporting docker IO is for butler, which only runs on Linux anyway,
+so we can skip these tests on MacOS and Windows. We still make an attempt though,
+because if Docker IS installed (i.e. local development on MacOS or Windows), it should
+still work.
+"""
+def fail_silently_on_macos_and_windows(docker_function, *args, **kwargs):
     try:
-        return docker.from_env()
+        return docker_function(*args, **kwargs)
     except DockerException as e:
         if platform.system() in ["Darwin", "Windows"]:
-            pytest.skip(
-                f"Skipping Docker tests on {platform.system()} due to Docker error"
-            )
+            pytest.skip(f"Skipping Docker tests on {platform.system()} due to Docker error: {e}")
         else:
-            raise e
+            raise e   
+
+
+@pytest.fixture(scope="session")
+def docker_client():
+    return fail_silently_on_macos_and_windows(docker.from_env)
 
 
 @pytest.fixture
 def container(cwd, docker_client, path="tests/sample"):
     image = "python:3.10"
-    docker_client.images.pull(image)
-    container = docker_client.containers.run(image, detach=True, tty=True, command="sh")
+    container = fail_silently_on_macos_and_windows(
+        docker_client.containers.run, image, detach=True, tty=True, command="sh"
+    )
 
     # Create the tests/sample directory in the container
     container.exec_run(f"mkdir -p {path}")
