@@ -9,7 +9,7 @@ from ragdaemon.get_paths import match_path_with_patterns
 from ragdaemon.io.file_like import FileLike
 
 
-class FileInDocker:
+class FileInDocker(FileLike):
     def __init__(self, container, path, mode):
         self.container = container
         self.path = path
@@ -42,10 +42,10 @@ class FileInDocker:
             )
         return len(data)
 
-    def __enter__(self):
+    def __enter__(self) -> "FileInDocker":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         pass
 
 
@@ -63,6 +63,7 @@ class DockerIO:
     def get_paths_for_directory(
         self, path: Optional[Path] = None, exclude_patterns: Set[Path] = set()
     ) -> Set[Path]:
+        root = self.cwd if path is None else self.cwd / path
         if not self.is_git_repo(path):
             raise RagdaemonError(
                 f"Path {root} is not a git repo. Ragdaemon DockerIO only supports git repos."
@@ -82,26 +83,25 @@ class DockerIO:
                 )
             )
 
-        root = self.cwd if path is None else self.cwd / path
-        paths = set[Path]()
-        for path in get_non_gitignored_files(root):
+        files = set[Path]()
+        for file in get_non_gitignored_files(root):
             if exclude_patterns:
                 abs_path = (
-                    self.container.exec_run(f"realpath {path}")
+                    self.container.exec_run(f"realpath {file}")
                     .output.decode("utf-8")
                     .strip()
                 )
                 if match_path_with_patterns(abs_path, exclude_patterns):
                     continue
             try:
-                with self.open(path) as f:
+                with self.open(file) as f:
                     f.read()
             except FileNotFoundError:
                 continue  # File was deleted
             except UnicodeDecodeError:
                 continue  # File is not text-encoded
-            paths.add(path)
-        return paths
+            files.add(file)
+        return files
 
     def is_git_repo(self, path: Optional[Path] = None):
         root = self.cwd if path is None else self.cwd / path
@@ -125,28 +125,28 @@ class DockerIO:
             args += diff_args.split(" ")
         result = self.container.exec_run(args)
         if result.exit_code != 0:
-            raise IOError(f"Failed to get git diff: {result.stderr.decode('utf-8')}")
+            raise IOError(f"Failed to get git diff: {result.output.decode('utf-8')}")
         return result.output.decode("utf-8")
 
     def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False):
         result = self.container.exec_run(f"mkdir -p {self.cwd / path}")
         if result.exit_code != 0:
             raise IOError(
-                f"Failed to make directory {self.cwd / path} in container: {result.stderr.decode('utf-8')}"
+                f"Failed to make directory {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
         
     def unlink(self, path: Path):
         result = self.container.exec_run(f"rm {self.cwd / path}")
         if result.exit_code != 0:
             raise IOError(
-                f"Failed to unlink {self.cwd / path} in container: {result.stderr.decode('utf-8')}"
+                f"Failed to unlink {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
         
     def rename(self, src: Path, dst: Path):
         result = self.container.exec_run(f"mv {self.cwd / src} {self.cwd / dst}")
         if result.exit_code != 0:
             raise IOError(
-                f"Failed to rename {self.cwd / src} to {self.cwd / dst} in container: {result.stderr.decode('utf-8')}"
+                f"Failed to rename {self.cwd / src} to {self.cwd / dst} in container: {result.output.decode('utf-8')}"
             )
         
     def exists(self, path: Path) -> bool:

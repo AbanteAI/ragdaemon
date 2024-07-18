@@ -5,7 +5,7 @@ class FileLike(Protocol):
     def read(self) -> str:
         ...
 
-    def write(self, data: str) -> None:
+    def write(self, data: str) -> int:
         ...
 
     def __enter__(self) -> "FileLike":

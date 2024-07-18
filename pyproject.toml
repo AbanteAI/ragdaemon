@@ -42,7 +42,7 @@ ragdaemon = "ragdaemon.__main__:run"
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "pyright",
+    "pyright==1.1.372",
     "pytest",
     "pytest-asyncio"
 ]

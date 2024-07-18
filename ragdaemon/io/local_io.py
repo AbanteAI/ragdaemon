@@ -1,10 +1,28 @@
 import subprocess
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Optional, Set
+from typing import Any, Iterator, Optional, Set, Union
+from types import TracebackType
 
 from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.io.file_like import FileLike
+
+
+class FileWrapper:
+    def __init__(self, file: Any):
+        self._file = file
+
+    def read(self, size: int = -1) -> str:
+        return self._file.read(size)
+
+    def write(self, data: str) -> int:
+        return self._file.write(data)
+
+    def __enter__(self) -> 'FileWrapper':
+        return self
+
+    def __exit__(self, exc_type: Union[type, None], exc_val: Union[BaseException, None], exc_tb: Union[TracebackType, None]) -> None:
+        self._file.__exit__(exc_type, exc_val, exc_tb)
 
 
 class LocalIO:
@@ -14,7 +32,7 @@ class LocalIO:
     @contextmanager
     def open(self, path: Path, mode: str = "r") -> Iterator[FileLike]:
         with open(self.cwd / path, mode) as file:
-            yield file
+            yield FileWrapper(file)
 
     def get_paths_for_directory(
         self, path: Optional[Path] = None, exclude_patterns: Set[Path] = set()
