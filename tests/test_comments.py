@@ -6,8 +6,8 @@ from ragdaemon.daemon import Daemon
 
 
 @pytest.mark.asyncio
-async def test_comment_render(git_history, mock_db):
-    daemon = Daemon(cwd=git_history)
+async def test_comment_render(cwd_git_diff, mock_db):
+    daemon = Daemon(cwd=cwd_git_diff)
     await daemon.update(refresh=True)
 
     context = ContextBuilder(daemon.graph, daemon.io)

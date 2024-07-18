@@ -1,7 +1,9 @@
+import io as _io
 import os
 import platform
 import shutil
 import subprocess
+import tarfile
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -30,7 +32,7 @@ def mock_db():
 
 
 @pytest.fixture(scope="function")
-def git_history(cwd):
+def cwd_git(cwd):
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir_path = Path(tmpdir)
         sample_dir = cwd
@@ -51,20 +53,23 @@ def git_history(cwd):
         subprocess.run(
             ["git", "commit", "-m", "Initial commit"], cwd=tmpdir_path, check=True
         )
-
-        # Diff
-        modify_lines = [1, 2, 3, 8]  # Modify
-        with open(tmpdir_path / "src" / "operations.py", "r") as f:
-            lines = f.readlines()
-        for i in modify_lines:
-            lines[i] = lines[i].strip() + " #modified\n"
-        with open(tmpdir_path / "src" / "operations.py", "w") as f:
-            f.writelines(lines)
-        (tmpdir_path / "main.py").unlink()  # Remove
-        with open(tmpdir_path / "hello.py", "w") as f:  # Add
-            f.write("print('Hello, world!')\n")
-
         yield tmpdir_path
+
+
+@pytest.fixture(scope="function")
+def cwd_git_diff(cwd_git):
+    modify_lines = [1, 2, 3, 8]  # Modify
+    with open(cwd_git / "src" / "operations.py", "r") as f:
+        lines = f.readlines()
+    for i in modify_lines:
+        lines[i] = lines[i].strip() + " #modified\n"
+    with open(cwd_git / "src" / "operations.py", "w") as f:
+        f.writelines(lines)
+    (cwd_git / "main.py").unlink()  # Remove
+    with open(cwd_git / "hello.py", "w") as f:  # Add
+        f.write("print('Hello, world!')\n")
+
+    yield cwd_git
 
 
 # We have to set the key since counting tokens with an openai model loads the openai client
@@ -84,3 +89,31 @@ def docker_client():
             )
         else:
             raise e
+
+
+@pytest.fixture
+def container(cwd, docker_client, path="tests/sample"):
+    image = "python:3.10"
+    docker_client.images.pull(image)
+    container = docker_client.containers.run(image, detach=True, tty=True, command="sh")
+
+    # Create the tests/sample directory in the container
+    container.exec_run(f"mkdir -p {path}")
+
+    # Copy everything in cwd into the docker container at the same location
+    tarstream = _io.BytesIO()
+    with tarfile.open(fileobj=tarstream, mode="w") as tar:
+        tar.add(cwd, arcname=".")
+    tarstream.seek(0)
+    container.put_archive(path, tarstream)
+
+    workdir = f"/{path}"
+    container.exec_run("git init", workdir=workdir)
+    container.exec_run("git config user.email you@example.com", workdir=workdir)
+    container.exec_run("git config user.name 'Your Name'", workdir=workdir)
+
+    try:
+        yield container
+    finally:
+        container.stop()
+        container.remove()

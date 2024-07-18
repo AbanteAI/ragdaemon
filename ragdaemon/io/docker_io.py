@@ -35,7 +35,7 @@ class FileInDocker(FileLike):
     def write(self, data: str) -> int:
         if "w" not in self.mode:
             raise IOError("File not opened in write mode")
-        result = self.container.exec_run(f"sh -c 'echo \"{data}\" > {self.path}'")
+        result = self.container.exec_run(f"sh -c 'printf \"%s\" > {self.path}'" % data)
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to write file {self.path} in container: {result.stderr.decode('utf-8')}"
@@ -50,18 +50,19 @@ class FileInDocker(FileLike):
 
 
 class DockerIO:
-    def __init__(self, cwd: Path, container: Container):
-        self.cwd = cwd
+    def __init__(self, cwd: Path | str, container: Container):
+        self.cwd = Path(cwd)
         self.container = container
 
     @contextmanager
-    def open(self, path: Path, mode: str = "r") -> Iterator[FileLike]:
+    def open(self, path: Path | str, mode: str = "r") -> Iterator[FileLike]:
+        path = Path(path)
         file_path = self.cwd / path
         docker_file = FileInDocker(self.container, file_path, mode)
         yield docker_file
 
     def get_paths_for_directory(
-        self, path: Optional[Path] = None, exclude_patterns: Set[Path] = set()
+        self, path: Optional[Path | str] = None, exclude_patterns: Set[Path] = set()
     ) -> Set[Path]:
         root = self.cwd if path is None else self.cwd / path
         if not self.is_git_repo(path):
@@ -103,7 +104,7 @@ class DockerIO:
             files.add(file)
         return files
 
-    def is_git_repo(self, path: Optional[Path] = None):
+    def is_git_repo(self, path: Optional[Path | str] = None):
         root = self.cwd if path is None else self.cwd / path
         args = ["git", "ls-files", "--error-unmatch"]
         try:
@@ -112,43 +113,43 @@ class DockerIO:
         except Exception:
             return False
 
-    def last_modified(self, path: Path) -> float:
+    def last_modified(self, path: Path | str) -> float:
         path = self.cwd / path
         result = self.container.exec_run(f"stat -c %Y {path}")
         if result.exit_code != 0:
             raise FileNotFoundError(f"No such file exists: {path}")
         return float(result.output.decode("utf-8"))
 
-    def get_git_diff(self, diff_args: str) -> str:
+    def get_git_diff(self, diff_args: Optional[str] = None) -> str:
         args = ["git", "diff", "-U1"]
         if diff_args and diff_args != "DEFAULT":
             args += diff_args.split(" ")
-        result = self.container.exec_run(args)
+        result = self.container.exec_run(args, workdir=f"/{self.cwd}")
         if result.exit_code != 0:
             raise IOError(f"Failed to get git diff: {result.output.decode('utf-8')}")
         return result.output.decode("utf-8")
 
-    def mkdir(self, path: Path, parents: bool = False, exist_ok: bool = False):
+    def mkdir(self, path: Path | str, parents: bool = False, exist_ok: bool = False):
         result = self.container.exec_run(f"mkdir -p {self.cwd / path}")
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to make directory {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
 
-    def unlink(self, path: Path):
+    def unlink(self, path: Path | str):
         result = self.container.exec_run(f"rm {self.cwd / path}")
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to unlink {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
 
-    def rename(self, src: Path, dst: Path):
+    def rename(self, src: Path | str, dst: Path | str):
         result = self.container.exec_run(f"mv {self.cwd / src} {self.cwd / dst}")
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to rename {self.cwd / src} to {self.cwd / dst} in container: {result.output.decode('utf-8')}"
             )
 
-    def exists(self, path: Path) -> bool:
+    def exists(self, path: Path | str) -> bool:
         result = self.container.exec_run(f"test -e {self.cwd / path}")
         return result.exit_code == 0
