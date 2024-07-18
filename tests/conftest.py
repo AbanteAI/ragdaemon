@@ -75,17 +75,12 @@ def mock_openai_api_key():
 
 @pytest.fixture(scope="session")
 def docker_client():
-    return docker.from_env()
-
-
-def pytest_runtest_call(item):
-    if "uses_docker" in item.keywords:
-        try:
-            item.runtest()
-        except DockerException as e:
-            if platform.system() in ["Darwin", "Windows"]:
-                pytest.skip(
-                    f"Skipping Docker tests on {platform.system()} due to Docker error"
-                )
-            else:
-                raise e
+    try:
+        return docker.from_env()
+    except DockerException as e:
+        if platform.system() in ["Darwin", "Windows"]:
+            pytest.skip(
+                f"Skipping Docker tests on {platform.system()} due to Docker error"
+            )
+        else:
+            raise e

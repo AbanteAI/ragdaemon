@@ -44,7 +44,6 @@ def get_message_chunk_set(message):  # Because order can vary
             chunks[i] += "\n"
 
 
-@pytest.mark.uses_docker
 @pytest.mark.asyncio
 async def test_docker_io(container, path):
     daemon = Daemon(Path(path), annotators={"hierarchy": {}}, container=container)
