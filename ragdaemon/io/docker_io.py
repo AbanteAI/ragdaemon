@@ -134,21 +134,21 @@ class DockerIO:
             raise IOError(
                 f"Failed to make directory {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
-        
+
     def unlink(self, path: Path):
         result = self.container.exec_run(f"rm {self.cwd / path}")
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to unlink {self.cwd / path} in container: {result.output.decode('utf-8')}"
             )
-        
+
     def rename(self, src: Path, dst: Path):
         result = self.container.exec_run(f"mv {self.cwd / src} {self.cwd / dst}")
         if result.exit_code != 0:
             raise IOError(
                 f"Failed to rename {self.cwd / src} to {self.cwd / dst} in container: {result.output.decode('utf-8')}"
             )
-        
+
     def exists(self, path: Path) -> bool:
         result = self.container.exec_run(f"test -e {self.cwd / path}")
         return result.exit_code == 0

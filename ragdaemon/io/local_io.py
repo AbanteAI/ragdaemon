@@ -18,10 +18,15 @@ class FileWrapper:
     def write(self, data: str) -> int:
         return self._file.write(data)
 
-    def __enter__(self) -> 'FileWrapper':
+    def __enter__(self) -> "FileWrapper":
         return self
 
-    def __exit__(self, exc_type: Union[type, None], exc_val: Union[BaseException, None], exc_tb: Union[TracebackType, None]) -> None:
+    def __exit__(
+        self,
+        exc_type: Union[type, None],
+        exc_val: Union[BaseException, None],
+        exc_tb: Union[TracebackType, None],
+    ) -> None:
         self._file.__exit__(exc_type, exc_val, exc_tb)
 
 

@@ -2,15 +2,9 @@ import io as _io
 import tarfile
 from pathlib import Path
 
-import docker
 import pytest
 
 from ragdaemon.daemon import Daemon
-
-
-@pytest.fixture(scope='session')
-def docker_client():
-    return docker.from_env()
 
 
 @pytest.fixture
@@ -21,7 +15,7 @@ def path():
 @pytest.fixture
 def container(git_history, docker_client, path):
     image = "python:3.10"
-    container = docker_client.containers.run(image, detach=True, tty=True, command='sh')
+    container = docker_client.containers.run(image, detach=True, tty=True, command="sh")
 
     # Create the tests/sample directory in the container
     container.exec_run(f"mkdir -p {path}")
@@ -34,7 +28,7 @@ def container(git_history, docker_client, path):
     container.put_archive(path, tarstream)
 
     # Because git repo was copied from outside, need to add this otherwise it's suspicious
-    container.exec_run(f'git config --global --add safe.directory /{path}')
+    container.exec_run(f"git config --global --add safe.directory /{path}")
 
     try:
         yield container
@@ -50,11 +44,12 @@ def get_message_chunk_set(message):  # Because order can vary
             chunks[i] += "\n"
 
 
+@pytest.mark.uses_docker
 @pytest.mark.asyncio
 async def test_docker_io(container, path):
     daemon = Daemon(Path(path), annotators={"hierarchy": {}}, container=container)
     await daemon.update()
-    
+
     actual = daemon.get_context("test", max_tokens=1000).render(use_tags=True)
 
     with open("tests/data/context_message.txt", "r") as f:

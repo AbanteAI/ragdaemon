@@ -1,10 +1,13 @@
 import os
+import platform
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock
 
+import docker
+from docker.errors import DockerException
 import pytest
 
 from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
@@ -68,3 +71,21 @@ def git_history(cwd):
 @pytest.fixture(autouse=True)
 def mock_openai_api_key():
     os.environ["OPENAI_API_KEY"] = "fake_key"
+
+
+@pytest.fixture(scope="session")
+def docker_client():
+    return docker.from_env()
+
+
+def pytest_runtest_call(item):
+    if "uses_docker" in item.keywords:
+        try:
+            item.runtest()
+        except DockerException as e:
+            if platform.system() in ["Darwin", "Windows"]:
+                pytest.skip(
+                    f"Skipping Docker tests on {platform.system()} due to Docker error"
+                )
+            else:
+                raise e
