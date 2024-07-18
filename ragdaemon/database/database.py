@@ -8,7 +8,7 @@ class Database:
     embedding_model: str | None = None
     _collection = None  # Collection | LiteDB
 
-    def __init__(self, cwd: Path, db_path: Path) -> None:
+    def __init__(self, db_path: Path) -> None:
         raise NotImplementedError
 
     def __getattr__(self, name):

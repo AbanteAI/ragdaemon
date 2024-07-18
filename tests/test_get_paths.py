@@ -46,16 +46,16 @@ def add_permissions(func, path, exc_info):
         raise
 
 
-def test_get_paths_for_directory_without_git(git_history):
-    # Using the 'git_history' fixture because it sets up a tempdir.
-    git_history = git_history.resolve()
-    git_dir = git_history / ".git"
+def test_get_paths_for_directory_without_git(cwd_git_diff):
+    # Using the 'cwd_git_diff' fixture because it sets up a tempdir.
+    cwd_git_diff = cwd_git_diff.resolve()
+    git_dir = cwd_git_diff / ".git"
     shutil.rmtree(git_dir, onerror=add_permissions)
 
-    is_git_repo = get_git_root_for_path(git_history, raise_error=False)
+    is_git_repo = get_git_root_for_path(cwd_git_diff, raise_error=False)
     assert not is_git_repo, "Is a git repository"
 
-    paths = get_paths_for_directory(git_history)
+    paths = get_paths_for_directory(cwd_git_diff)
     assert paths == {
         Path(".gitignore"),
         Path("README.md"),

@@ -11,8 +11,7 @@ def tokenize(document: str) -> list[str]:
 
 
 class LiteDB(Database):
-    def __init__(self, cwd: Path, db_path: Path, verbose: int = 0):
-        self.cwd = cwd
+    def __init__(self, db_path: Path, verbose: int = 0):
         self.db_path = db_path
         self.verbose = verbose
         self._collection = LiteCollection(self.verbose)

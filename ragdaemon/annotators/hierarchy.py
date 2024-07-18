@@ -3,17 +3,17 @@ from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database, remove_add_to_db_duplicates
-from ragdaemon.get_paths import get_paths_for_directory
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
+from ragdaemon.io import IO
 from ragdaemon.utils import get_document, hash_str, truncate
 
 
-def files_checksum(cwd: Path, ignore_patterns: set[Path] = set()) -> str:
+def files_checksum(io: IO, ignore_patterns: set[Path] = set()) -> str:
     timestamps = ""
-    for path in get_paths_for_directory(cwd, exclude_patterns=ignore_patterns):
+    for path in io.get_paths_for_directory(exclude_patterns=ignore_patterns):
         try:
-            timestamps += str((cwd / path).stat().st_mtime)
+            timestamps += str(io.last_modified(path))
         except FileNotFoundError:
             pass
     return hash_str(timestamps)
@@ -28,9 +28,8 @@ class Hierarchy(Annotator):
         super().__init__(*args, **kwargs)
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
-        cwd = Path(graph.graph["cwd"])
         return graph.graph.get("files_checksum") == files_checksum(
-            cwd, self.ignore_patterns
+            self.io, self.ignore_patterns
         )
 
     async def annotate(
@@ -45,12 +44,12 @@ class Hierarchy(Annotator):
 
         # Load active files/dirs and checksums
         checksums = dict[Path, str]()
-        paths = get_paths_for_directory(cwd, exclude_patterns=self.ignore_patterns)
+        paths = self.io.get_paths_for_directory(exclude_patterns=self.ignore_patterns)
         directories = set()
         edges = set()
         for path in paths:
             path_str = path.as_posix()
-            document = get_document(path_str, cwd)
+            document = get_document(path_str, self.io)
             checksum = hash_str(document)
             data = {
                 "id": path_str,
@@ -115,5 +114,5 @@ class Hierarchy(Annotator):
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
-        graph.graph["files_checksum"] = files_checksum(cwd, self.ignore_patterns)
+        graph.graph["files_checksum"] = files_checksum(self.io, self.ignore_patterns)
         return graph

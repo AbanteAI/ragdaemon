@@ -1,5 +1,4 @@
 import os  # noqa: F401
-from pathlib import Path
 from typing import Optional
 
 from spice import Spice
@@ -21,7 +20,6 @@ DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
 
 
 def get_db(
-    cwd: Path,
     spice_client: Spice,
     embedding_model: str | None = None,
     embedding_provider: Optional[str] = None,
@@ -32,7 +30,6 @@ def get_db(
     # if embedding_model is not None and "PYTEST_CURRENT_TEST" not in os.environ:
     #     try:
     #         # db = ChromaDB(
-    #         #     cwd=cwd,
     #         #     db_path=db_path,
     #         #     spice_client=spice_client,
     #         #     embedding_model=embedding_model,
@@ -42,7 +39,7 @@ def get_db(
     #         # # In case the api key is wrong, try to embed something to trigger an error.
     #         # _ = db.add(ids="test", documents="test doc")
     #         # db.delete(ids="test")
-    #         db = PGDB(cwd=cwd, db_path=db_path, verbose=verbose)
+    #         db = PGDB(db_path=db_path, verbose=verbose)
     #         return db
     #     except Exception as e:
     #         if verbose > 1:
@@ -50,4 +47,4 @@ def get_db(
     #                 f"Failed to initialize Postgres Database: {e}. Falling back to LiteDB."
     #             )
     #         pass
-    return LiteDB(cwd=cwd, db_path=db_path, verbose=verbose)
+    return LiteDB(db_path=db_path, verbose=verbose)

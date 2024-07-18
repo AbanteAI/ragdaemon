@@ -9,8 +9,8 @@ from ragdaemon.daemon import Daemon
 from ragdaemon.graph import KnowledgeGraph
 
 
-def test_chunker_is_complete(cwd, mock_db):
-    chunker = Chunker()
+def test_chunker_is_complete(io, mock_db):
+    chunker = Chunker(io)
 
     empty_graph = KnowledgeGraph()
     assert chunker.is_complete(empty_graph, mock_db), "Empty graph is complete."
@@ -68,7 +68,7 @@ def expected_chunks():
 
 
 @pytest.mark.asyncio
-async def test_chunker_astroid(cwd, expected_chunks):
+async def test_chunker_astroid(expected_chunks):
     text = Path("tests/data/hard_to_chunk.txt").read_text()
     document = f"src/calculator.py\n{text}"
     actual_chunks = await chunk_astroid(document)

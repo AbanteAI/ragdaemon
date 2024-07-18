@@ -7,10 +7,10 @@ from ragdaemon.annotators.hierarchy import Hierarchy
 from ragdaemon.graph import KnowledgeGraph
 
 
-def test_hierarchy_is_complete(cwd, mock_db):
+def test_hierarchy_is_complete(cwd, io, mock_db):
     empty_graph = KnowledgeGraph()
     empty_graph.graph["cwd"] = cwd.as_posix()
-    hierarchy = Hierarchy()
+    hierarchy = Hierarchy(io)
 
     assert not hierarchy.is_complete(
         empty_graph, mock_db
@@ -25,10 +25,10 @@ def test_hierarchy_is_complete(cwd, mock_db):
 
 
 @pytest.mark.asyncio
-async def test_hierarchy_annotate(cwd, mock_db):
+async def test_hierarchy_annotate(cwd, io, mock_db):
     graph = KnowledgeGraph()
     graph.graph["cwd"] = cwd.as_posix()
-    hierarchy = Hierarchy()
+    hierarchy = Hierarchy(io)
     actual = await hierarchy.annotate(graph, mock_db)
 
     # Load the template graph

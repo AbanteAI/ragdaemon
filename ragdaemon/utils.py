@@ -1,7 +1,6 @@
 import asyncio
 import hashlib
 import re
-import subprocess
 from base64 import b64encode
 from pathlib import Path
 
@@ -10,7 +9,7 @@ from spice.models import GPT_4o_2024_05_13, Model, UnknownModel
 from spice.spice import get_model_from_name
 
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.get_paths import get_paths_for_directory
+from ragdaemon.io import IO
 
 mentat_dir_path = Path.home() / ".mentat"
 
@@ -54,14 +53,6 @@ def basic_auth(username: str, password: str):
     return f"Basic {token}"
 
 
-def get_git_diff(diff_args: str, cwd: str) -> str:
-    args = ["git", "diff", "-U1"]
-    if diff_args and diff_args != "DEFAULT":
-        args += diff_args.split(" ")
-    diff = subprocess.check_output(args, cwd=cwd, text=True)
-    return diff
-
-
 def parse_lines_ref(ref: str) -> set[int] | None:
     lines = set()
     for ref in ref.split(","):
@@ -96,7 +87,7 @@ def parse_diff_id(id: str) -> tuple[str, Path | None, set[int] | None]:
 
 
 def get_document(
-    ref: str, cwd: Path, type: str = "file", ignore_patterns: set[Path] = set()
+    ref: str, io: IO, type: str = "file", ignore_patterns: set[Path] = set()
 ) -> str:
     if type == "diff":
         if ":" in ref:
@@ -104,7 +95,7 @@ def get_document(
             lines = parse_lines_ref(lines_ref)
         else:
             diff_ref, lines = ref, None
-        diff = get_git_diff(diff_ref, str(cwd))
+        diff = io.get_git_diff(diff_ref)
         if lines:
             text = "\n".join(
                 [line for i, line in enumerate(diff.split("\n")) if i + 1 in lines]
@@ -114,11 +105,13 @@ def get_document(
         ref = f"git diff{'' if diff_ref == 'DEFAULT' else f' {diff_ref}'}"
 
     elif type == "directory":
-        path = cwd if ref == "ROOT" else cwd / ref
+        path = None if ref == "ROOT" else Path(ref)
         paths = sorted(
             [
                 p.as_posix()
-                for p in get_paths_for_directory(path, exclude_patterns=ignore_patterns)
+                for p in io.get_paths_for_directory(
+                    path=path, exclude_patterns=ignore_patterns
+                )
             ]
         )
         text = "\n".join(paths)
@@ -127,7 +120,7 @@ def get_document(
         path, lines = parse_path_ref(ref)
         if lines:
             text = ""
-            with open(cwd / path, "r") as f:
+            with io.open(path, "r") as f:
                 file_lines = f.read().split("\n")
             if max(lines) > len(file_lines):
                 raise RagdaemonError(f"{type} {ref} has invalid line numbers")
@@ -135,7 +128,7 @@ def get_document(
                 text += f"{file_lines[line - 1]}\n"
         else:
             try:
-                with open(cwd / path, "r") as f:
+                with io.open(path, "r") as f:
                     text = f.read()
             except UnicodeDecodeError:
                 raise RagdaemonError(f"Not a text file: {path}")

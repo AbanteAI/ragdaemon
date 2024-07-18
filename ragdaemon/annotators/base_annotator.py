@@ -6,6 +6,7 @@ from spice import Spice
 
 from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
+from ragdaemon.io import IO
 
 
 class Annotator:
@@ -13,10 +14,12 @@ class Annotator:
 
     def __init__(
         self,
+        io: IO,
         verbose: int = 0,
         spice_client: Optional[Spice] = None,
         pipeline: Optional[dict[str, Annotator]] = None,
     ):
+        self.io = io
         self.verbose = verbose
         self.spice_client = spice_client
         pass

@@ -1,11 +1,9 @@
 import json
 import re
 from copy import deepcopy
-from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database, remove_add_to_db_duplicates
-from ragdaemon.get_paths import get_git_root_for_path
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
@@ -74,19 +72,17 @@ class Diff(Annotator):
         return "DEFAULT" if not self.diff_args else self.diff_args
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
-        cwd = Path(graph.graph["cwd"])
-        if not get_git_root_for_path(cwd, raise_error=False):
+        if not self.io.is_git_repo():
             return True
 
-        document = get_document(self.diff_args, cwd, type="diff")
+        document = get_document(self.diff_args, self.io, type="diff")
         checksum = hash_str(document)
         return self.id in graph and graph.nodes[self.id]["checksum"] == checksum
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
-        cwd = Path(graph.graph["cwd"])
-        if not get_git_root_for_path(cwd, raise_error=False):
+        if not self.io.is_git_repo():
             return graph
 
         graph_nodes = {
@@ -97,7 +93,7 @@ class Diff(Annotator):
         graph.remove_nodes_from(graph_nodes)
 
         checksums = dict[str, str]()
-        document = get_document(self.diff_args, cwd, type="diff")
+        document = get_document(self.diff_args, self.io, type="diff")
         checksum = hash_str(document)
         chunks = get_chunks_from_diff(id=self.id, diff=document)
         data = {
@@ -112,7 +108,7 @@ class Diff(Annotator):
         checksums[self.id] = checksum
 
         for chunk_id, chunk_ref in chunks.items():
-            document = get_document(chunk_ref, cwd, type="diff")
+            document = get_document(chunk_ref, self.io, type="diff")
             chunk_checksum = hash_str(document)
             data = {
                 "id": chunk_id,

@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, Union
 from dict2xml import dict2xml
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
+from ragdaemon.io import IO
 from ragdaemon.utils import get_document, parse_diff_id, parse_path_ref
 
 NestedStrDict = Union[str, Dict[str, "NestedStrDict"]]
@@ -36,15 +37,16 @@ def render_comments(comments: list[Comment]) -> str:
 class ContextBuilder:
     """Renders items from a graph into an llm-readable string."""
 
-    def __init__(self, graph: KnowledgeGraph, verbose: int = 0):
+    def __init__(self, graph: KnowledgeGraph, io: IO, verbose: int = 0):
         self.graph = graph
+        self.io = io
         self.verbose = verbose
         self.context = dict[
             str, dict[str, Any]
         ]()  # {path: {lines, tags, document, diff}}
 
     def copy(self):
-        duplicate = ContextBuilder(self.graph, self.verbose)
+        duplicate = ContextBuilder(self.graph, self.io, self.verbose)
         duplicate.context = deepcopy(self.context)
         return duplicate
 
@@ -73,8 +75,7 @@ class ContextBuilder:
         if document is None:  # Truncated or deleted
             try:
                 # TODO: Add ignored files to the graph/database
-                cwd = Path(self.graph.graph["cwd"])
-                document = get_document(path_str, cwd, type="file")
+                document = get_document(path_str, self.io, type="file")
             except FileNotFoundError:
                 # Or could be deleted but have a diff
                 document = f"{path_str}\n[DELETED]"
