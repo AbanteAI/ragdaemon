@@ -171,10 +171,3 @@ class DockerIO:
     def exists(self, path: Path | str) -> bool:
         result = self.container.exec_run(f"test -e {self.cwd / path}")
         return result.exit_code == 0
-
-
-"""
-b'1, image: https://via.placeholder.com/150 },
-  { title: Card: 7: Syntax error: Unterminated quoted string
-'
-"""
