@@ -1,3 +1,7 @@
+import io
+import os
+import tarfile
+import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Optional, Set
@@ -35,12 +39,26 @@ class FileInDocker(FileLike):
     def write(self, data: str) -> int:
         if "w" not in self.mode:
             raise IOError("File not opened in write mode")
-        result = self.container.exec_run(f"sh -c 'printf \"%s\" > {self.path}'" % data)
-        if result.exit_code != 0:
-            raise IOError(
-                f"Failed to write file {self.path} in container: {result.stderr.decode('utf-8')}"
-            )
+        
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(data.encode('utf-8'))
+            temp_file_path = temp_file.name
+        
+        # Create a tar archive of the temporary file
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            tar.add(temp_file_path, arcname=os.path.basename(self.path))
+        tar_stream.seek(0)
+
+        # Put the archive into the container
+        self.container.put_archive(os.path.dirname(self.path), tar_stream)
+
+        # Clean up the temporary file
+        os.remove(temp_file_path)
+
         return len(data)
+
+
 
     def __enter__(self) -> "FileInDocker":
         return self
@@ -153,3 +171,10 @@ class DockerIO:
     def exists(self, path: Path | str) -> bool:
         result = self.container.exec_run(f"test -e {self.cwd / path}")
         return result.exit_code == 0
+
+
+"""
+b'1, image: https://via.placeholder.com/150 },
+  { title: Card: 7: Syntax error: Unterminated quoted string
+'
+"""
