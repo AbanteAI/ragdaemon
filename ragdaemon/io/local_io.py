@@ -51,7 +51,7 @@ class LocalIO:
         if path:
             args.append(Path(path).as_posix())
         try:
-            output = subprocess.run(args, cwd=self.cwd)
+            output = subprocess.run(args, cwd=self.cwd, capture_output=True)
             return output.returncode == 0
         except subprocess.CalledProcessError:
             return False
