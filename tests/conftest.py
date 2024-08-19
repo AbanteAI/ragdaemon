@@ -86,14 +86,18 @@ so we can skip these tests on MacOS and Windows. We still make an attempt though
 because if Docker IS installed (i.e. local development on MacOS or Windows), it should
 still work.
 """
+
+
 def fail_silently_on_macos_and_windows(docker_function, *args, **kwargs):
     try:
         return docker_function(*args, **kwargs)
     except DockerException as e:
         if platform.system() in ["Darwin", "Windows"]:
-            pytest.skip(f"Skipping Docker tests on {platform.system()} due to Docker error: {e}")
+            pytest.skip(
+                f"Skipping Docker tests on {platform.system()} due to Docker error: {e}"
+            )
         else:
-            raise e   
+            raise e
 
 
 @pytest.fixture(scope="session")

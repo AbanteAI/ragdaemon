@@ -39,14 +39,14 @@ class FileInDocker(FileLike):
     def write(self, data: str) -> int:
         if "w" not in self.mode:
             raise IOError("File not opened in write mode")
-        
+
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(data.encode('utf-8'))
+            temp_file.write(data.encode("utf-8"))
             temp_file_path = temp_file.name
-        
+
         # Create a tar archive of the temporary file
         tar_stream = io.BytesIO()
-        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+        with tarfile.open(fileobj=tar_stream, mode="w") as tar:
             tar.add(temp_file_path, arcname=os.path.basename(self.path))
         tar_stream.seek(0)
 
@@ -57,8 +57,6 @@ class FileInDocker(FileLike):
         os.remove(temp_file_path)
 
         return len(data)
-
-
 
     def __enter__(self) -> "FileInDocker":
         return self

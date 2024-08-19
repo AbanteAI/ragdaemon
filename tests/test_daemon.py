@@ -61,7 +61,7 @@ async def test_daemon_refresh(cwd_git):
     await daemon.update()
     files3 = set(daemon.graph.nodes)
     assert files2 != files3
-    
+
     # Delete
     daemon.io.unlink(cwd_git / "main2.py")
     await daemon.update()

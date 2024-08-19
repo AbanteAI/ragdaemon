@@ -5,7 +5,6 @@ from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.database import Database, remove_add_to_db_duplicates
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
-from ragdaemon.io import IO
 from ragdaemon.utils import get_document, hash_str, truncate
 
 
@@ -34,10 +33,12 @@ class Hierarchy(Annotator):
             path_str = path.as_posix()
             documents[path] = get_document(path_str, self.io)
             checksums[path] = hash_str(documents[path])
-        files_checksum = hash_str("".join(f"{path.as_posix()}{checksums[path]}" for path in sorted(checksums)))
+        files_checksum = hash_str(
+            "".join(f"{path.as_posix()}{checksums[path]}" for path in sorted(checksums))
+        )
         if not refresh and files_checksum == graph.graph.get("files_checksum"):
             return graph
-        
+
         # Initialize a new graph from scratch with same cwd
         cwd = Path(graph.graph["cwd"])
         graph = KnowledgeGraph()
