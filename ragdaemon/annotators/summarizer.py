@@ -198,7 +198,6 @@ def get_document_and_context(
 class Summarizer(Annotator):
     name = "summarizer"
     summary_field_id = "summary"
-    checksum_field_id = "summary_checksum"
 
     def __init__(
         self,
@@ -226,13 +225,6 @@ class Summarizer(Annotator):
                 raise RagdaemonError(f"Node {node} missing checksum.")
             if data.get(self.summary_field_id) is None:
                 return False
-            # Checksum used to be hash_str(document + context) using the above method. This is
-            # technically more correct, because the summary context includes adjacent summaries
-            # so the whole system updates iteratively. In practice it was just too much looping
-            # so for now we just reuse the checksum generated in hierarchy (hash_str(document)).
-            summary_checksum = data["checksum"]
-            if summary_checksum != data.get(self.checksum_field_id):
-                return False
         return True
 
     async def generate_summary(
@@ -247,13 +239,8 @@ class Summarizer(Annotator):
             raise RagdaemonError("Spice client not initialized")
 
         data = graph.nodes[node]
-        summary_checksum = data["checksum"]
         _refresh = match_refresh(refresh, node)
-        if (
-            _refresh
-            or data.get(self.summary_field_id) is None
-            or summary_checksum != data.get(self.checksum_field_id)
-        ):
+        if _refresh or data.get(self.summary_field_id) is None:
             document, context = get_document_and_context(
                 node,
                 graph,
@@ -283,7 +270,6 @@ class Summarizer(Annotator):
 
             if summary != "PASS":
                 data[self.summary_field_id] = summary
-            data[self.checksum_field_id] = summary_checksum
 
         if loading_bar is not None:
             loading_bar.update(1)
@@ -311,29 +297,26 @@ class Summarizer(Annotator):
         self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         """Asynchronously generate or fetch summaries and add to graph/db"""
-        summaries = dict[str, str]()
+        nodes_to_summarize: set[str] = set()
         for node, data in graph.nodes(data=True):
             if data is not None and data.get("type") in self.summarize_nodes:
-                summaries[node] = data.get(self.checksum_field_id, "")
+                nodes_to_summarize.add(node)
 
         if self.verbose > 1:
-            loading_bar = tqdm(total=len(summaries), desc="Summarizing code...")
+            loading_bar = tqdm(
+                total=len(nodes_to_summarize), desc="Summarizing code..."
+            )
         else:
             loading_bar = None
 
         await self.dfs("ROOT", graph, loading_bar, refresh)
 
         update_db = {"ids": [], "metadatas": []}
-        for node, summary_checksum in summaries.items():
-            if graph.nodes[node].get(self.checksum_field_id) != summary_checksum:
-                data = graph.nodes[node]
-                update_db["ids"].append(data["checksum"])
-                update_db["metadatas"].append(
-                    {
-                        self.summary_field_id: data[self.summary_field_id],
-                        self.checksum_field_id: data[self.checksum_field_id],
-                    }
-                )
+        for node in nodes_to_summarize:
+            data = graph.nodes[node]
+            update_db["ids"].append(data["checksum"])
+            metadatas = {self.summary_field_id: data[self.summary_field_id]}
+            update_db["metadatas"].append(metadatas)
         if len(update_db["ids"]) > 1:
             db.update(**update_db)
 

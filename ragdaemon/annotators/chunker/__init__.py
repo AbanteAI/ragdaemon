@@ -1,6 +1,5 @@
 import asyncio
 import json
-from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from typing import Optional, Set
@@ -184,20 +183,18 @@ class Chunker(Annotator):
         ids = list(set(checksums.values()))
         response = db.get(ids=ids, include=["metadatas"])
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        add_to_db = {"ids": [], "documents": []}
         for node, checksum in checksums.items():
             if checksum in db_data:
                 data = db_data[checksum]
                 graph.nodes[node].update(data)
             else:
-                data = deepcopy(graph.nodes[node])
-                document = data.pop("document")
+                document = graph.nodes[node].get("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
                 if truncate_ratio > 0 and self.verbose > 1:
                     print(f"Truncated {node} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
             db.add(**add_to_db)
 

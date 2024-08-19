@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 from rank_bm25 import BM25Okapi
 
@@ -7,6 +7,13 @@ from ragdaemon.database.database import Database
 
 def tokenize(document: str) -> list[str]:
     return document.split()
+
+
+class Document(TypedDict):
+    checksum: str
+    chunks: Optional[list[dict[str, str]]]
+    summary: Optional[str]
+    embedding: Optional[list[float]]
 
 
 class LiteDB(Database):
@@ -19,9 +26,7 @@ class LiteDB(Database):
         self.verbose = verbose
         self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
 
-    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
-        if isinstance(ids, str):
-            ids = [ids]
+    def get(self, ids: list[str], include: Optional[list[str]] = None) -> dict:
         output = {"ids": [], "metadatas": [], "documents": []}
         for id in ids:
             if id in self.data:
@@ -35,9 +40,7 @@ class LiteDB(Database):
     def count(self) -> int:
         return len(self.data)
 
-    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
-        ids = [ids] if isinstance(ids, str) else ids
-        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
+    def update(self, ids: list[str], metadatas: list[dict]):
         for checksum, metadata in zip(ids, metadatas):
             if checksum not in self.data:
                 raise ValueError(f"Record {checksum} does not exist.")
@@ -59,13 +62,12 @@ class LiteDB(Database):
 
     def add(
         self,
-        ids: list[str] | str,
-        metadatas: list[dict] | dict,
-        documents: list[str] | str,
-    ) -> list[str]:
-        ids = [ids] if isinstance(ids, str) else ids
-        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
-        documents = [documents] if isinstance(documents, str) else documents
+        ids: list[str],
+        documents: list[str],
+        metadatas: Optional[list[dict]] = None,
+    ):
+        if metadatas is None:
+            metadatas = [{} for _ in range(len(ids))]
         for checksum, metadata, document in zip(ids, metadatas, documents):
             existing_metadata = self.data.get(checksum, {}).get("metadatas", {})
             metadata = {**existing_metadata, **metadata}
@@ -78,5 +80,3 @@ class LiteDB(Database):
             documents.append(data["document"])
         self.bm25 = BM25Okapi([tokenize(document) for document in documents])
         self.bm25_index = ids
-
-        return ids

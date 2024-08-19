@@ -12,21 +12,18 @@ class Database:
 
     def add(
         self,
-        ids: list[str] | str,
-        metadatas: list[dict] | dict,
-        documents: list[str] | str,
-    ) -> list[str]:
+        ids: list[str],
+        documents: list[str],
+        metadatas: Optional[list[dict]] = None,
+    ):
         # NOTE: In the past we had issues with duplicates. LiteDB doesn't mind, but PGDB might.
         raise NotImplementedError
 
-    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
+    def update(self, ids: list[str], metadatas: list[dict]):
         # NOTE: Same as above re: duplicates
         raise NotImplementedError
 
-    def count(self) -> int:
-        raise NotImplementedError
-
-    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
+    def get(self, ids: list[str], include: Optional[list[str]] = None) -> dict:
         raise NotImplementedError
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
