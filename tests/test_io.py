@@ -33,7 +33,6 @@ def all_io_methods(io: IO):
 
 @pytest.mark.asyncio
 async def test_local_io_methods(cwd_git):
-
     io = LocalIO(Path(cwd_git))
     all_io_methods(io)
 

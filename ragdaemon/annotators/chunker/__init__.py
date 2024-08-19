@@ -13,11 +13,7 @@ from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_a
 from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
 from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
 from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
-from ragdaemon.database import (
-    Database,
-    remove_add_to_db_duplicates,
-    remove_update_db_duplicates,
-)
+from ragdaemon.database import Database
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -145,7 +141,6 @@ class Chunker(Annotator):
                 update_db["ids"].append(data["checksum"])
                 metadatas = {self.chunk_field_id: json.dumps(data[self.chunk_field_id])}
                 update_db["metadatas"].append(metadatas)
-            update_db = remove_update_db_duplicates(**update_db)
             db.update(**update_db)
 
         # Process chunks
@@ -204,7 +199,6 @@ class Chunker(Annotator):
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         return graph

@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 from typing_extensions import override
 
-from ragdaemon.database.lite_database import LiteCollection, LiteDB
+from ragdaemon.database.lite_database import LiteDB
 
 
 class Base(DeclarativeBase):
@@ -126,12 +126,6 @@ class Engine:
 
 
 class PGDB(LiteDB):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._collection = PGCollection(self.verbose)
-
-
-class PGCollection(LiteCollection):
     """Wraps a LiteDB and adds/gets targeted fields from a remote Postgres Database."""
 
     def __init__(self, *args, fields: list[str] = ["chunks"], **kwargs):

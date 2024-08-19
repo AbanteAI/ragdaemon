@@ -9,7 +9,7 @@ from spice.models import TextModel
 from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_update_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -229,7 +229,6 @@ class CallGraph(Annotator):
                 update_db["ids"].append(data["checksum"])
                 metadatas = {self.call_field_id: json.dumps(data[self.call_field_id])}
                 update_db["metadatas"].append(metadatas)
-            update_db = remove_update_db_duplicates(**update_db)
             db.update(**update_db)
 
         # Add call edges to graph. Each call should have only ONE source; if there are

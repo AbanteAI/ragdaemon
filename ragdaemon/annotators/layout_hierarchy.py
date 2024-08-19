@@ -104,7 +104,7 @@ class LayoutHierarchy(Annotator):
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes
-        c. Save to chroma
+        c. Save to db
         """
         pos = fruchterman_reingold_3d(
             graph, iterations=iterations, verbose=self.verbose

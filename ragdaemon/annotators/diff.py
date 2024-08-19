@@ -3,7 +3,7 @@ import re
 from copy import deepcopy
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
@@ -161,7 +161,6 @@ class Diff(Annotator):
             add_to_db["documents"].append(document)
             add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         return graph

@@ -6,14 +6,28 @@ from ragdaemon.graph import KnowledgeGraph
 
 class Database:
     embedding_model: str | None = None
-    _collection = None  # Collection | LiteDB
 
     def __init__(self, db_path: Path) -> None:
         raise NotImplementedError
 
-    def __getattr__(self, name):
-        """Delegate attribute access to the collection."""
-        return getattr(self._collection, name)
+    def add(
+        self,
+        ids: list[str] | str,
+        metadatas: list[dict] | dict,
+        documents: list[str] | str,
+    ) -> list[str]:
+        # NOTE: In the past we had issues with duplicates. LiteDB doesn't mind, but PGDB might.
+        raise NotImplementedError
+
+    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
+        # NOTE: Same as above re: duplicates
+        raise NotImplementedError
+
+    def count(self) -> int:
+        raise NotImplementedError
+
+    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
+        raise NotImplementedError
 
     def query(self, query: str, active_checksums: list[str]) -> list[dict]:
         raise NotImplementedError

@@ -12,7 +12,6 @@ description = "Generate and render a call graph for a Python project."
 readme = "README.md"
 dependencies = [
     "astroid==3.2.2",
-    "chromadb==0.4.24",
     "dict2xml==1.7.5",
     "docker==7.1.0",
     "fastapi==0.109.2",

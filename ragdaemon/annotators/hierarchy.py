@@ -2,7 +2,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.io import IO
@@ -111,7 +111,6 @@ class Hierarchy(Annotator):
                 add_to_db["documents"].append(document)
                 add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         graph.graph["files_checksum"] = files_checksum(self.io, self.ignore_patterns)

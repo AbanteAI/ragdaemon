@@ -9,7 +9,7 @@ from tqdm.asyncio import tqdm
 
 from ragdaemon.annotators.base_annotator import Annotator
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import Database, remove_update_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.io import IO
@@ -335,7 +335,6 @@ class Summarizer(Annotator):
                     }
                 )
         if len(update_db["ids"]) > 1:
-            update_db = remove_update_db_duplicates(**update_db)
             db.update(**update_db)
 
         if loading_bar is not None:
