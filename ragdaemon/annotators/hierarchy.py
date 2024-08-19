@@ -9,16 +9,6 @@ from ragdaemon.io import IO
 from ragdaemon.utils import get_document, hash_str, truncate
 
 
-def files_checksum(io: IO, ignore_patterns: set[Path] = set()) -> str:
-    timestamps = ""
-    for path in io.get_paths_for_directory(exclude_patterns=ignore_patterns):
-        try:
-            timestamps += str(io.last_modified(path))
-        except FileNotFoundError:
-            pass
-    return hash_str(timestamps)
-
-
 class Hierarchy(Annotator):
     name = "hierarchy"
 
@@ -28,38 +18,44 @@ class Hierarchy(Annotator):
         super().__init__(*args, **kwargs)
 
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
-        return graph.graph.get("files_checksum") == files_checksum(
-            self.io, self.ignore_patterns
-        )
+        # This is incorporated into annotate instead to avoid redundant reads
+        return False
 
     async def annotate(
         self, graph: KnowledgeGraph, db: Database, refresh: str | bool = False
     ) -> KnowledgeGraph:
         """Build a graph of active files and directories with hierarchy edges."""
 
+        # is_complete check
+        documents = dict[Path, str]()
+        checksums = dict[Path, str]()
+        paths = self.io.get_paths_for_directory(exclude_patterns=self.ignore_patterns)
+        for path in paths:
+            path_str = path.as_posix()
+            documents[path] = get_document(path_str, self.io)
+            checksums[path] = hash_str(documents[path])
+        files_checksum = hash_str("".join(f"{path.as_posix()}{checksums[path]}" for path in sorted(checksums)))
+        if not refresh and files_checksum == graph.graph.get("files_checksum"):
+            return graph
+        
         # Initialize a new graph from scratch with same cwd
         cwd = Path(graph.graph["cwd"])
         graph = KnowledgeGraph()
         graph.graph["cwd"] = str(cwd)
+        graph.graph["files_checksum"] = files_checksum
 
-        # Load active files/dirs and checksums
-        checksums = dict[Path, str]()
-        paths = self.io.get_paths_for_directory(exclude_patterns=self.ignore_patterns)
         directories = set()
         edges = set()
         for path in paths:
             path_str = path.as_posix()
-            document = get_document(path_str, self.io)
-            checksum = hash_str(document)
             data = {
                 "id": path_str,
                 "type": "file",
                 "ref": path_str,
-                "document": document,
-                "checksum": checksum,
+                "document": documents[path],
+                "checksum": checksums[path],
             }
             graph.add_node(path_str, **data)
-            checksums[path] = checksum
             # Record parents & edges
             _last = path
             for parent in path.parents:
@@ -114,5 +110,4 @@ class Hierarchy(Annotator):
             add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
-        graph.graph["files_checksum"] = files_checksum(self.io, self.ignore_patterns)
         return graph
