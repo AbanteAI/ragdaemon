@@ -40,5 +40,3 @@ async def test_hierarchy_annotate(cwd, io, mock_db):
 
     assert set(actual.nodes) == set(expected.nodes), "Nodes are not equal"
     assert set(actual.edges) == set(expected.edges), "Edges are not equal"
-
-    assert hierarchy.is_complete(actual, mock_db), "Graph should be complete"

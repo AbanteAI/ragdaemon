@@ -39,3 +39,38 @@ src/interface.py (user-included)
 ...
 """
     )
+
+
+@pytest.mark.asyncio
+async def test_daemon_refresh(cwd_git):
+    annotators = default_annotators()
+    del annotators["diff"]
+    daemon = Daemon(cwd_git.resolve(), annotators=annotators)
+    await daemon.update()
+    files1 = set(daemon.graph.nodes)
+
+    # Modify
+    with daemon.io.open(cwd_git / "main.py", "w") as file:
+        file.write("changed")
+    await daemon.update()
+    files2 = set(daemon.graph.nodes)
+    assert files1 != files2
+
+    # Rename
+    daemon.io.rename(cwd_git / "main.py", cwd_git / "main2.py")
+    await daemon.update()
+    files3 = set(daemon.graph.nodes)
+    assert files2 != files3
+
+    # Delete
+    daemon.io.unlink(cwd_git / "main2.py")
+    await daemon.update()
+    files4 = set(daemon.graph.nodes)
+    assert files3 != files4
+
+    # Create
+    with daemon.io.open(cwd_git / "main.py", "w") as file:
+        file.write("changed")
+    await daemon.update()
+    files5 = set(daemon.graph.nodes)
+    assert files4 != files5
