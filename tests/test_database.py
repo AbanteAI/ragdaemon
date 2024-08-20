@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock
 
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, LiteDB, get_db
+from ragdaemon.database import LiteDB, get_db
+from ragdaemon.utils import DEFAULT_EMBEDDING_MODEL
 
 
 def test_mock_database():

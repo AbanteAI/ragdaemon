@@ -12,8 +12,9 @@ import docker
 from docker.errors import DockerException
 import pytest
 
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, get_db
+from ragdaemon.database import get_db
 from ragdaemon.io import LocalIO
+from ragdaemon.utils import DEFAULT_EMBEDDING_MODEL
 
 
 @pytest.fixture

@@ -26,7 +26,7 @@ class Database:
     def get(self, ids: list[str], include: Optional[list[str]] = None) -> dict:
         raise NotImplementedError
 
-    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
+    def query(self, query: str, active_checksums: set[str]) -> list[dict]:
         raise NotImplementedError
 
     def query_graph(
@@ -54,7 +54,7 @@ class Database:
             for node, data in graph.nodes(data=True)
             if data and "checksum" in data and data["type"] in node_types
         }
-        response = self.query(query, list(checksum_index.keys()))
+        response = self.query(query, set(checksum_index.keys()))
 
         # Add (local) metadata to results
         results = list[dict[str, Any]]()

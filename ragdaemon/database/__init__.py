@@ -7,8 +7,6 @@ from ragdaemon.database.database import Database
 from ragdaemon.database.lite_database import LiteDB
 from ragdaemon.database.pg_database import PGDB
 
-DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
-
 
 def get_db(
     spice_client: Spice,

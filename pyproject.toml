@@ -18,6 +18,7 @@ dependencies = [
     "fastapi==0.109.2",
     "Jinja2==3.1.3",
     "networkx==3.2.1",
+    "pgvector==0.3.2",
     "psycopg2-binary==2.9.9",
     "python-dotenv",
     "rank_bm25==0.2.2",

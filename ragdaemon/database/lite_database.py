@@ -46,7 +46,7 @@ class LiteDB(Database):
                 raise ValueError(f"Record {checksum} does not exist.")
             self.data[checksum]["metadatas"] = metadata
 
-    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
+    def query(self, query: str, active_checksums: set[str]) -> list[dict]:
         scores = self.bm25.get_scores(tokenize(query))
         max_score = max(scores)
         if max_score > 0:

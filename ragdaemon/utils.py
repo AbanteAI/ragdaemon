@@ -41,6 +41,9 @@ DEFAULT_CODE_EXTENSIONS = [
 
 
 DEFAULT_COMPLETION_MODEL = GPT_4o_mini
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
+EMBEDDING_DIMENSIONS = 3072
+MAX_INPUTS_PER_CALL = 2048
 
 
 def hash_str(string: str) -> str:

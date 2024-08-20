@@ -13,12 +13,17 @@ from spice.spice import get_model_from_name
 from ragdaemon.annotators import annotators_map
 from ragdaemon.cerebrus import cerebrus
 from ragdaemon.context import ContextBuilder
-from ragdaemon.database import DEFAULT_EMBEDDING_MODEL, Database, get_db
+from ragdaemon.database import Database, get_db
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.io import DockerIO, IO, LocalIO
 from ragdaemon.locate import locate
-from ragdaemon.utils import DEFAULT_COMPLETION_MODEL, match_refresh, mentat_dir_path
+from ragdaemon.utils import (
+    DEFAULT_COMPLETION_MODEL,
+    DEFAULT_EMBEDDING_MODEL,
+    match_refresh,
+    mentat_dir_path,
+)
 
 
 def default_annotators():
@@ -61,7 +66,7 @@ class Daemon:
         if spice_client is None:
             spice_client = Spice(
                 default_text_model=DEFAULT_COMPLETION_MODEL,
-                default_embeddings_model=model,
+                default_embeddings_model=DEFAULT_EMBEDDING_MODEL,
                 logging_dir=logging_dir,
             )
         self.spice_client = spice_client

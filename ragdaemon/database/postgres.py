@@ -3,16 +3,25 @@ from functools import cache
 from typing import Optional
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import Engine
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import Session, sessionmaker, class_mapper
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Session,
+    sessionmaker,
+    class_mapper,
+    Mapped,
+    mapped_column,
+)
+
+from ragdaemon.utils import EMBEDDING_DIMENSIONS
+
 
 load_dotenv()
 
@@ -30,7 +39,7 @@ class DocumentMetadata(Base):
     __tablename__ = "document_metadata"
 
     id: Mapped[str] = mapped_column(primary_key=True)  # Checksum of the document
-    # embedding: Mapped[List[Float]]
+    embedding: Mapped[Vector] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
     chunks: Mapped[Optional[str]]
     calls: Mapped[Optional[str]]
     summary: Mapped[Optional[str]]
@@ -84,6 +93,23 @@ if __name__ == "__main__":
         "",
         "y",
     ]:
+        SessionLocal = get_database_session_sync()
+        # Check if vector extension is installed
+        with SessionLocal() as session:
+            query = text("SELECT * FROM pg_extension WHERE extname = 'vector'")
+            result = session.execute(query).fetchone()
+            if result is None:
+                try:
+                    session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                except Exception as e:
+                    raise Exception(
+                        f"""\
+Failed to install pgvector extension: {e}
+1. Install `pgvector` on your device: https://github.com/pgvector/pgvector
+2. Enable the `vector` extension to the ragdaemon database: 
+https://github.com/pgvector/pgvector-python?tab=readme-ov-file#sqlalchemy 
+"""
+                    )
         engine = get_database_engine_sync()
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
