@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import socket
-import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -40,9 +39,8 @@ diff = args.diff
 annotators = {
     "hierarchy": {},
     "chunker": {"use_llm": True},
-    # "summarizer": {},
-    # "clusterer_binary": {},
-    # "call_graph": {"call_extensions": code_extensions},
+    "call_graph": {"call_extensions": code_extensions},
+    "summarizer": {},
     "diff": {"diff": diff},
     "layout_hierarchy": {},
 }
@@ -117,9 +115,9 @@ async def main():
         print(f"Starting server on port {port}...")
     server = uvicorn.Server(config)
 
-    async def _wait_1s_then_open_browser():
-        await asyncio.sleep(1)
-        webbrowser.open(f"http://localhost:{port}")
+    # async def _wait_1s_then_open_browser():
+    #     await asyncio.sleep(1)
+    #     webbrowser.open(f"http://localhost:{port}")
 
-    asyncio.create_task(_wait_1s_then_open_browser())
+    # asyncio.create_task(_wait_1s_then_open_browser())
     await server.serve()

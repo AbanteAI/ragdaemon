@@ -1,8 +1,7 @@
-from copy import deepcopy
 from pathlib import Path
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import get_document, hash_str, truncate
@@ -93,22 +92,19 @@ class Hierarchy(Annotator):
         ids = list(set(checksums.values()))
         response = db.get(ids=ids, include=["metadatas"])
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        add_to_db = {"ids": [], "documents": []}
         for path, checksum in checksums.items():
             if checksum in db_data:
                 data = db_data[checksum]
                 graph.nodes[path.as_posix()].update(data)
             else:
-                data = deepcopy(graph.nodes[path.as_posix()])
-                document = data.pop("document")
+                document = graph.nodes[path.as_posix()]["document"]
                 document, truncate_ratio = truncate(document, db.embedding_model)
                 if self.verbose > 1 and truncate_ratio > 0:
                     print(f"Truncated {path} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         return graph

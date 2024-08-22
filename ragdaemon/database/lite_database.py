@@ -1,5 +1,4 @@
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 
 from rank_bm25 import BM25Okapi
 
@@ -10,35 +9,24 @@ def tokenize(document: str) -> list[str]:
     return document.split()
 
 
+class Document(TypedDict):
+    checksum: str
+    chunks: Optional[list[dict[str, str]]]
+    summary: Optional[str]
+    embedding: Optional[list[float]]
+
+
 class LiteDB(Database):
-    def __init__(self, db_path: Path, verbose: int = 0):
-        self.db_path = db_path
-        self.verbose = verbose
-        self._collection = LiteCollection(self.verbose)
-
-    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
-        return self._collection.query(query, active_checksums)
-
-
-class LiteCollection:
-    """A fast alternative to ChromaDB for testing (and anything else).
-
-    Matches the chroma Collection API except:
-    - No embeddings
-    - In-memory
-    - Query returns all distances=1
-    """
+    """A fast alternative to Embeddings DB for testing (and anything else)."""
 
     bm25: BM25Okapi
     bm25_index: list[str]
 
     def __init__(self, verbose: int = 0):
-        self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
         self.verbose = verbose
+        self.data = dict[str, dict[str, Any]]()  # {id: {metadatas, document}}
 
-    def get(self, ids: list[str] | str, include: Optional[list[str]] = None) -> dict:
-        if isinstance(ids, str):
-            ids = [ids]
+    def get(self, ids: list[str], include: Optional[list[str]] = None) -> dict:
         output = {"ids": [], "metadatas": [], "documents": []}
         for id in ids:
             if id in self.data:
@@ -52,15 +40,13 @@ class LiteCollection:
     def count(self) -> int:
         return len(self.data)
 
-    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
-        ids = [ids] if isinstance(ids, str) else ids
-        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
+    def update(self, ids: list[str], metadatas: list[dict]):
         for checksum, metadata in zip(ids, metadatas):
             if checksum not in self.data:
                 raise ValueError(f"Record {checksum} does not exist.")
             self.data[checksum]["metadatas"] = metadata
 
-    def query(self, query: str, active_checksums: list[str]) -> list[dict]:
+    def query(self, query: str, active_checksums: set[str]) -> list[dict]:
         scores = self.bm25.get_scores(tokenize(query))
         max_score = max(scores)
         if max_score > 0:
@@ -76,13 +62,12 @@ class LiteCollection:
 
     def add(
         self,
-        ids: list[str] | str,
-        metadatas: list[dict] | dict,
-        documents: list[str] | str,
-    ) -> list[str]:
-        ids = [ids] if isinstance(ids, str) else ids
-        metadatas = [metadatas] if isinstance(metadatas, dict) else metadatas
-        documents = [documents] if isinstance(documents, str) else documents
+        ids: list[str],
+        documents: list[str],
+        metadatas: Optional[list[dict]] = None,
+    ):
+        if metadatas is None:
+            metadatas = [{} for _ in range(len(ids))]
         for checksum, metadata, document in zip(ids, metadatas, documents):
             existing_metadata = self.data.get(checksum, {}).get("metadatas", {})
             metadata = {**existing_metadata, **metadata}
@@ -95,5 +80,3 @@ class LiteCollection:
             documents.append(data["document"])
         self.bm25 = BM25Okapi([tokenize(document) for document in documents])
         self.bm25_index = ids
-
-        return ids

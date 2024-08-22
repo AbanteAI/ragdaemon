@@ -85,6 +85,10 @@ def fruchterman_reingold_3d(
 class LayoutHierarchy(Annotator):
     name = "layout_hierarchy"
 
+    def __init__(self, *args, iterations: int = 40, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.iterations = iterations
+
     def is_complete(self, graph: KnowledgeGraph, db: Database) -> bool:
         # Check that they have data.layout.hierarchy
         for node, data in graph.nodes(data=True):
@@ -99,15 +103,14 @@ class LayoutHierarchy(Annotator):
         graph: KnowledgeGraph,
         db: Database,
         refresh: str | bool = False,
-        iterations: int = 40,
     ) -> KnowledgeGraph:
         """
         a. Regenerate x/y/z for all nodes
         b. Update all nodes
-        c. Save to chroma
+        c. Save to db
         """
         pos = fruchterman_reingold_3d(
-            graph, iterations=iterations, verbose=self.verbose
+            graph, iterations=self.iterations, verbose=self.verbose
         )
         for node_id, coordinates in pos.items():
             node = graph.nodes[node_id]

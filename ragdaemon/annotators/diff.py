@@ -1,9 +1,8 @@
 import json
 import re
-from copy import deepcopy
 
 from ragdaemon.annotators.base_annotator import Annotator
-from ragdaemon.database import Database, remove_add_to_db_duplicates
+from ragdaemon.database import Database
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.utils import (
@@ -150,10 +149,11 @@ class Diff(Annotator):
         for id, checksum in checksums.items():
             if checksum in db_data:
                 continue
-            data = deepcopy(graph.nodes[id])
-            document = data.pop("document")
-            if "chunks" in data:
-                data["chunks"] = json.dumps(data["chunks"])
+            data = {}
+            document = graph.nodes[id].get("document")
+            chunks = graph.nodes[id].get("chunks")
+            if chunks:
+                data["chunks"] = json.dumps(chunks)
             document, truncate_ratio = truncate(document, db.embedding_model)
             if self.verbose > 1 and truncate_ratio > 0:
                 print(f"Truncated {id} by {truncate_ratio:.2%}")
@@ -161,7 +161,6 @@ class Diff(Annotator):
             add_to_db["documents"].append(document)
             add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         return graph

@@ -37,7 +37,8 @@ async def test_comment_render(cwd_git_diff, mock_db):
     )
     context.add_comment("src/operations.py", "Comments can just be strings", line=12)
     actual = context.render()
-    assert actual == dedent("""\
+    assert actual == dedent(
+        """\
             src/operations.py
             <comment>What is this file for?</comment> (test-flag)
             1:import math
@@ -77,10 +78,12 @@ async def test_comment_render(cwd_git_diff, mock_db):
             </replies>
             21:    return math.sqrt(a)
             22:
-            """)
+            """
+    )
     context.remove_comments("src/operations.py", tags=["test-flag"])
     actual = context.render()
-    assert actual == dedent("""\
+    assert actual == dedent(
+        """\
             src/operations.py
 
             1:import math
@@ -120,10 +123,12 @@ async def test_comment_render(cwd_git_diff, mock_db):
             </replies>
             21:    return math.sqrt(a)
             22:
-            """)
+            """
+    )
     context.remove_comments("src/operations.py")
     actual = context.render()
-    assert actual == dedent("""\
+    assert actual == dedent(
+        """\
             src/operations.py
             1:import math
             2: #modified
@@ -147,4 +152,5 @@ async def test_comment_render(cwd_git_diff, mock_db):
             20:def sqrt(a):
             21:    return math.sqrt(a)
             22:
-            """)
+            """
+    )

@@ -1,6 +1,5 @@
 import asyncio
 import json
-from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from typing import Optional, Set
@@ -13,11 +12,7 @@ from ragdaemon.annotators.chunker.chunk_astroid import chunk_document as chunk_a
 from ragdaemon.annotators.chunker.chunk_line import chunk_document as chunk_line
 from ragdaemon.annotators.chunker.chunk_llm import chunk_document as chunk_llm
 from ragdaemon.annotators.chunker.utils import resolve_chunk_parent
-from ragdaemon.database import (
-    Database,
-    remove_add_to_db_duplicates,
-    remove_update_db_duplicates,
-)
+from ragdaemon.database import Database
 from ragdaemon.errors import RagdaemonError
 from ragdaemon.graph import KnowledgeGraph
 from ragdaemon.utils import (
@@ -145,7 +140,6 @@ class Chunker(Annotator):
                 update_db["ids"].append(data["checksum"])
                 metadatas = {self.chunk_field_id: json.dumps(data[self.chunk_field_id])}
                 update_db["metadatas"].append(metadatas)
-            update_db = remove_update_db_duplicates(**update_db)
             db.update(**update_db)
 
         # Process chunks
@@ -189,22 +183,19 @@ class Chunker(Annotator):
         ids = list(set(checksums.values()))
         response = db.get(ids=ids, include=["metadatas"])
         db_data = {id: data for id, data in zip(response["ids"], response["metadatas"])}
-        add_to_db = {"ids": [], "documents": [], "metadatas": []}
+        add_to_db = {"ids": [], "documents": []}
         for node, checksum in checksums.items():
             if checksum in db_data:
                 data = db_data[checksum]
                 graph.nodes[node].update(data)
             else:
-                data = deepcopy(graph.nodes[node])
-                document = data.pop("document")
+                document = graph.nodes[node].get("document")
                 document, truncate_ratio = truncate(document, db.embedding_model)
                 if truncate_ratio > 0 and self.verbose > 1:
                     print(f"Truncated {node} by {truncate_ratio:.2%}")
                 add_to_db["ids"].append(checksum)
                 add_to_db["documents"].append(document)
-                add_to_db["metadatas"].append(data)
         if len(add_to_db["ids"]) > 0:
-            add_to_db = remove_add_to_db_duplicates(**add_to_db)
             db.add(**add_to_db)
 
         return graph

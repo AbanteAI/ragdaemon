@@ -1,26 +1,14 @@
-import json
-import os
-from collections import defaultdict
-from typing import Dict, Optional
+from typing import Any, Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
-from typing_extensions import override
+from pgvector.sqlalchemy import Vector
+from psycopg2 import OperationalError
+from spice import Spice
+from sqlalchemy import select, func
 
-from ragdaemon.database.lite_database import LiteCollection, LiteDB
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class DocumentMetadata(Base):
-    __tablename__ = "document_metadata"
-
-    id: Mapped[str] = mapped_column(primary_key=True)
-    # We serialize whatever we get, which can be 'null', so we need Optional
-    chunks: Mapped[Optional[str]]
+from ragdaemon.database.database import Database
+from ragdaemon.database.postgres import DocumentMetadata, get_database_session_sync
+from ragdaemon.errors import RagdaemonError
+from ragdaemon.utils import MAX_INPUTS_PER_CALL
 
 
 def retry_on_exception(retries: int = 3, exceptions={OperationalError}):
@@ -39,148 +27,103 @@ def retry_on_exception(retries: int = 3, exceptions={OperationalError}):
     return decorator
 
 
-class Engine:
-    def __init__(self, verbose: int = 0):
-        database = "ragdaemon"
-        host = os.environ.get("RAGDAEMON_DB_ENDPOINT", None)
-        port = os.environ.get("RAGDAEMON_DB_PORT", 5432)
-        username = os.environ.get("RAGDAEMON_DB_USERNAME", None)
-        password = os.environ.get("RAGDAEMON_DB_PASSWORD", None)
+class PGDB(Database):
+    """Implementation of Database with embeddings search using PostgreSQL."""
 
-        if host is None or username is None or password is None:
-            raise ValueError(
-                "Missing ragdaemon environment variables: cannot use PGDB."
-            )
-
-        url = f"postgresql+psycopg2://{username}:{password}@{host}:{port}/{database}"
-        self.engine = create_engine(url)
-        if verbose > 1:
-            print("Connected to PGDB.")
-
-    def migrate(self):
-        if input(
-            "Migrating will clear the database. ALL DATA WILL BE LOST. Proceed (Y/n)? "
-        ).lower().strip() in [
-            "",
-            "y",
-        ]:
-            Base.metadata.drop_all(self.engine)
-            Base.metadata.create_all(self.engine)
-            print("PGDB migrated successfully.")
-
-    @retry_on_exception()
-    def add_document_metadata(self, ids: str | list[str], metadatas: Dict | list[Dict]):
-        ids = ids if isinstance(ids, list) else [ids]
-        metadatas = metadatas if isinstance(metadatas, list) else [metadatas]
-        if len(ids) != len(metadatas):
-            raise ValueError("ids and metadatas must have the same length.")
-        with Session(self.engine) as session:
-            for id, metadata in zip(ids, metadatas):
-                serialized_metadata = {}
-                for k, v in metadata.items():
-                    if not isinstance(v, str):
-                        v = json.dumps(v)
-                    serialized_metadata[k] = v
-                metadata_object = DocumentMetadata(id=id, **serialized_metadata)
-                session.add(metadata_object)
-            session.commit()
-
-    @retry_on_exception()
-    def update_document_metadata(
-        self, ids: str | list[str], metadatas: Dict | list[Dict]
+    def __init__(
+        self,
+        spice_client: Spice,
+        embedding_model: str | None = None,
+        embedding_provider: Optional[str] = None,
+        verbose: int = 0,
     ):
-        ids = ids if isinstance(ids, list) else [ids]
-        metadatas = metadatas if isinstance(metadatas, list) else [metadatas]
-        if len(ids) != len(metadatas):
-            raise ValueError("ids and metadatas must have the same length.")
-        with Session(self.engine) as session:
-            for id, metadata in zip(ids, metadatas):
-                metadata_object = session.get(DocumentMetadata, id)
-                if metadata_object is None:
-                    metadata_object = DocumentMetadata(id=id)
-                    session.add(metadata_object)
-                for k, v in metadata.items():
-                    if not isinstance(v, str):
-                        v = json.dumps(v)
-                    setattr(metadata_object, k, v)
-            session.commit()
+        self.verbose = verbose
+        SessionLocal = get_database_session_sync()
+        with SessionLocal() as session:
+            query = select(func.count(DocumentMetadata.id))
+            count = session.execute(query).scalar()
+            if self.verbose > 0:
+                print(f"Initialized PGDB with {count} documents.")
+
+        def embed_documents(input_texts: list[str]) -> list[list[float]]:
+            if not all(isinstance(item, str) for item in input_texts):
+                raise RagdaemonError("SpiceEmbeddings only enabled for text files.")
+            # Embed in batches
+            n_batches = (len(input_texts) - 1) // MAX_INPUTS_PER_CALL + 1
+            output: list[list[float]] = []
+            for batch in range(n_batches):
+                start = batch * MAX_INPUTS_PER_CALL
+                end = min((batch + 1) * MAX_INPUTS_PER_CALL, len(input_texts))
+                embeddings = spice_client.get_embeddings_sync(
+                    input_texts=input_texts[start:end],
+                    model=embedding_model,
+                    provider=embedding_provider,
+                ).embeddings
+                output.extend(embeddings)
+            return output
+
+        self.embed_documents = embed_documents
 
     @retry_on_exception()
-    def get_document_metadata(self, ids: str | list[str]) -> Dict[str, Dict]:
-        if not isinstance(ids, list):
-            ids = [ids]
-        with Session(self.engine) as session:
-            metadata_objects = (
-                session.query(DocumentMetadata)
-                .filter(DocumentMetadata.id.in_(ids))
-                .all()
-            )
-        result = dict[str, Dict]()
-        for object in metadata_objects:
-            id = object.id
-            serialized_metadata = object.__dict__.copy()
-            del serialized_metadata["_sa_instance_state"]
-            del serialized_metadata["id"]
-            result[id] = dict(serialized_metadata)  # Deserialization logic is elsewhere
-        return result
-
-
-class PGDB(LiteDB):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._collection = PGCollection(self.verbose)
-
-
-class PGCollection(LiteCollection):
-    """Wraps a LiteDB and adds/gets targeted fields from a remote Postgres Database."""
-
-    def __init__(self, *args, fields: list[str] = ["chunks"], **kwargs):
-        super().__init__(*args, **kwargs)
-        self.engine = Engine(self.verbose)
-        self.fields = fields
-
-    @override
-    def update(self, ids: list[str] | str, metadatas: list[dict] | dict):
-        remote_records = defaultdict(dict)
-        for id, metadata in zip(ids, metadatas):
-            for k, v in metadata.items():
-                if k in self.fields:
-                    remote_records[id][k] = v
-        self.engine.update_document_metadata(
-            ids=list(remote_records.keys()), metadatas=list(remote_records.values())
-        )
-        super().update(ids, metadatas)
-
-    @override
     def add(
         self,
-        ids: list[str] | str,
-        metadatas: list[dict] | dict,
-        documents: list[str] | str,
-    ) -> list[str]:
-        remote_metadatas = self.engine.get_document_metadata(ids)
-        for id, metadata in zip(ids, metadatas):
-            if id in remote_metadatas:
-                metadata.update(remote_metadatas[id])
-        return super().add(ids, metadatas, documents)
-
-    @override
-    def get(
-        self,
-        ids: list[str] | str,
-        include: list[str] | None = None,
+        ids: list[str],
+        documents: list[str],
+        metadatas: Optional[list[dict]] = None,
     ):
-        response = super().get(ids, include)
-        response_ids = response.get("ids", [])
-        if response_ids and include is not None and "metadatas" in include:
-            remote_metadatas = self.engine.get_document_metadata(response_ids)
-            for id, metadata in zip(
-                response.get("ids", []), response.get("metadatas", [])
-            ):
-                if id in remote_metadatas:
-                    metadata.update(remote_metadatas[id])
-        return response
+        if metadatas is None:
+            metadatas = [{} for _ in range(len(ids))]
+        embeddings = self.embed_documents(documents)
+        metadatas = [
+            {**meta, "embedding": emb} for meta, emb in zip(metadatas, embeddings)
+        ]
+        SessionLocal = get_database_session_sync()
+        with SessionLocal() as session:
+            for id, metadata in zip(ids, metadatas):
+                session.add(DocumentMetadata(id=id, **metadata))
+            session.commit()
 
+    @retry_on_exception()
+    def update(self, ids: list[str], metadatas: list[dict]):
+        SessionLocal = get_database_session_sync()
+        with SessionLocal() as session:
+            for id, metadata in zip(ids, metadatas):
+                session.query(DocumentMetadata).filter(
+                    DocumentMetadata.id == id
+                ).update(metadata)
+            session.commit()
 
-if __name__ == "__main__":
-    Engine().migrate()
+    @retry_on_exception()
+    def get(
+        self, ids: list[str], include: Optional[list[str]] = None
+    ) -> dict[str, list[str] | list[dict] | list[Vector]]:
+        SessionLocal = get_database_session_sync()
+        with SessionLocal() as session:
+            query = select(DocumentMetadata).filter(DocumentMetadata.id.in_(ids))
+            result = session.execute(query).scalars().all()
+            output: dict[str, list[str] | list[dict] | list[Vector]] = {
+                "ids": [doc.id for doc in result]
+            }
+            if include is None or "metadatas" in include:
+                output["metadatas"] = [
+                    doc.to_dict(exclude=["id", "embedding"]) for doc in result
+                ]
+            if include is None or "embeddings" in include:
+                output["embeddings"] = [doc.embedding for doc in result]
+            return output
+
+    @retry_on_exception()
+    def query(self, query: str, active_checksums: set[str]) -> list[dict[str, Any]]:
+        query_embedding = self.embed_documents([query])[0]
+        SessionLocal = get_database_session_sync()
+        with SessionLocal() as session:
+            emb_query = select(
+                DocumentMetadata.id,
+                DocumentMetadata.embedding.cosine_distance(query_embedding),
+            ).where(DocumentMetadata.id.in_(active_checksums))
+            result = session.execute(emb_query).all()
+            ordered = sorted(result, key=lambda x: x[1])
+            return [
+                {"checksum": checksum, "distance": distance}
+                for checksum, distance in ordered
+            ]
